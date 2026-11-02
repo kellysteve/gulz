@@ -110,6 +110,10 @@ const taskTransitions: Record<TaskStatus, readonly TaskStatus[]> = {
 };
 
 const approvalRiskThreshold: RiskLevel = "moderate";
+const operationKinds = new Set<OperationKind>([
+  "inspect", "read_file", "write_file", "run_command", "network",
+  "install", "delete", "permission_change", "remote_operation",
+]);
 const riskOrder: Record<RiskLevel, number> = {
   low: 0,
   moderate: 1,
@@ -119,6 +123,9 @@ const riskOrder: Record<RiskLevel, number> = {
 
 /** Low-risk operations may proceed automatically; all others need approval. */
 export function operationRequiresApproval(risk: RiskLevel): boolean {
+  if (!Object.hasOwn(riskOrder, risk)) {
+    throw new GoalStateError("A valid operation risk level is required.");
+  }
   return riskOrder[risk] >= riskOrder[approvalRiskThreshold];
 }
 
@@ -137,9 +144,27 @@ export interface CreatePlannedOperationInput {
  * Callers (including AI planners) cannot choose or override this decision.
  */
 export function createPlannedOperation(input: CreatePlannedOperationInput): PlannedOperation {
-  if (!input.id.trim()) throw new GoalStateError("An operation ID is required.");
-  if (!input.description.trim()) throw new GoalStateError("An operation description is required.");
-  if (!Object.hasOwn(riskOrder, input.risk)) throw new GoalStateError("A valid operation risk level is required.");
+  if (typeof input !== "object" || input === null) {
+    throw new GoalStateError("A valid planned operation is required.");
+  }
+  if (typeof input.id !== "string" || !input.id.trim()) {
+    throw new GoalStateError("An operation ID is required.");
+  }
+  if (typeof input.description !== "string" || !input.description.trim()) {
+    throw new GoalStateError("An operation description is required.");
+  }
+  if (!operationKinds.has(input.kind)) {
+    throw new GoalStateError("A valid operation kind is required.");
+  }
+  if (!Object.hasOwn(riskOrder, input.risk)) {
+    throw new GoalStateError("A valid operation risk level is required.");
+  }
+  if (input.target !== undefined && typeof input.target !== "string") {
+    throw new GoalStateError("An operation target must be a string.");
+  }
+  if (input.commandPreview !== undefined && typeof input.commandPreview !== "string") {
+    throw new GoalStateError("An operation command preview must be a string.");
+  }
 
   return {
     ...input,
