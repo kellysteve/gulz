@@ -34,8 +34,9 @@ All three interfaces share the same goal/task state and execution policy. No int
 
 ## Current implementation status
 
-- Shared core domain package: initial goal/task types, guarded lifecycle transitions and approval-risk summaries implemented.
+- Shared core domain package: initial goal/task types, guarded lifecycle transitions, risk-derived approval decisions and automated domain tests added.
 - CLI: early local goal-management commands and local JSON persistence implemented; not yet a machine-operation executor.
+- Package distribution: core and CLI metadata prepared for public npm publication; packages have not yet been published, and tests have not yet been run in a clean environment.
 - Public website: deployed; public-facing content is being prepared for launch.
 - AI orchestration, machine-operation adapters, installers and release downloads: not yet implemented or published.
 
