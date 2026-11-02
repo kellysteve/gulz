@@ -35,7 +35,14 @@ This is an early developer build. It can initialize local storage, run diagnosti
 
 ## Planned end-user distribution
 
-The project intends to provide platform-appropriate installation methods for Android/Termux, Linux, macOS, Windows and VPS environments. Each release must be built for its target platform, tested, checksummed and cryptographically signed before being listed as available. Until then, no official binary download is available.
+The CLI and core packages are being prepared for public npm publication. Once both packages have been published in dependency order, the intended Node.js installation will be:
+
+\`\`\`sh
+npm install --global @gulz/cli
+gulz --version
+\`\`\`
+
+This command is not available until publication is complete. Native platform-appropriate installers are still planned for Android/Termux, Linux, macOS, Windows and VPS environments. Each release must be built for its target platform, tested, checksummed and cryptographically signed before being listed as available. No official binary download is available yet.
 
 ## Remove the linked developer CLI
 
