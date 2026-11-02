@@ -1,7 +1,6 @@
 {
   "name": "@gulz/core",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,5 +23,14 @@
     "type": "git",
     "url": "https://github.com/kellysteve/gulz.git",
     "directory": "packages/core"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "prepublishOnly": "npm run build"
 }
