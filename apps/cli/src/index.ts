@@ -85,7 +85,9 @@ async function main(): Promise<void> {
   if (command === "init") {
     await ensureDataHome();
     const goals = await readGoals();
-    if (!(await import("node:fs/promises")).stat(goalsFile).then(() => true).catch(() => false)) {
+    try {
+      await access(goalsFile);
+    } catch {
       await saveGoals(goals);
     }
     console.log("GULZ is initialized.");
