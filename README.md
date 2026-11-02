@@ -2,9 +2,11 @@
 
 **Goals. Executed.**
 
-GULZ is a proprietary, AI-assisted goal-execution and machine-operations platform for local devices and authorized remote environments.
+GULZ is an open-source, AI-assisted goal-execution and machine-operations platform for local devices and authorized remote environments.
 
 **A Gaxity product.**
+
+GULZ is licensed under the **Apache License 2.0**. You can use, study, modify and redistribute the software under the terms of that license. The GULZ name and branding are not granted for unrestricted use; see the trademark note below.
 
 ## Project status
 
@@ -28,15 +30,16 @@ All three interfaces share the same goal/task state and execution policy. No int
 - Durable work: save goals, plans, task state, logs, and recoverable progress.
 - Provider flexibility: the core product remains useful when an AI provider is unavailable.
 - Platform-aware installation: publish separate, tested installation paths for Termux, Linux, macOS, Windows, VPS environments, and developers.
-- Proprietary software: source code and internal implementation are not open source.
+- Open development: source code, design discussions and contributions are intended to be public.
 
 ## Current implementation status
 
 - Shared core domain package: initial goal/task types, guarded lifecycle transitions and approval-risk summaries implemented.
+- CLI: early local goal-management commands and local JSON persistence implemented; not yet a machine-operation executor.
 - Public website: deployed; public-facing content is being prepared for launch.
-- CLI execution, local persistence, AI orchestration, machine-operation adapters, installers and release downloads: not yet implemented or published.
+- AI orchestration, machine-operation adapters, installers and release downloads: not yet implemented or published.
 
-## Planned repository layout
+## Repository layout
 
 ```text
 apps/
@@ -44,11 +47,12 @@ apps/
   website/   Public website and installation centre
 packages/
   core/      Goal and task orchestration
-  execution/ Permission-aware execution engine
-  providers/ AI provider adapters
-  storage/   Local persistence and remote storage adapters
-  updater/   Verified update client
+  execution/ Permission-aware execution engine (planned)
+  providers/ AI provider adapters (planned)
+  storage/   Local persistence and remote storage adapters (planned)
+  updater/   Verified update client (planned)
 docs/        Product and contributor documentation
+supabase/    Database migrations for release infrastructure
 ```
 
 Only modules with implemented functionality should be presented as production-ready.
@@ -58,13 +62,21 @@ Only modules with implemented functionality should be presented as production-re
 - TypeScript and Node.js LTS for the initial CLI runtime.
 - Cloudflare Workers with Workers Static Assets for the public website and API.
 - Supabase for release artifact storage and database-backed services.
-- Private GitHub repository for source and development.
+- Public GitHub repository for source and community development.
 - Signed release metadata, checksums, and platform-specific artifacts.
 
 ## Security
 
-Never commit API keys, Supabase service-role keys, signing keys, SSH credentials, access tokens, or user data. Secrets belong in deployment secrets or the user's local secure configuration. AI-proposed operations must pass policy validation and approval checks before execution.
+Never commit API keys, Supabase service-role keys, signing keys, SSH credentials, access tokens, or user data. Secrets belong in deployment secrets or the user's local secure configuration. AI-proposed operations must pass policy validation and approval checks before execution. See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+
+## Contributing
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. By submitting a contribution, you agree that it is provided under the Apache License 2.0, subject to any separate written agreement.
 
 ## License
 
-Proprietary. All rights reserved. No permission is granted to copy, modify, redistribute, sublicense, or sell this software without written authorization.
+Copyright © 2026 GULZ contributors.
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
+
+The license grants broad rights to use, modify and redistribute the software under its conditions. It does **not** grant rights to use GULZ trademarks, logos or branding as though an unofficial fork were the official GULZ project. See [TRADEMARKS.md](TRADEMARKS.md).
