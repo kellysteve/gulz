@@ -1,11 +1,11 @@
 import { useState } from "react";
 import {
-  ArrowRight, ArrowUpRight, Bot, Check, Code2, Command,
+  ArrowRight, ArrowUpRight, Bot, Check, Command,
   Download, Menu, Monitor, Server, ShieldCheck, Smartphone, Terminal,
   X, Zap,
 } from "lucide-react";
 
-type Platform = "termux" | "linux" | "macos" | "windows" | "vps" | "developer";
+type Platform = "termux" | "linux" | "macos" | "windows" | "vps";
 
 const platforms: { id: Platform; name: string; detail: string; icon: typeof Terminal; methods: string[]; steps: string[] }[] = [
   { id: "termux", name: "Android / Termux", detail: "Android phones and tablets", icon: Smartphone, methods: ["Termux package", "Standalone Android build"], steps: ["Install Termux from a supported source.", "Update Termux packages and install the required runtime.", "Install the verified GULZ Android package.", "Run gulz --version to verify the installation."] },
@@ -13,7 +13,6 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
   { id: "macos", name: "macOS", detail: "Apple Silicon and Intel Macs", icon: Command, methods: ["Homebrew", "Signed installer", "Standalone binary"], steps: ["Select Apple Silicon or Intel.", "Choose Homebrew or the standalone installer.", "Verify the downloaded release.", "Open a terminal and run gulz --version."] },
   { id: "windows", name: "Windows", detail: "Windows 10 and 11", icon: Monitor, methods: ["PowerShell installer", "WinGet", "Standalone executable"], steps: ["Choose the supported Windows architecture.", "Use PowerShell or your preferred package manager.", "Verify the installer before running it.", "Open a new PowerShell window and run gulz --version."] },
   { id: "vps", name: "VPS / Remote servers", detail: "Ubuntu, Debian and SSH-connected hosts", icon: Server, methods: ["SSH-assisted setup", "Linux installer", "Portable binary"], steps: ["Connect to your server using your own SSH account.", "Check the operating system and CPU architecture.", "Install GULZ as a non-root user where possible.", "Verify the installation and review its permissions."] },
-  { id: "developer", name: "Developers", detail: "Node.js and development environments", icon: Code2, methods: ["npm package", "Project-local install"], steps: ["Install a supported Node.js LTS release.", "Install the published GULZ package when available.", "Run gulz --version to check the CLI.", "Read the developer documentation for integrations."] },
 ];
 
 function App() {
@@ -99,7 +98,7 @@ function App() {
           <div className="security-icon"><ShieldCheck size={28}/></div><div><div className="section-kicker">CONTROL IS NOT OPTIONAL</div><h2>Autonomy, with boundaries.</h2><p>GULZ is being built around least-privilege access, clear approvals, transparent activity logs and verified outcomes. Your credentials stay yours. Sensitive actions do not happen silently.</p></div>
         </section>
 
-        <section className="final-cta"><div><div className="section-kicker">THE BEGINNING</div><h2>Make progress, not just plans.</h2><p>GULZ is in active development. Follow the project as its first capabilities become available.</p></div><a className="button button-primary" href="https://github.com/kellysteve/gulz" target="_blank" rel="noreferrer">Private development repo <ArrowUpRight size={16}/></a></section>
+        <section className="final-cta"><div><div className="section-kicker">THE BEGINNING</div><h2>Make progress, not just plans.</h2><p>GULZ is in active development. Platform downloads will appear here after they are built, tested and ready.</p></div><a className="button button-primary" href="#install">Explore installation <ArrowUpRight size={16}/></a></section>
       </main>
       <footer><a className="brand" href="#"><span className="brand-mark">G</span><span>GULZ</span></a><span>Goals. Executed.</span><span>A Gaxity product · © 2026</span></footer>
     </div>
