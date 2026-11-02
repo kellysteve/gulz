@@ -1,15 +1,77 @@
 #!/usr/bin/env node
 
 import { homedir, platform, arch, release } from "node:os";
-import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
-import { createGoal, type GoalRecord } from "@gulz/core";
+import { createGoal, operationRequiresApproval, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
 
 const VERSION = "0.1.0";
 const dataHome = resolve(process.env.GULZ_HOME || join(homedir(), ".gulz"));
 const goalsFile = join(dataHome, "goals.json");
+
+const goalStatuses = new Set<GoalStatus>(["draft", "planned", "awaiting_approval", "running", "paused", "completed", "failed", "cancelled"]);
+const taskStatuses = new Set<TaskStatus>(["pending", "awaiting_approval", "running", "paused", "completed", "failed", "skipped", "cancelled"]);
+const risks = new Set<RiskLevel>(["low", "moderate", "high", "critical"]);
+const operationKinds = new Set<OperationKind>(["inspect", "read_file", "write_file", "run_command", "network", "install", "delete", "permission_change", "remote_operation"]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isTimestamp(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && Number.isFinite(Date.parse(value));
+}
+
+function isOptionalString(value: unknown): boolean {
+  return value === undefined || typeof value === "string";
+}
+
+function isValidOperation(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (!isNonEmptyString(value.id) || !isNonEmptyString(value.description)) return false;
+  if (typeof value.kind !== "string" || !operationKinds.has(value.kind as OperationKind)) return false;
+  if (typeof value.risk !== "string" || !risks.has(value.risk as RiskLevel)) return false;
+  if (value.requiresApproval !== operationRequiresApproval(value.risk as RiskLevel)) return false;
+  return isOptionalString(value.target) && isOptionalString(value.commandPreview);
+}
+
+function isValidTask(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (!isNonEmptyString(value.id) || !isNonEmptyString(value.title) || typeof value.description !== "string") return false;
+  if (typeof value.status !== "string" || !taskStatuses.has(value.status as TaskStatus)) return false;
+  if (!isTimestamp(value.createdAt) || !isTimestamp(value.updatedAt)) return false;
+  if (!Array.isArray(value.operations) || !value.operations.every(isValidOperation)) return false;
+  return isOptionalString(value.result) && isOptionalString(value.error);
+}
+
+function isValidGoal(value: unknown): value is GoalRecord {
+  if (!isRecord(value)) return false;
+  if (!isNonEmptyString(value.id) || !isNonEmptyString(value.title) || typeof value.description !== "string") return false;
+  if (typeof value.status !== "string" || !goalStatuses.has(value.status as GoalStatus)) return false;
+  if (!isTimestamp(value.createdAt) || !isTimestamp(value.updatedAt)) return false;
+  if (value.completedAt !== undefined && !isTimestamp(value.completedAt)) return false;
+  if (!isOptionalString(value.failureReason)) return false;
+  if (!Array.isArray(value.tasks) || !value.tasks.every(isValidTask)) return false;
+  const taskIds = value.tasks.map((task) => (task as { id: string }).id);
+  return new Set(taskIds).size === taskIds.length;
+}
+
+function validateGoals(value: unknown): GoalRecord[] {
+  if (!Array.isArray(value) || !value.every(isValidGoal)) {
+    throw new Error("Saved goals data has an invalid structure or unsupported state.");
+  }
+  const ids = value.map((goal) => goal.id);
+  if (new Set(ids).size !== ids.length) {
+    throw new Error("Saved goals data contains duplicate goal IDs.");
+  }
+  return value;
+}
 
 function help(): void {
   console.log([
@@ -36,22 +98,42 @@ async function ensureDataHome(): Promise<void> {
 }
 
 async function readGoals(): Promise<GoalRecord[]> {
+  let raw: string;
   try {
-    const raw = await readFile(goalsFile, "utf8");
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) throw new Error("Stored goals data is not a list.");
-    return parsed as GoalRecord[];
+    raw = await readFile(goalsFile, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
   }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("Saved goals file contains invalid JSON. It was left untouched; back it up and repair it before continuing.");
+  }
+
+  try {
+    return validateGoals(parsed);
+  } catch (error) {
+    throw new Error(`Saved goals file failed validation and was left untouched: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 async function saveGoals(goals: GoalRecord[]): Promise<void> {
+  validateGoals(goals);
   await ensureDataHome();
   const temporary = join(dataHome, `goals.${randomUUID()}.tmp`);
-  await writeFile(temporary, JSON.stringify(goals, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
-  await rename(temporary, goalsFile);
+  try {
+    await writeFile(temporary, JSON.stringify(goals, null, 2) + "\n", {
+      encoding: "utf8",
+      mode: 0o600,
+      flag: "wx",
+    });
+    await rename(temporary, goalsFile);
+  } finally {
+    await rm(temporary, { force: true }).catch(() => undefined);
+  }
 }
 
 async function doctor(): Promise<boolean> {
@@ -87,7 +169,8 @@ async function main(): Promise<void> {
     const goals = await readGoals();
     try {
       await access(goalsFile);
-    } catch {
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       await saveGoals(goals);
     }
     console.log("GULZ is initialized.");
@@ -102,7 +185,7 @@ async function main(): Promise<void> {
   if (command === "goals") {
     const goals = await readGoals();
     if (goals.length === 0) {
-      console.log("No goals yet. Create one with: gulz goal create \"Your goal\"");
+      console.log('No goals yet. Create one with: gulz goal create "Your goal"');
       return;
     }
     for (const goal of goals) {
