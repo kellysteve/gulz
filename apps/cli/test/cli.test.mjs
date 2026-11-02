@@ -1,0 +1,103 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+
+const cliPath = resolve("dist/index.js");
+
+async function withHome(run) {
+  const home = await mkdtemp(join(tmpdir(), "gulz-cli-test-"));
+  try {
+    await run(home);
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+}
+
+function invoke(home, ...args) {
+  return spawnSync(process.execPath, [cliPath, ...args], {
+    encoding: "utf8",
+    env: { ...process.env, GULZ_HOME: home },
+  });
+}
+
+test("initializes storage and creates, lists and shows a saved goal", async () => {
+  await withHome(async (home) => {
+    const initialized = invoke(home, "init");
+    assert.equal(initialized.status, 0, initialized.stderr);
+    assert.match(initialized.stdout, /GULZ is initialized/);
+
+    const created = invoke(home, "goal", "create", "Build a test project");
+    assert.equal(created.status, 0, created.stderr);
+    assert.match(created.stdout, /Goal saved/);
+    const id = created.stdout.match(/ID:\s+([a-f0-9-]+)/)?.[1];
+    assert.ok(id, "CLI should print the generated goal ID");
+
+    const listed = invoke(home, "goals");
+    assert.equal(listed.status, 0, listed.stderr);
+    assert.match(listed.stdout, /Build a test project/);
+
+    const shown = invoke(home, "goal", "show", id);
+    assert.equal(shown.status, 0, shown.stderr);
+    const goal = JSON.parse(shown.stdout);
+    assert.equal(goal.id, id);
+    assert.equal(goal.title, "Build a test project");
+
+    const stored = JSON.parse(await readFile(join(home, "goals.json"), "utf8"));
+    assert.equal(stored.length, 1);
+    if (process.platform !== "win32") {
+      const mode = (await stat(join(home, "goals.json"))).mode & 0o777;
+      assert.equal(mode, 0o600);
+    }
+  });
+});
+
+test("refuses to overwrite malformed JSON and explains recovery", async () => {
+  await withHome(async (home) => {
+    const original = "{ this is not valid JSON";
+    await writeFile(join(home, "goals.json"), original);
+    const result = invoke(home, "goals");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /invalid JSON/);
+    assert.equal(await readFile(join(home, "goals.json"), "utf8"), original);
+  });
+});
+
+test("rejects structurally invalid goal records instead of trusting a JSON array", async () => {
+  await withHome(async (home) => {
+    const original = JSON.stringify([{ id: "fake", title: "Not a valid goal" }]);
+    await writeFile(join(home, "goals.json"), original);
+    const result = invoke(home, "doctor");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /failed validation/);
+    assert.equal(await readFile(join(home, "goals.json"), "utf8"), original);
+  });
+});
+
+test("rejects duplicate goal identifiers in saved data", async () => {
+  await withHome(async (home) => {
+    const goal = {
+      id: "duplicate",
+      title: "A goal",
+      description: "",
+      status: "draft",
+      tasks: [],
+      createdAt: "2026-11-02T12:00:00.000Z",
+      updatedAt: "2026-11-02T12:00:00.000Z",
+    };
+    await writeFile(join(home, "goals.json"), JSON.stringify([goal, goal]));
+    const result = invoke(home, "goals");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /duplicate goal IDs/);
+  });
+});
+
+test("requires a title when creating a goal", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "goal", "create");
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /Usage: gulz goal create/);
+  });
+});
