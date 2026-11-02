@@ -27,7 +27,11 @@ gulz goal create "Prepare my first development environment"
 gulz goals
 ```
 
-The CLI stores goals on the device in `~/.gulz/goals.json`. Set `GULZ_HOME` to use a different data directory. The data directory and goal file are created with owner-only permissions where the operating system supports them.
+The CLI stores goals on the device in `~/.gulz/goals.json`. Set `GULZ_HOME` to use a different data directory. New goal files use owner-only permissions where the operating system supports them. Before using saved data, the CLI validates goal/task states, timestamps, operation types and approval flags. Invalid data is reported and left untouched rather than silently replaced.
+
+## Run the automated checks
+
+From the repository root, run `npm test`. This builds and tests the core package, runs CLI integration tests against isolated temporary data directories, and typechecks the workspaces. These checks are committed but have not yet been run in a clean environment by the maintainer.
 
 ## Current limitations
 
