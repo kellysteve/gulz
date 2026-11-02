@@ -139,7 +139,7 @@ export interface CreatePlannedOperationInput {
 export function createPlannedOperation(input: CreatePlannedOperationInput): PlannedOperation {
   if (!input.id.trim()) throw new GoalStateError("An operation ID is required.");
   if (!input.description.trim()) throw new GoalStateError("An operation description is required.");
-  if (!(input.risk in riskOrder)) throw new GoalStateError("A valid operation risk level is required.");
+  if (!Object.hasOwn(riskOrder, input.risk)) throw new GoalStateError("A valid operation risk level is required.");
 
   return {
     ...input,
