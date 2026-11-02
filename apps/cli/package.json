@@ -4,7 +4,17 @@
   "private": true,
   "type": "module",
   "bin": { "gulz": "./dist/index.js" },
-  "scripts": { "build": "tsc -p tsconfig.json", "dev": "tsx src/index.ts", "typecheck": "tsc -p tsconfig.json --noEmit" },
-  "dependencies": {},
-  "devDependencies": { "tsx": "^4.20.0", "typescript": "^5.9.0" }
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@gulz/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
 }
