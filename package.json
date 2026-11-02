@@ -15,12 +15,18 @@
     "deploy:website": "npm run build --workspace @gulz/website && npx wrangler deploy --config apps/website/wrangler.toml",
     "build:core": "npm run build --workspace @gulz/core",
     "build:cli": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/cli",
-    "install:local": "npm run build:cli && npm link --workspace @gulz/cli"
+    "install:local": "npm run build:cli && npm link --workspace @gulz/cli",
+    "test": "npm run test --workspace @gulz/core && npm run typecheck"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "devDependencies": {
     "wrangler": "^4.45.0"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kellysteve/gulz.git"
   }
 }
