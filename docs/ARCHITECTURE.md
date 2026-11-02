@@ -1,5 +1,9 @@
 # GULZ architecture
 
+## Project direction: open source
+
+GULZ is developed in the open and licensed under the Apache License 2.0. Source contributions and community discussion are welcome. The license covers copyright and patent permissions for the software; it does not grant unrestricted rights to the GULZ name, logos or other trademarks.
+
 ## Product experience: hybrid
 
 GULZ has three first-class interfaces backed by one shared core:
@@ -50,7 +54,7 @@ AI output is untrusted input. It is never itself authorization to execute a comm
 
 ## Installation strategy
 
-Installation methods are platform-specific. Termux uses Android-compatible builds (Bionic environment), not assumed-compatible generic Linux binaries. Linux, macOS and Windows artifacts must be built and tested for their supported architectures. npm may be offered as a developer route, but must not be represented as equivalent source protection to a signed native artifact.
+Installation methods are platform-specific. Termux uses Android-compatible builds (Bionic environment), not assumed-compatible generic Linux binaries. Linux, macOS and Windows artifacts must be built and tested for their supported architectures. npm may be offered as a developer route, but end users should have proper package-manager or installable release options instead of being required to download and build the source repository.
 
 ## Release flow
 
