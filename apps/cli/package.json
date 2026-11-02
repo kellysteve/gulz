@@ -1,9 +1,10 @@
 {
   "name": "@gulz/cli",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
-  "bin": { "gulz": "./dist/index.js" },
+  "bin": {
+    "gulz": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/index.ts",
@@ -16,5 +17,23 @@
     "@types/node": "^22.15.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kellysteve/gulz.git",
+    "directory": "apps/cli"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "prepublishOnly": "npm run build",
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
