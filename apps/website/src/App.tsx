@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  ArrowRight, ArrowUpRight, Bot, Check, ChevronDown, Code2, Command,
+  ArrowRight, ArrowUpRight, Bot, Check, Code2, Command,
   Download, Menu, Monitor, Server, ShieldCheck, Smartphone, Terminal,
   X, Zap,
 } from "lucide-react";
