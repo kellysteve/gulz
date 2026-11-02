@@ -122,6 +122,33 @@ export function operationRequiresApproval(risk: RiskLevel): boolean {
   return riskOrder[risk] >= riskOrder[approvalRiskThreshold];
 }
 
+
+export interface CreatePlannedOperationInput {
+  id: string;
+  kind: OperationKind;
+  description: string;
+  risk: RiskLevel;
+  target?: string;
+  commandPreview?: string;
+}
+
+/**
+ * Create an operation with its approval requirement derived from its risk.
+ * Callers (including AI planners) cannot choose or override this decision.
+ */
+export function createPlannedOperation(input: CreatePlannedOperationInput): PlannedOperation {
+  if (!input.id.trim()) throw new GoalStateError("An operation ID is required.");
+  if (!input.description.trim()) throw new GoalStateError("An operation description is required.");
+  if (!(input.risk in riskOrder)) throw new GoalStateError("A valid operation risk level is required.");
+
+  return {
+    ...input,
+    id: input.id.trim(),
+    description: input.description.trim(),
+    requiresApproval: operationRequiresApproval(input.risk),
+  };
+}
+
 /** Build a new goal record without performing any external side effects. */
 export function createGoal(input: CreateGoalInput): GoalRecord {
   const title = input.title.trim();
