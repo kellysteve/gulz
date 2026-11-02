@@ -16,7 +16,7 @@
     "build:core": "npm run build --workspace @gulz/core",
     "build:cli": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/cli",
     "install:local": "npm run build:cli && npm link --workspace @gulz/cli",
-    "test": "npm run test --workspace @gulz/core && npm run typecheck"
+    "test": "npm run test --workspace @gulz/core && npm run test --workspace @gulz/cli && npm run typecheck"
   },
   "engines": {
     "node": ">=20.0.0"
