@@ -93,3 +93,11 @@ test("task transitions reject unknown IDs and terminal-state changes", () => {
   const skipped = transitionTask(goal, "t-1", "skipped", at);
   assert.throws(() => transitionTask(skipped, "t-1", "running", at), /Invalid task transition/);
 });
+
+test("rejects invalid operation kinds and direct invalid risk checks", () => {
+  assert.throws(
+    () => createPlannedOperation({ id: "op", kind: "execute_anything", description: "Run", risk: "low" }),
+    /valid operation kind/,
+  );
+  assert.throws(() => operationRequiresApproval("__proto__"), /valid operation risk/);
+});
