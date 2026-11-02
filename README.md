@@ -10,6 +10,16 @@ GULZ is a proprietary, AI-assisted goal-execution and machine-operations platfor
 
 GULZ is in early development. Installation commands, release downloads, update services, AI integrations, and operational capabilities are not available until implemented and tested. Documentation must never describe planned functionality as already working.
 
+## Product experience
+
+GULZ uses a hybrid experience backed by one shared core:
+
+- **Terminal:** direct commands and power-user control.
+- **AI assistant:** natural-language goals, planning and guided operations.
+- **Task workspace:** plans, approvals, activity, results and resumable work.
+
+All three interfaces share the same goal/task state and execution policy. No interface bypasses permission checks.
+
 ## Product principles
 
 - Supervised autonomy: low-risk work can proceed; sensitive or destructive actions require explicit approval.
@@ -19,6 +29,12 @@ GULZ is in early development. Installation commands, release downloads, update s
 - Provider flexibility: the core product remains useful when an AI provider is unavailable.
 - Platform-aware installation: publish separate, tested installation paths for Termux, Linux, macOS, Windows, VPS environments, and developers.
 - Proprietary software: source code and internal implementation are not open source.
+
+## Current implementation status
+
+- Shared core domain package: initial goal/task types, guarded lifecycle transitions and approval-risk summaries implemented.
+- Public website: deployed; public-facing content is being prepared for launch.
+- CLI execution, local persistence, AI orchestration, machine-operation adapters, installers and release downloads: not yet implemented or published.
 
 ## Planned repository layout
 
