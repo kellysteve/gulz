@@ -40,6 +40,10 @@ test("rejects malformed planned operations", () => {
   assert.throws(() => createPlannedOperation({ id: "op", kind: "inspect", description: " ", risk: "low" }), /description is required/);
 });
 
+test("rejects inherited object keys as invalid runtime risk values", () => {
+  assert.throws(() => createPlannedOperation({ id: "op-x", kind: "inspect", description: "Inspect", risk: "__proto__" }), /valid operation risk/);
+});
+
 test("approval summary counts each risk and derives approvals", () => {
   const operations = [
     createPlannedOperation({ id: "1", kind: "inspect", description: "Inspect", risk: "low" }),
