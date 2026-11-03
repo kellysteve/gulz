@@ -8,7 +8,15 @@ Goal creation and initialization use an exclusive lock so concurrent GULZ proces
 
 The goals file is written atomically, and the data directory and goals file are restricted to the current user's permissions where the platform supports POSIX permissions.
 
-## Interactive session\n\nAfter the developer-preview installation is linked, run `gulz` with no arguments to open the interactive terminal menu. It currently lets you create and save a goal, list saved goals, run the local system check and open command help. Choose `0` to exit. Goal records persist locally between sessions. This first interactive shell does not yet include AI planning, task execution, pause/resume or background recovery; those are future milestones and are not simulated.\n\nYou install/link the CLI once. To update the source preview later, enter the cloned repository and run `git pull --ff-only`, `npm install`, and `npm run install:local`, then restart GULZ. This is not an automatic updater.\n\n## Current capabilities
+## Interactive session
+
+After the developer-preview installation is linked, run `gulz` with no arguments to open the interactive terminal session. You can create a goal, browse saved goals, open a goal's details, run the local system check, and view command help. Choose `0` (or type `q`) to exit. Saved goals remain on this device between sessions.
+
+This preview is a local goal workspace, not yet an AI agent: AI planning, task execution, pause/resume, and background recovery are not connected. The interface does not pretend those features are running.
+
+Install/link the CLI once. To update this source preview later, open the cloned GULZ repository and run `git pull --ff-only`, `npm install`, and `npm run install:local`. Then start a fresh `gulz` session. An automatic in-app updater and published package updates are not available yet.
+
+## Current capabilities
 
 - Initialize local GULZ data storage and run a local environment diagnostic.
 - Create, list and inspect saved goals.
