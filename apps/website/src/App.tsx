@@ -90,24 +90,24 @@ function App() {
           </div>
         </section>
 
-        <section className="trust-strip"><span><Zap size={16}/> Goal-oriented execution</span><span><ShieldCheck size={16}/> Permission-aware by design</span><span><Terminal size={16}/> Local + remote environments</span></section>
+        <section className="trust-strip"><span><Zap size={16}/> Goal-oriented execution</span><span><ShieldCheck size={16}/> Permission-aware by design</span><span><Terminal size={16}/> Local-first execution</span></section>
 
         <section className="section" id="capabilities">
           <div className="section-kicker">BUILT FOR REAL WORK</div><h2>One interface. Many environments.</h2><p className="section-lead">From your phone's terminal to a remote VPS, GULZ is being designed to work where your projects and systems already live.</p>
           <div className="feature-grid">
-            <article className="feature-card"><div className="feature-icon"><Command/></div><h3>Machine operations</h3><p>Inspect systems, manage files, run processes and work with development environments through authorized tools.</p></article>
-            <article className="feature-card"><div className="feature-icon"><Bot/></div><h3>AI goal execution</h3><p>Turn an outcome into clear steps, coordinate real tools and verify what happened instead of pretending.</p></article>
-            <article className="feature-card"><div className="feature-icon"><Server/></div><h3>Remote management</h3><p>Work with SSH-connected servers and VPS environments while keeping access scoped to your permissions.</p></article>
+            <article className="feature-card"><div className="feature-icon"><Command/></div><h3>Machine operations</h3><p>The current CLI preview can inspect and read local files, write approved text changes with backups, and run a small allowlist of diagnostics.</p></article>
+            <article className="feature-card"><div className="feature-icon"><Bot/></div><h3>AI goal execution</h3><p>Planned: turn a goal into a structured plan, request approval for sensitive steps, coordinate tools and verify real outcomes.</p></article>
+            <article className="feature-card"><div className="feature-icon"><Server/></div><h3>Remote management</h3><p>Planned: connect to authorized SSH and VPS environments through the same permission and approval system. Remote execution is not available yet.</p></article>
           </div>
         </section>
 
         <section className="section process-section" id="how-it-works">
-          <div className="section-kicker">HOW GULZ WORKS</div><h2>From intention to verified outcome.</h2>
+          <div className="section-kicker">THE PLANNED WORKFLOW</div><h2>From intention to verified outcome.</h2>
           <div className="process-grid">
-            <div><span className="process-number">01</span><h3>Describe the goal</h3><p>Tell GULZ what you want to accomplish in plain language.</p></div>
-            <div><span className="process-number">02</span><h3>Review the plan</h3><p>GULZ inspects the authorized environment and prepares an actionable plan.</p></div>
+            <div><span className="process-number">01</span><h3>Describe the goal</h3><p>Describe the outcome you want in plain language.</p></div>
+            <div><span className="process-number">02</span><h3>Review the plan</h3><p>The planned AI layer inspects only authorized resources and prepares an actionable plan.</p></div>
             <div><span className="process-number">03</span><h3>Approve sensitive work</h3><p>High-impact and destructive operations wait for your explicit approval.</p></div>
-            <div><span className="process-number">04</span><h3>Verify the result</h3><p>Actions are checked and progress is saved so work can recover after interruptions.</p></div>
+            <div><span className="process-number">04</span><h3>Verify the result</h3><p>The execution layer verifies results and saves progress so work can recover after interruptions.</p></div>
           </div>
         </section>
 
