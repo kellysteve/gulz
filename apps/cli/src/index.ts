@@ -10,6 +10,7 @@ import { createGoal, operationRequiresApproval, type GoalRecord, type GoalStatus
 const VERSION = "0.1.0";
 const dataHome = resolve(process.env.GULZ_HOME || join(homedir(), ".gulz"));
 const goalsFile = join(dataHome, "goals.json");
+const goalsLockFile = join(dataHome, "goals.lock");
 
 const goalStatuses = new Set<GoalStatus>(["draft", "planned", "awaiting_approval", "running", "paused", "completed", "failed", "cancelled"]);
 const taskStatuses = new Set<TaskStatus>(["pending", "awaiting_approval", "running", "paused", "completed", "failed", "skipped", "cancelled"]);
@@ -147,6 +148,39 @@ async function saveGoals(goals: GoalRecord[]): Promise<void> {
   }
 }
 
+async function withGoalsLock<T>(run: () => Promise<T>): Promise<T> {
+  await ensureDataHome();
+  const token = randomUUID();
+  const started = Date.now();
+  while (true) {
+    try {
+      await writeFile(goalsLockFile, JSON.stringify({ pid: process.pid, token }), {
+        encoding: "utf8",
+        mode: 0o600,
+        flag: "wx",
+      });
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      if (Date.now() - started > 15_000) {
+        throw new Error("GULZ storage is locked by another process. If no GULZ process is running, remove the stale ~/.gulz/goals.lock file and retry.");
+      }
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+    }
+  }
+
+  try {
+    return await run();
+  } finally {
+    try {
+      const lock = JSON.parse(await readFile(goalsLockFile, "utf8")) as { token?: unknown };
+      if (lock.token === token) await rm(goalsLockFile, { force: true });
+    } catch {
+      // Never remove a lock that cannot be confirmed as ours.
+    }
+  }
+}
+
 async function doctor(): Promise<boolean> {
   console.log("GULZ system check");
   console.log(`Version:       ${VERSION}`);
@@ -176,14 +210,15 @@ async function main(): Promise<void> {
     return;
   }
   if (command === "init") {
-    await ensureDataHome();
-    const goals = await readGoals();
-    try {
-      await access(goalsFile);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      await saveGoals(goals);
-    }
+    await withGoalsLock(async () => {
+      const goals = await readGoals();
+      try {
+        await access(goalsFile);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        await saveGoals(goals);
+      }
+    });
     console.log("GULZ is initialized.");
     console.log(`Local data: ${dataHome}`);
     return;
@@ -211,9 +246,12 @@ async function main(): Promise<void> {
       process.exitCode = 2;
       return;
     }
-    const goals = await readGoals();
-    const goal = createGoal({ id: randomUUID(), title });
-    await saveGoals([...goals, goal]);
+    const goal = await withGoalsLock(async () => {
+      const goals = await readGoals();
+      const created = createGoal({ id: randomUUID(), title });
+      await saveGoals([...goals, created]);
+      return created;
+    });
     console.log("Goal saved.");
     console.log(`ID:     ${goal.id}`);
     console.log(`Title:  ${goal.title}`);
