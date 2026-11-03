@@ -167,7 +167,7 @@ test("runs the explicitly approved Node version command without a shell", async 
   assert.equal(result.output.kind, "command_result");
   assert.equal(result.output.exitCode, 0);
   assert.equal(result.verified, true);
-  assert.match(result.output.stdout ?? "", /^v\\d+\\./);
+  assert.match(result.output.stdout ?? "", /^v\d+\./);
   assert.equal(result.audit.kind, "run_command");
   assert.equal(result.audit.outcome, "succeeded");
 }));
