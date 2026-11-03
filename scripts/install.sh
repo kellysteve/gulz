@@ -13,7 +13,8 @@ ask_yes_no() {
   local prompt="$1" answer
   while true; do
     read -r -p "$prompt [y/N] " answer </dev/tty || true
-    case "${answer,,}" in y|yes) return 0 ;; n|no|"") return 1 ;; *) printf 'Please answer y or n.\n' ;; esac
+    answer_lc="$(printf '%s' "$answer" | tr '[:upper:]' '[:lower:]')"
+    case "$answer_lc" in y|yes) return 0 ;; n|no|"") return 1 ;; *) printf 'Please answer y or n.\n' ;; esac
   done
 }
 command_exists() { command -v "$1" >/dev/null 2>&1; }
@@ -128,7 +129,7 @@ case ":$PATH:" in
   *)
     warn "$GULZ_BIN_DIR is not currently in PATH."
     PROFILE="$HOME/.profile"
-    case "${SHELL##*/}" in zsh) PROFILE="$HOME/.zprofile" ;; bash) PROFILE="$HOME/.bashrc" ;; esac
+    case "${SHELL:-/bin/bash}" in */zsh) PROFILE="$HOME/.zprofile" ;; bash) PROFILE="$HOME/.bashrc" ;; esac
     if ask_yes_no "Add $GULZ_BIN_DIR to PATH in $PROFILE?"; then
       touch "$PROFILE"
       if ! grep -Fq 'export PATH="$HOME/.local/bin:$PATH"' "$PROFILE"; then
