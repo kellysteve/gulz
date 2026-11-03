@@ -15,6 +15,8 @@ The goals file is written atomically, and the data directory and goals file are 
 - Create, list and inspect saved goals.
 - Validate saved data before using it, refusing malformed or inconsistent records without overwriting them.
 - Write goal updates through a temporary file and atomic rename.
+- Inspect and read bounded local files through the shared execution policy.
+- Write UTF-8 text only after interactive, path-specific approval; preserve overwritten files as owner-only backups.
 
 The current CLI does not execute shell commands, connect to remote hosts, synchronize cloud data, or call AI providers.
 
@@ -42,5 +44,5 @@ gulz write ./relative/file.txt
 gulz restore ./.file.txt.gulz-backup-<id> ./relative/file.txt
 ```
 
-All commands are confined to the current working directory. Absolute paths, traversal outside that directory and symbolic links are rejected. Reads and writes are capped at 256 KiB by default. `gulz write` asks for one line of text and requires the user to type `WRITE <path>` at an interactive terminal; non-interactive writes fail closed. Replaced files are retained as uniquely named `.gulz-backup-*` files beside the target. Use `gulz restore <backup-path> <target-path>` to restore a backup; it asks for a separate typed confirmation and preserves the currently replaced file as another backup. No shell commands are run.
+All commands are confined to the current working directory. Absolute paths, traversal outside that directory and symbolic links are rejected. Reads and writes are capped at 256 KiB by default. Reads accept UTF-8 text only; binary files are rejected. `gulz write` asks for one line of text, displays a preview and byte count, and requires the user to type `WRITE <path>` at an interactive terminal; non-interactive writes fail closed. Replaced files are retained as uniquely named `.gulz-backup-*` files beside the target. Use `gulz restore <backup-path> <target-path>` to restore a backup; it asks for a separate typed confirmation and preserves the currently replaced file as another backup. No shell commands are run.
 
