@@ -117,19 +117,23 @@ async function runAllowlistedCommand(command: string, args: string[], cwd: strin
   return await new Promise((resolveResult, rejectResult) => {
     const executable = command === "node" ? process.execPath : command;
     const processArgs = command === "git" ? ["-c", "core.fsmonitor=false", "-c", "core.pager=cat", "-c", "diff.external=", ...args] : args;
+    const safeEnv: NodeJS.ProcessEnv = {};
+    const inheritedKeys = ["PATH", "Path", "PATHEXT", "SystemRoot", "WINDIR", "HOME", "USERPROFILE", "TMP", "TEMP", "TMPDIR", "LANG", "LC_ALL"];
+    for (const key of inheritedKeys) {
+      const value = process.env[key];
+      if (value !== undefined) safeEnv[key] = value;
+    }
+    safeEnv.GIT_PAGER = "cat";
+    safeEnv.GIT_TERMINAL_PROMPT = "0";
+    safeEnv.GIT_OPTIONAL_LOCKS = "0";
+    safeEnv.GIT_CONFIG_NOSYSTEM = "1";
+    safeEnv.GIT_CONFIG_GLOBAL = process.platform === "win32" ? "NUL" : "/dev/null";
     const child = spawn(executable, processArgs, {
       cwd,
       shell: false,
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        GIT_PAGER: "cat",
-        GIT_TERMINAL_PROMPT: "0",
-        GIT_OPTIONAL_LOCKS: "0",
-        GIT_CONFIG_NOSYSTEM: "1",
-        GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
-      },
+      env: safeEnv,
     });
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
