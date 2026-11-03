@@ -10,7 +10,7 @@ GULZ is licensed under the **Apache License 2.0**. You can use, study, modify an
 
 ## Project status
 
-GULZ is in early development. A source-build developer preview of the CLI is available in the repository. It is not a stable end-user installer. Native installers, desktop and Android apps, npm package releases, AI integrations, SSH orchestration and release downloads are not available until implemented and tested.
+GULZ is in early development. An interactive Bash source installer is available for Termux, Linux, macOS and VPS hosts, alongside a PowerShell source-build guide for Windows. These install the developer-preview CLI; they are not stable binary releases. Native installers, desktop and Android apps, npm package releases, AI integrations, SSH orchestration and release downloads are not available until implemented and tested.
 
 ## Product experience
 
@@ -66,7 +66,7 @@ supabase/    Database migrations for release infrastructure
 - **VPS:** headless CLI source build; SSH-based remote orchestration planned.
 - **Desktop:** one task workspace using the same local execution policy as the CLI. No desktop binary is available yet.
 
-See [docs/INSTALLATION.md](docs/INSTALLATION.md) for commands and exact status. The desktop product direction and release requirements are in [docs/DESKTOP_APP.md](docs/DESKTOP_APP.md).
+See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the interactive Bash installer, platform-specific setup and exact release status. Public release gates are tracked in [docs/PUBLIC_RELEASE_CHECKLIST.md](docs/PUBLIC_RELEASE_CHECKLIST.md). The desktop product direction and release requirements are in [docs/DESKTOP_APP.md](docs/DESKTOP_APP.md).
 
 ## Architecture direction
 
