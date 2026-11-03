@@ -13,14 +13,14 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
     methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "Native Android app (planned)"],
     steps: ["Install Termux from F-Droid or the official GitHub releases.", "Update Termux and install curl. The installer can offer to install Git and Node.js LTS if missing.", "Download and review the installer script.", "Run bash gulz-install.sh, answer its prompts, then launch gulz."],
     commands: ["pkg update && pkg upgrade -y", "pkg install curl", "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "sed -n '1,260p' gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz doctor"],
-    note: "The installer asks for the install folder and confirmation. It can offer to install missing Termux Git and Node.js LTS packages. This is a developer-preview CLI inside Termux, not a standalone Android app. Native Android packaging is planned.",
+    note: "The installer asks for the install folder and confirmation. It installs only the CLI workspaces and deliberately skips Wrangler/Workerd, which is unsupported on Android/Termux. It can offer to install missing Termux Git and Node.js LTS packages. This is a developer-preview CLI inside Termux, not a standalone Android app.",
   },
   {
     id: "linux", name: "Linux", detail: "Ubuntu, Debian and other distributions", icon: Terminal,
     methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "AppImage / .deb / .rpm packages (planned)", "Desktop app (planned)"],
     steps: ["Install Node.js 20.19+ and curl.", "Download the public installer and review the script if desired.", "Run bash gulz-install.sh and answer the install-folder and confirmation prompts.", "Open a new terminal and run gulz."],
     commands: ["# Install Node.js 20.19+ and curl first", "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "sed -n '1,260p' gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz doctor"],
-    note: "The installer detects Linux, asks for the install folder and confirmation, then builds and links the CLI. Review scripts/install.sh before running it. Signed .deb, .rpm and AppImage packages are not published.",
+    note: "The installer asks for the install folder and confirmation, installs only CLI workspace dependencies, then builds and links the CLI. It skips the website tooling. Review scripts/install.sh before running it. Signed .deb, .rpm and AppImage packages are not published.",
   },
   {
     id: "macos", name: "macOS", detail: "Apple Silicon and Intel Macs", icon: Command,
@@ -33,7 +33,7 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
     id: "windows", name: "Windows", detail: "Windows 10 and 11 · PowerShell", icon: Monitor,
     methods: ["PowerShell source build (developer preview)", "WinGet CLI package (planned)", "Signed desktop installer (planned)"],
     steps: ["Install Node.js LTS and Git for Windows with WinGet.", "Close and reopen PowerShell so PATH updates apply.", "Confirm Node.js is version 20.19 or newer.", "Clone GULZ, install dependencies and link the CLI."],
-    commands: ["winget install OpenJS.NodeJS.LTS", "winget install Git.Git", "# Open a new PowerShell window", "node --version", "git clone https://github.com/kellysteve/gulz.git", "cd gulz", "npm install", "npm run install:local", "gulz", "gulz --help"],
+    commands: ["winget install OpenJS.NodeJS.LTS", "winget install Git.Git", "# Open a new PowerShell window", "node --version", "git clone https://github.com/kellysteve/gulz.git", "cd gulz", "npm run install:cli", "gulz", "gulz --help"],
     note: "Run these commands in PowerShell. The current route builds the CLI from source; signed Windows desktop installers and WinGet publication are planned.",
   },
   {
