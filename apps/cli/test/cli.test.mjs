@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -91,6 +91,31 @@ test("rejects duplicate goal identifiers in saved data", async () => {
     const result = invoke(home, "goals");
     assert.equal(result.status, 1);
     assert.match(result.stderr, /duplicate goal IDs/);
+  });
+});
+
+test("tightens existing storage directory and goals file permissions", async () => {
+  if (process.platform === "win32") return;
+  await withHome(async (home) => {
+    await chmod(home, 0o755);
+    await writeFile(join(home, "goals.json"), "[]", { mode: 0o644 });
+    const result = invoke(home, "goals");
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal((await stat(home)).mode & 0o777, 0o700);
+    assert.equal((await stat(join(home, "goals.json"))).mode & 0o777, 0o600);
+  });
+});
+
+test("refuses a symbolic link as the goals storage file", async () => {
+  await withHome(async (home) => {
+    const outside = join(home, "outside.json");
+    const linked = join(home, "goals.json");
+    await writeFile(outside, "[]");
+    await symlink(outside, linked);
+    const result = invoke(home, "goals");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /regular file, not a symbolic link/);
+    assert.equal(await readFile(outside, "utf8"), "[]");
   });
 });
 
