@@ -332,7 +332,8 @@ async function interactiveSession(): Promise<void> {
         rl.close();
         await updateSourcePreview();
         return;
-      }\n      if (choice === "4" || choice.toLowerCase() === "help") {
+      }
+      if (choice === "4" || choice.toLowerCase() === "help") {
         help();
         continue;
       }
@@ -365,7 +366,11 @@ async function main(): Promise<void> {
     console.log(`Local data: ${dataHome}`);
     return;
   }
-  if (command === "update") {\n    await updateSourcePreview();\n    return;\n  }\n  if (command === "doctor") {
+  if (command === "update") {
+    await updateSourcePreview();
+    return;
+  }
+  if (command === "doctor") {
     const ok = await doctor();
     if (!ok) process.exitCode = 1;
     return;
