@@ -235,7 +235,26 @@ async function main(): Promise<void> {
     if (!ok) process.exitCode = 1;
     return;
   }
-  if (command === "write") {\n    const target = args.join(" ").trim();\n    if (!target) { console.error("Usage: gulz write <relative-path>"); process.exitCode = 2; return; }\n    if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error("File writes require an interactive terminal; non-interactive approval is disabled.");\n    const rl = createInterface({ input: stdin, output: stdout });\n    try {\n      const content = await rl.question("Text to write (single line): ");\n      const bytes = Buffer.byteLength(content, "utf8");\n      console.log(`\\nTarget: ${target}\\nBytes:  ${bytes}`);\n      const confirmation = await rl.question(`Type WRITE ${target} to approve this change: `);\n      if (confirmation !== `WRITE ${target}`) { console.log("Write cancelled."); return; }\n      const operation = createPlannedOperation({ id: randomUUID(), kind: "write_file", description: "Write a local text file", risk: "moderate", target, content });\n      const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });\n      console.log(JSON.stringify(result, null, 2));\n    } finally { rl.close(); }\n    return;\n  }\n  if (command === "inspect" || command === "read") {
+  if (command === "write") {
+    const target = args.join(" ").trim();
+    if (!target) { console.error("Usage: gulz write <relative-path>"); process.exitCode = 2; return; }
+    if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error("File writes require an interactive terminal; non-interactive approval is disabled.");
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      const content = await rl.question("Text to write (single line): ");
+      const bytes = Buffer.byteLength(content, "utf8");
+      console.log(`\
+Target: ${target}\
+Bytes:  ${bytes}`);
+      const confirmation = await rl.question(`Type WRITE ${target} to approve this change: `);
+      if (confirmation !== `WRITE ${target}`) { console.log("Write cancelled."); return; }
+      const operation = createPlannedOperation({ id: randomUUID(), kind: "write_file", description: "Write a local text file", risk: "moderate", target, content });
+      const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
+      console.log(JSON.stringify(result, null, 2));
+    } finally { rl.close(); }
+    return;
+  }
+  if (command === "inspect" || command === "read") {
     const target = args.join(" ").trim();
     if (!target) {
       console.error(`Usage: gulz ${command} <relative-path>`);
