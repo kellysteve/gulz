@@ -14,7 +14,7 @@ After the developer-preview installation is linked, run `gulz` with no arguments
 
 This preview is a local goal workspace, not yet an AI agent: AI planning, task execution, pause/resume, and background recovery are not connected. The interface does not pretend those features are running.
 
-Install/link the CLI once. To update this source preview later, open the cloned GULZ repository and run `git pull --ff-only`, `npm install`, and `npm run install:local`. Then start a fresh `gulz` session. An automatic in-app updater and published package updates are not available yet.
+Install/link the CLI once. To update this source preview later, run `gulz update` from an interactive terminal. Review the displayed repository path and type `UPDATE GULZ` to approve. It fast-forwards the checkout, installs declared dependencies, rebuilds and refreshes the global link. Close the current session and run `gulz` again. Published package updates are not available yet.
 
 ## Current capabilities
 
