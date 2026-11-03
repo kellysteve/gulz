@@ -1,6 +1,6 @@
 # @gulz/execution
 
-The first local execution adapter for GULZ. This initial version deliberately supports only bounded, read-only filesystem operations:
+The local execution adapter for GULZ supports bounded filesystem operations:
 
 - `inspect`: retrieve metadata for a path inside an explicitly authorized root.
 - `read_file`: read a regular file inside that root, with a configurable byte cap and SHA-256 verification.
@@ -13,8 +13,8 @@ Every operation is reconstructed through the shared core validator. Approval met
 - Callers must provide an absolute authorized root directory.
 - Absolute paths, traversal outside the root and symbolic-link components are rejected.
 - File reads and writes have a maximum size (256 KiB by default, 1 MiB hard maximum).
-- Replaced files are preserved as backup files; this initial version does not yet provide a dedicated automated rollback command. Keep the backup until the change is verified.
-- Operations have a timeout (5 seconds by default, 30 seconds hard maximum) and accept an AbortSignal.
+- Replaced files are preserved as backup files. The CLI provides a separately confirmed restore command; restoring a backup also preserves the currently replaced file as another backup.
+- Operations use a 5-second default timeout (30-second hard maximum) and accept an AbortSignal. Filesystem metadata calls are not forcibly interruptible; cancellation is checked between stages and file reads honor the signal.
 - Successful results include a structured audit event and verification status. Audit events are returned to the caller; they are not yet persisted as a durable audit log.
 
 The adapter is an initial local safety boundary, not a hardened sandbox against a hostile process concurrently modifying the filesystem. Do not run it with elevated privileges or treat it as a substitute for OS-level isolation.
