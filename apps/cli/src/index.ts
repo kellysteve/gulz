@@ -92,6 +92,7 @@ function help(): void {
     "  inspect <path>        Inspect a path inside the current directory",
     "  read <path>           Read a file inside the current directory (256 KiB max)",
     "  write <path>          Write one line of text after explicit confirmation",
+    "  restore <backup> <target>  Restore a saved backup after confirmation",
     "  --help, -h            Show this help",
     "  --version, -v         Show the installed version",
     "",
@@ -247,6 +248,36 @@ async function main(): Promise<void> {
       const confirmation = await rl.question(`Type WRITE ${target} to approve this change: `);
       if (confirmation !== `WRITE ${target}`) { console.log("Write cancelled."); return; }
       const operation = createPlannedOperation({ id: randomUUID(), kind: "write_file", description: "Write a local text file", risk: "moderate", target, content });
+      const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
+      console.log(JSON.stringify(result, null, 2));
+    } finally { rl.close(); }
+    return;
+  }
+  if (command === "restore") {
+    const [backupPath, target] = args;
+    if (!backupPath || !target || args.length !== 2) {
+      console.error("Usage: gulz restore <backup-path> <target-path>");
+      process.exitCode = 2;
+      return;
+    }
+    if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error("Restores require an interactive terminal; non-interactive approval is disabled.");
+    const backupOperation = createPlannedOperation({
+      id: randomUUID(), kind: "read_file", description: "Read a local backup", risk: "low", target: backupPath,
+    });
+    const backup = await executeLocalOperation(backupOperation, { rootDirectory: process.cwd() });
+    if (backup.output.kind !== "file_content" || typeof backup.output.content !== "string") {
+      throw new Error("The selected backup could not be read as a text file.");
+    }
+    const content = backup.output.content;
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      console.log("Backup: " + backupPath + "\nRestore target: " + target + "\nBytes: " + Buffer.byteLength(content, "utf8"));
+      const confirmation = await rl.question(`Type RESTORE ${target} to approve this rollback: `);
+      if (confirmation !== `RESTORE ${target}`) { console.log("Restore cancelled."); return; }
+      const operation = createPlannedOperation({
+        id: randomUUID(), kind: "write_file", description: "Restore a local file from backup",
+        risk: "moderate", target, content,
+      });
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
       console.log(JSON.stringify(result, null, 2));
     } finally { rl.close(); }
