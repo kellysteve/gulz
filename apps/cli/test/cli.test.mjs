@@ -167,3 +167,12 @@ test("requires a title when creating a goal", async () => {
     assert.match(result.stderr, /Usage: gulz goal create/);
   });
 });
+
+test("shows the supervised run command and fails closed without an interactive terminal", async () => {
+  const help = invoke(process.cwd(), "--help");
+  assert.equal(help.status, 0, help.stderr);
+  assert.match(help.stdout, /run <command>/);
+  const attempt = invoke(process.cwd(), "run", "node", "--version");
+  assert.equal(attempt.status, 1);
+  assert.match(attempt.stderr, /interactive terminal/);
+});
