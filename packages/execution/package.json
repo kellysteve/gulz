@@ -25,5 +25,14 @@
   "license": "Apache-2.0",
   "engines": {
     "node": ">=20.19.0"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "prepublishOnly": "npm run build"
 }
