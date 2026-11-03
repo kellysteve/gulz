@@ -71,7 +71,7 @@ function App() {
           <div className="hero-copy">
             <div className="eyebrow"><span className="pulse-dot"/> A NEW WAY TO GET WORK DONE</div>
             <h1>Stop managing tasks.<br/><span>Start executing goals.</span></h1>
-            <p className="hero-description">Meet GULZ — an AI-assisted machine operations platform that turns what you want done into a plan, real actions and verified results.</p>
+            <p className="hero-description">Meet GULZ — an open-source machine-operations platform in active development. Its CLI foundation is taking shape around real actions, clear approvals and verified results.</p>
             <div className="hero-actions"><a className="button button-primary" href="#install">Explore installation <ArrowRight size={17}/></a><a className="button button-quiet" href="https://github.com/kellysteve/gulz" target="_blank" rel="noreferrer">View source</a></div>
             <div className="hero-note"><ShieldCheck size={15}/> You stay in control. Sensitive actions need your approval.</div>
           </div>
