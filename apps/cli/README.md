@@ -33,12 +33,13 @@ Licensed under Apache-2.0. See [LICENSE](./LICENSE).
 
 ## Read-only filesystem commands
 
-The CLI includes two initial local execution commands:
+The CLI includes local execution commands:
 
 ```sh
 gulz inspect ./relative/path
 gulz read ./relative/file.txt
+gulz write ./relative/file.txt
 ```
 
-Both commands are confined to the current working directory. Absolute paths, traversal outside that directory and symbolic links are rejected. File reads are capped at 256 KiB by default. These commands do not run shell commands or modify files.
+All commands are confined to the current working directory. Absolute paths, traversal outside that directory and symbolic links are rejected. Reads and writes are capped at 256 KiB by default. `gulz write` asks for one line of text and requires the user to type `WRITE <path>` at an interactive terminal; non-interactive writes fail closed. Replaced files are retained as uniquely named `.gulz-backup-*` files beside the target. There is not yet a dedicated rollback command, so keep the backup until the result is checked. No shell commands are run.
 
