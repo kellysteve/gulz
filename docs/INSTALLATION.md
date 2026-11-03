@@ -2,7 +2,19 @@
 
 ## Release status
 
-GULZ is in early development. The repository source-build route below is a developer preview, not a stable end-user installer. No official binary downloads, desktop application, Android APK, npm package release, Homebrew formula or WinGet package is published yet.
+GULZ is in early development. The interactive Bash installer and repository source-build route install the same developer-preview CLI; neither is a stable end-user release. No official binary downloads, desktop application, Android APK, npm package release, Homebrew formula or WinGet package is published yet.
+
+### Interactive Bash installer (Termux, Linux, macOS and VPS)
+
+The installer detects the environment, asks where to place the source checkout, explains each change and asks for confirmation before cloning/updating the repository, installing npm dependencies, building the CLI and linking the `gulz` command. It does not run as root by default, edit shell startup files or install arbitrary system packages without asking. Download it first, inspect it if you wish, then run it:
+
+~~~sh
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
+less gulz-install.sh
+bash gulz-install.sh
+~~~
+
+On Termux, install `curl` first with `pkg install curl`. The installer can offer to install Git and Node.js LTS through Termux package manager if they are missing. On Linux/macOS/VPS, install Node.js 20.19+ first; the installer will not silently change the system Node.js installation. The script is public at `scripts/install.sh`; review it before running. Do not use `sudo bash` or run it as root.
 
 Use Node.js **20.19 or newer** and Git for the source-build route. Install Node.js from the official [Node.js downloads page](https://nodejs.org/en/download).
 
@@ -15,28 +27,32 @@ The current Android route is the CLI inside Termux. It is not a standalone Andro
 
 ~~~sh
 pkg update && pkg upgrade -y
-pkg install nodejs-lts git
+pkg install nodejs-lts git curl
 node --version
 ~~~
 
-3. Confirm Node.js is 20.19 or newer, then build GULZ:
+3. Use the interactive installer (recommended):
 
 ~~~sh
-git clone https://github.com/kellysteve/gulz.git
-cd gulz
-npm install
-npm run install:local
-gulz --help
-gulz doctor
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
+bash gulz-install.sh
 ~~~
+
+The installer asks for the install folder and confirmation. You can still build manually from the source repository if preferred.
 
 Termux uses Android's Bionic environment. Do not install generic Linux desktop binaries into Termux. A native Android app is planned separately.
 
 ## Linux — Ubuntu, Debian and other distributions
 
-1. Install Node.js 20.19+ from the official Node.js download page. Install Git with your distribution's trusted package manager.
-2. Open a new terminal and run:
+1. Install Node.js 20.19+ from the official Node.js download page.
+2. Open a new terminal and run the interactive installer:
 
+~~~sh
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
+bash gulz-install.sh
+~~~
+
+Or use the manual source-build route. First confirm prerequisites:
 ~~~sh
 node --version
 npm --version
@@ -53,7 +69,14 @@ The apt command above is suitable for Debian/Ubuntu. On other distributions, use
 
 ## macOS — Apple Silicon and Intel
 
-With Homebrew installed:
+With Node.js 20.19+ and Git available, run the installer:
+
+~~~sh
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
+bash gulz-install.sh
+~~~
+
+Or install prerequisites with Homebrew and follow the manual source steps:
 
 ~~~sh
 brew install node git
@@ -93,7 +116,14 @@ Confirm Node.js is 20.19 or newer. A signed Windows desktop installer and WinGet
 
 ## VPS and headless servers
 
-Connect to a Linux VPS with your own SSH account. Install Node.js 20.19+ from the official download page and Git using the server's package manager. Then run the Linux source-build commands above as your normal user.
+Connect to a Linux VPS with your own SSH account. Install Node.js 20.19+ and curl, then run the interactive installer as your normal user:
+
+~~~sh
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
+bash gulz-install.sh
+~~~
+
+The installer detects Linux, asks for an install folder and confirmation, then builds and links the CLI. It does not set up SSH access or configure a service daemon.
 
 The current CLI runs on the server where it is installed. GULZ does not yet provide remote SSH orchestration or manage other machines automatically. Do not run the CLI as root unless a future, explicitly documented operation requires it.
 
