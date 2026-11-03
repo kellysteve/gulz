@@ -10,7 +10,7 @@ GULZ is licensed under the **Apache License 2.0**. You can use, study, modify an
 
 ## Project status
 
-GULZ is in early development. Installation commands, release downloads, update services, AI integrations, and operational capabilities are not available until implemented and tested. Documentation must never describe planned functionality as already working.
+GULZ is in early development. Native installation packages, release downloads, update services, AI integrations and the desktop application are not available until implemented and tested. A source-build developer preview of the CLI is being prepared; it is not a stable end-user installer. Documentation must never describe planned functionality as already working.
 
 ## Product experience
 
@@ -35,10 +35,10 @@ All three interfaces share the same goal/task state and execution policy. No int
 ## Current implementation status
 
 - Shared core domain package: initial goal/task types, guarded lifecycle transitions, risk-derived approval decisions and automated domain tests added.
-- CLI: early local goal-management commands and local JSON persistence implemented; not yet a machine-operation executor.
-- Package distribution: core and CLI metadata prepared for public npm publication; packages have not yet been published, and tests have not yet been run in a clean environment.
+- CLI: local goal management, bounded file inspection/reading, approved text writes with backups/restore, and a small approved diagnostic-command allowlist are implemented in source; runtime verification is still pending.
+- Package distribution: core and CLI metadata prepared for public npm publication; packages have not yet been published. The full test suite still needs to be run in a clean environment.
 - Public website: deployed; public-facing content is being prepared for launch.
-- AI orchestration, machine-operation adapters, installers and release downloads: not yet implemented or published.
+- AI orchestration, arbitrary shell execution, SSH execution, desktop app, native installers and release downloads: not yet implemented or published.
 
 ## Repository layout
 
@@ -48,7 +48,7 @@ apps/
   website/   Public website and installation centre
 packages/
   core/      Goal and task orchestration
-  execution/ Permission-aware execution engine (planned)
+  execution/ Permission-aware local execution engine (early implementation)
   providers/ AI provider adapters (planned)
   storage/   Local persistence and remote storage adapters (planned)
   updater/   Verified update client (planned)
