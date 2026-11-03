@@ -18,14 +18,14 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
   {
     id: "linux", name: "Linux", detail: "Ubuntu, Debian and other distributions", icon: Terminal,
     methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "AppImage / .deb / .rpm packages (planned)", "Desktop app (planned)"],
-    steps: ["Install Node.js 20.19+ from the official Node.js download page and install Git using your distribution's package manager.", "Open a terminal and confirm node --version reports v20.19 or newer.", "Clone the public GULZ repository.", "Install workspace dependencies, build and link the CLI."],
+    steps: ["Install Node.js 20.19+ and curl.", "Download the public installer and review the script if desired.", "Run bash gulz-install.sh and answer the install-folder and confirmation prompts.", "Open a new terminal and run gulz."],
     commands: ["curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "less gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz --version", "gulz doctor"],
     note: "Install Node.js 20.19+ and curl first. The installer asks for an install folder and confirmation, then builds the CLI. Signed .deb, .rpm and AppImage packages are not published.",
   },
   {
     id: "macos", name: "macOS", detail: "Apple Silicon and Intel Macs", icon: Command,
     methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "Signed .dmg desktop app (planned)", "Homebrew package (planned)"],
-    steps: ["Install Homebrew if you use it, then install Node.js and Git.", "Confirm Node.js is version 20.19 or newer.", "Clone the GULZ repository in Terminal.", "Install dependencies and build/link the CLI."],
+    steps: ["Install Node.js 20.19+ and curl.", "Download the public installer and review the script if desired.", "Run bash gulz-install.sh and answer the install-folder and confirmation prompts.", "Open a new terminal and run gulz."],
     commands: ["curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "less gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz --help"],
     note: "Install Node.js 20.19+ and curl first. The installer asks before making changes. Signed desktop .dmg installers for Apple Silicon and Intel are planned, not available for download.",
   },
@@ -39,8 +39,8 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
   {
     id: "vps", name: "VPS / Remote servers", detail: "Ubuntu, Debian and SSH-connected hosts", icon: Server,
     methods: ["SSH + interactive Bash installer (developer preview)", "Headless server package (planned)"],
-    steps: ["Connect to your server using your own SSH account.", "Install Node.js 20.19+ from the official download page and Git from your distribution's package manager.", "Clone and build GULZ as your normal user; do not run it as root.", "Run the CLI on the server itself. SSH-based remote orchestration is not available yet."],
-    commands: ["sudo apt update && sudo apt install -y git","node --version","npm --version","npm config set prefix \"$HOME/.local\"","mkdir -p \"$HOME/.local/bin\"","echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.profile",". ~/.profile","git clone https://github.com/kellysteve/gulz.git","cd gulz","npm install","npm run install:local","gulz doctor"],
+    steps: ["Connect to your server using your own SSH account.", "Install Node.js 20.19+ and curl on the VPS.", "Download and run the Bash installer as your normal user, not root.", "Run gulz on the server itself. SSH-based remote orchestration is not available yet."],
+    commands: ["curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "less gulz-install.sh", "bash gulz-install.sh", "gulz doctor"],
     note: "Install Node.js 20.19+ and curl first, then run the installer as your normal SSH user (not root). The current CLI runs on this VPS; it does not yet administer other machines automatically.",
   },
 ];
@@ -122,7 +122,7 @@ function App() {
               <h4>Distribution status</h4><div className="method-list">{active.methods.map((method) => <span key={method}><ArrowRight size={14}/>{method}</span>)}</div>
               <h4>Developer preview commands</h4><pre className="install-code"><code>{active.commands.join("\n")}</code></pre><p className="install-note">{active.note} {active.id !== "termux" && <><a href="https://nodejs.org/en/download" target="_blank" rel="noreferrer">Get Node.js</a>. </>} {active.id === "termux" && <>Get Termux from <a href="https://f-droid.org/packages/com.termux/" target="_blank" rel="noreferrer">F-Droid</a> or the <a href="https://github.com/termux/termux-app/releases" target="_blank" rel="noreferrer">official releases</a>.</>}</p>
               <p className="install-note"><b>Using and updating:</b> After the one-time setup, open a terminal and run <code>gulz</code> whenever you want to use GULZ; it does not need to stay open in the background. To update this developer preview later, run <code>gulz update</code> in a terminal, review the repository path and type <code>UPDATE GULZ</code> to approve. GULZ will fast-forward the source, install dependencies and rebuild itself. Close the session and run <code>gulz</code> again. Published package updates are not available yet.</p><h4>Step-by-step setup</h4><ol className="steps-list">{active.steps.map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}</ol>
-              <div className="release-notice"><ShieldCheck size={17}/><p><b>These are source-build instructions, not a stable installer.</b><br/>The CLI is in early development. Native packages and signed downloads will only be listed after platform builds and security checks pass.</p></div>
+              <div className="release-notice"><ShieldCheck size={17}/><p><b>This is an interactive source installer, not a stable release installer.</b><br/>The CLI is in early development. Native packages and signed downloads will only be listed after platform builds and security checks pass.</p></div>
               <p className="install-note"><a href="https://github.com/kellysteve/gulz/blob/main/docs/INSTALLATION.md" target="_blank" rel="noreferrer">Open the complete installation guide <ArrowUpRight size={13}/></a></p>
             </div>
           </div>
