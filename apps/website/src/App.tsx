@@ -22,6 +22,7 @@ function App() {
           <a href="#capabilities" onClick={() => setMenuOpen(false)}>Capabilities</a>
           <a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a>
           <a href="#install" onClick={() => setMenuOpen(false)}>Installation</a>
+          <a href="#commands" onClick={() => setMenuOpen(false)}>CLI commands</a>
           <a href="#desktop" onClick={() => setMenuOpen(false)}>Desktop app</a>
           <a href="#security" onClick={() => setMenuOpen(false)}>Security</a>
         </nav>
@@ -35,7 +36,7 @@ function App() {
             <div className="eyebrow"><span className="pulse-dot"/> A NEW WAY TO GET WORK DONE</div>
             <h1>Stop managing tasks.<br/><span>Start executing goals.</span></h1>
             <p className="hero-description">Meet GULZ — an AI-assisted machine operations platform that turns what you want done into a plan, real actions and verified results.</p>
-            <div className="hero-actions"><a className="button button-primary" href="#install">Explore installation <ArrowRight size={17}/></a><a className="button button-quiet" href="#how-it-works">See how it works</a></div>
+            <div className="hero-actions"><a className="button button-primary" href="#install">Explore installation <ArrowRight size={17}/></a><a className="button button-quiet" href="https://github.com/kellysteve/gulz" target="_blank" rel="noreferrer">View source</a></div>
             <div className="hero-note"><ShieldCheck size={15}/> You stay in control. Sensitive actions need your approval.</div>
           </div>
           <div className="terminal-card" aria-label="Illustrative GULZ terminal preview">
@@ -75,7 +76,7 @@ function App() {
         </section>
 
         <section className="install-section" id="install">
-          <div className="section-kicker">INSTALLATION CENTRE</div><h2>Your device. Your way to install.</h2><p className="section-lead">Choose your environment to see the installation methods and a guided setup.</p>
+          <div className="section-kicker">INSTALLATION CENTRE</div><h2>Your device. Your way to install.</h2><p className="section-lead">Choose your environment for source-build instructions. These developer-preview steps require Node.js 20.19+ and Git; native installers are not published yet.</p>
           <div className="install-layout">
             <div className="platform-list" role="tablist" aria-label="Choose your platform">
               {platforms.map((platform) => { const Icon = platform.icon; return <button key={platform.id} role="tab" aria-selected={selected === platform.id} className={selected === platform.id ? "platform-option selected" : "platform-option"} onClick={() => setSelected(platform.id)}><Icon size={19}/><span><b>{platform.name}</b><small>{platform.detail}</small></span><ArrowRight size={15}/></button>; })}
