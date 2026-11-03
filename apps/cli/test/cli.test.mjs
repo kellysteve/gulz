@@ -4,7 +4,6 @@ import { spawn, spawnSync } from "node:child_process";
 import { chmod, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { promisify } from "node:util";
 
 const cliPath = resolve("dist/index.js");
 
