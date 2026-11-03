@@ -228,7 +228,7 @@ async function updateSourcePreview(): Promise<void> {
   try {
     console.log("GULZ source update");
     console.log("Repository: " + installDirectory);
-    console.log("This will fast-forward the source checkout, install its declared dependencies, rebuild the CLI and refresh the global link.");
+    console.log("This will fast-forward the source checkout, install only CLI workspace dependencies (including TypeScript), rebuild the CLI and refresh the global link. The website and Wrangler/Workerd are excluded.");
     console.log("Local goal data in " + dataHome + " will not be intentionally changed.");
     const confirmation = await rl.question("Type UPDATE GULZ to continue: ");
     if (confirmation !== "UPDATE GULZ") { console.log("Update cancelled."); return; }
