@@ -10,7 +10,7 @@ The installer detects the environment, asks where to place the source checkout, 
 
 ~~~sh
 curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
-less gulz-install.sh
+sed -n '1,260p' gulz-install.sh
 bash gulz-install.sh
 ~~~
 
@@ -35,7 +35,7 @@ node --version
 
 ~~~sh
 curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
-less gulz-install.sh
+sed -n '1,260p' gulz-install.sh
 bash gulz-install.sh
 ~~~
 
