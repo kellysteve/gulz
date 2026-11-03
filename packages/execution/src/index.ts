@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { chmod, copyFile, lstat, realpath, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
+import { spawn } from "node:child_process";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { createPlannedOperation, type PlannedOperation } from "@gulz/core";
 
@@ -20,7 +21,7 @@ export interface ExecutionAuditEvent {
   id: string;
   timestamp: string;
   operationId: string;
-  kind: "inspect" | "read_file" | "write_file";
+  kind: "inspect" | "read_file" | "write_file" | "run_command";
   risk: "low" | "moderate" | "high" | "critical";
   outcome: "succeeded" | "denied" | "failed";
   target: string;
@@ -31,13 +32,17 @@ export interface LocalExecutionResult {
   operationId: string;
   verified: boolean;
   output: {
-    kind: "file_metadata" | "file_content" | "file_written";
+    kind: "file_metadata" | "file_content" | "file_written" | "command_result";
     path: string;
     sizeBytes: number;
     sha256?: string;
     content?: string;
     isDirectory?: boolean;
     backupPath?: string;
+    command?: string;
+    exitCode?: number | null;
+    stdout?: string;
+    stderr?: string;
   };
   audit: ExecutionAuditEvent;
 }
@@ -82,6 +87,83 @@ async function rejectSymlinkComponents(root: string, target: string): Promise<vo
     const info = await lstat(current);
     if (info.isSymbolicLink()) throw new ExecutionError("Symbolic links are not allowed in execution targets.");
   }
+}
+
+
+const MAX_COMMAND_OUTPUT_BYTES = 64 * 1024;
+
+function isAllowedCommand(command: unknown, args: unknown): args is string[] {
+  if (typeof command !== "string" || !Array.isArray(args) || !args.every((arg) => typeof arg === "string")) return false;
+  if (command === "node") return args.length === 1 && ["--version", "-v"].includes(args[0]!);
+  if (command === "git") {
+    const allowed = [
+      ["status", "--short"],
+      ["status", "--short", "--branch"],
+      ["branch", "--show-current"],
+      ["log", "-1", "--oneline"],
+      ["diff", "--stat"],
+      ["rev-parse", "--show-toplevel"],
+    ];
+    return allowed.some((entry) => JSON.stringify(entry) === JSON.stringify(args));
+  }
+  return false;
+}
+
+async function runAllowlistedCommand(command: string, args: string[], cwd: string, signal: AbortSignal): Promise<{ exitCode: number | null; stdout: string; stderr: string }> {
+  if (!isAllowedCommand(command, args)) {
+    throw new ExecutionError("Command is not allowlisted. Supported commands: node --version and selected read-only git status/branch/log/diff commands.");
+  }
+  if (signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
+  return await new Promise((resolveResult, rejectResult) => {
+    const executable = command === "node" ? process.execPath : command;
+    const child = spawn(executable, args, {
+      cwd,
+      shell: false,
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        GIT_PAGER: "cat",
+        GIT_TERMINAL_PROMPT: "0",
+        GIT_OPTIONAL_LOCKS: "0",
+      },
+    });
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+    let totalBytes = 0;
+    let settled = false;
+    const finishError = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      child.kill();
+      rejectResult(error);
+    };
+    const collect = (bucket: Buffer[]) => (chunk: Buffer | string) => {
+      const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      totalBytes += bytes.byteLength;
+      if (totalBytes > MAX_COMMAND_OUTPUT_BYTES) {
+        finishError(new ExecutionError(`Command output exceeded the ${MAX_COMMAND_OUTPUT_BYTES}-byte limit.`));
+        return;
+      }
+      bucket.push(bytes);
+    };
+    const onAbort = () => finishError(new ExecutionError("Command execution was cancelled or timed out."));
+    signal.addEventListener("abort", onAbort, { once: true });
+    child.stdout.on("data", collect(stdout));
+    child.stderr.on("data", collect(stderr));
+    child.once("error", (error) => finishError(new ExecutionError(`Unable to start command: ${error.message}`)));
+    child.once("close", (code) => {
+      signal.removeEventListener("abort", onAbort);
+      if (settled) return;
+      settled = true;
+      resolveResult({
+        exitCode: code,
+        stdout: Buffer.concat(stdout).toString("utf8"),
+        stderr: Buffer.concat(stderr).toString("utf8"),
+      });
+    });
+    if (signal.aborted) onAbort();
+  });
 }
 
 function verifyOperation(input: PlannedOperation): PlannedOperation {
@@ -158,7 +240,7 @@ export async function executeLocalOperation(
     let targetInfo;
     try { targetInfo = await lstat(target); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
     if (targetInfo?.isSymbolicLink()) throw new ExecutionError("Symbolic links are not allowed in execution targets.");
-    if (targetInfo && !targetInfo.isFile() && operation.kind !== "inspect") throw new ExecutionError("Target must be a regular file.");
+    if (targetInfo && !targetInfo.isFile() && operation.kind !== "inspect" && operation.kind !== "run_command") throw new ExecutionError("Target must be a regular file.");
     const realTarget = targetInfo ? await realpath(target) : target;
     if (realTarget !== root && !realTarget.startsWith(root + sep)) {
       throw new ExecutionError("Resolved target escapes the authorized root directory.");
@@ -179,6 +261,32 @@ export async function executeLocalOperation(
         verified: true,
         output,
         audit: audit(operation, "succeeded", output.path, "Metadata inspected; resolved path remained inside authorized root."),
+      };
+    }
+
+    if (operation.kind === "run_command") {
+      if (!isAllowedCommand(operation.command, operation.args ?? [])) {
+        throw new ExecutionError("Command is not allowlisted. Supported commands: node --version and selected read-only git status/branch/log/diff commands.");
+      }
+      if (!info?.isDirectory()) throw new ExecutionError("Command working directory must be an existing directory.");
+      const command = operation.command!;
+      const args = operation.args ?? [];
+      const commandResult = await runAllowlistedCommand(command, args, realTarget, controller.signal);
+      const preview = [command, ...args].join(" ");
+      const output = {
+        kind: "command_result" as const,
+        path: relative(root, realTarget) || ".",
+        sizeBytes: Buffer.byteLength(commandResult.stdout, "utf8") + Buffer.byteLength(commandResult.stderr, "utf8"),
+        command: preview,
+        exitCode: commandResult.exitCode,
+        stdout: commandResult.stdout,
+        stderr: commandResult.stderr,
+      };
+      return {
+        operationId: operation.id,
+        verified: commandResult.exitCode !== null,
+        output,
+        audit: audit(operation, commandResult.exitCode === 0 ? "succeeded" : "failed", output.path, `Allowlisted command completed with exit code ${commandResult.exitCode}.`),
       };
     }
 
