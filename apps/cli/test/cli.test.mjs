@@ -176,3 +176,11 @@ test("shows the supervised run command and fails closed without an interactive t
   assert.equal(attempt.status, 1);
   assert.match(attempt.stderr, /interactive terminal/);
 });
+test("opens a helpful non-interactive fallback when no terminal is attached", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Usage: gulz <command>/);
+    assert.match(result.stdout, /run `gulz` in a terminal to open the interactive session/);
+  });
+});
