@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 GULZ_REPO="https://github.com/kellysteve/gulz.git"
-GULZ_DEFAULT_DIR="${GULZ_HOME:-$HOME/.local/share/gulz}"
+GULZ_DEFAULT_DIR="$HOME/.local/share/gulz"
 GULZ_BIN_DIR="$HOME/.local/bin"
 
 bold() { printf '\n\033[1m%s\033[0m\n' "$*"; }
@@ -122,6 +122,8 @@ mkdir -p "$GULZ_BIN_DIR"
 if [ "$PLATFORM" != "termux" ]; then
   npm config set prefix "$HOME/.local"
 fi
+GULZ_BIN_DIR="$(npm config get prefix)/bin"
+mkdir -p "$GULZ_BIN_DIR"
 npm link --workspace @gulz/cli
 case ":$PATH:" in
   *":$GULZ_BIN_DIR:"*) ;;
