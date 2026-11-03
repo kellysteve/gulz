@@ -328,7 +328,7 @@ async function interactiveSession(): Promise<void> {
         await doctor();
         continue;
       }
-      if (choice === "5" || choice.toLowerCase() === "update") {\n        await updateSourcePreview();\n        continue;\n      }\n      if (choice === "4" || choice.toLowerCase() === "help") {
+      if (choice === "5" || choice.toLowerCase() === "update") {\n        rl.close();\n        await updateSourcePreview();\n        return;\n      }\n      if (choice === "4" || choice.toLowerCase() === "help") {
         help();
         continue;
       }
