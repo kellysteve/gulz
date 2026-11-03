@@ -214,9 +214,77 @@ async function doctor(): Promise<boolean> {
   }
 }
 
+
+async function interactiveSession(): Promise<void> {
+  if (!stdin.isTTY || !stdout.isTTY) {
+    help();
+    console.log("\\nTip: run `gulz` in a terminal to open the interactive session.");
+    return;
+  }
+
+  const rl = createInterface({ input: stdin, output: stdout });
+  const ask = async (question: string): Promise<string> => (await rl.question(question)).trim();
+  const showMenu = (): void => {
+    console.log("\\nGULZ — Goals. Executed.");
+    console.log("Your local supervised workspace");
+    console.log("\\n  1. Create a goal");
+    console.log("  2. View saved goals");
+    console.log("  3. System check");
+    console.log("  4. Command reference");
+    console.log("  0. Exit");
+  };
+
+  try {
+    console.log("Welcome to GULZ.");
+    console.log("Goals are saved on this device in " + dataHome);
+    console.log("AI planning and autonomous task execution are not connected in this preview yet.");
+    while (true) {
+      showMenu();
+      const choice = await ask("\\nChoose an option: ");
+      if (choice === "0" || choice.toLowerCase() === "exit" || choice.toLowerCase() === "quit") {
+        console.log("GULZ session closed. Your saved goals remain on this device.");
+        break;
+      }
+      if (choice === "1" || choice.toLowerCase() === "create") {
+        const title = await ask("What goal do you want to save? ");
+        if (!title) { console.log("No goal entered; nothing was saved."); continue; }
+        const goal = await withGoalsLock(async () => {
+          const goals = await readGoals();
+          const created = createGoal({ id: randomUUID(), title });
+          await saveGoals([...goals, created]);
+          return created;
+        });
+        console.log("\\nGoal saved successfully.");
+        console.log("Title:  " + goal.title);
+        console.log("ID:     " + goal.id);
+        console.log("Status: draft");
+        console.log("Next: planning and task execution will become available in a later CLI update.");
+        continue;
+      }
+      if (choice === "2" || choice.toLowerCase() === "goals") {
+        const goals = await readGoals();
+        if (!goals.length) console.log("No saved goals yet. Choose 1 to create your first goal.");
+        else for (const goal of goals) console.log("\\n" + goal.id + "  [" + goal.status + "]  " + goal.title);
+        continue;
+      }
+      if (choice === "3" || choice.toLowerCase() === "doctor") {
+        await doctor();
+        continue;
+      }
+      if (choice === "4" || choice.toLowerCase() === "help") {
+        help();
+        continue;
+      }
+      console.log("I didn't recognise that option. Choose 1, 2, 3, 4 or 0.");
+    }
+  } finally {
+    rl.close();
+  }
+}
+
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
-  if (!command || command === "--help" || command === "-h") return help();
+  if (!command) return interactiveSession();\n  if (command === "--help" || command === "-h") return help();
   if (command === "--version" || command === "-v") {
     console.log(`GULZ ${VERSION}`);
     return;
