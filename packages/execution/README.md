@@ -6,7 +6,7 @@ The local execution adapter for GULZ supports bounded filesystem operations:
 - `read_file`: read a regular UTF-8 text file inside that root, with a configurable byte cap and SHA-256 verification. Invalid UTF-8 is rejected rather than silently corrupted.
 - `write_file`: write UTF-8 text after explicit approval. Writes use a same-directory temporary file and atomic rename; an overwritten regular file is copied to a uniquely named, owner-only backup beside the target. New files and temporary files are also owner-only.
 
-Every operation is reconstructed through the shared core validator. Approval metadata is checked rather than trusted. Inspection and reads are low-risk. Writes are moderate-risk and require an explicit approval signal from the caller. The executor rejects symlink targets, limits content to the configured byte cap, and verifies the saved bytes. It does not execute shell commands, delete, install, change permissions, access networks, or connect over SSH.
+Every operation is reconstructed through the shared core validator. Approval metadata is checked rather than trusted. Inspection and reads are low-risk. Writes are moderate-risk and require an explicit approval signal from the caller. The executor rejects symlink targets, limits content to the configured byte cap, and verifies the saved bytes. It does not invoke a shell. Process execution is limited to the fixed diagnostic allowlist documented below; arbitrary commands, scripts, delete, install, permission changes, network access and SSH are not exposed.
 
 ## Safety boundaries
 
@@ -28,7 +28,7 @@ npm run test --workspace @gulz/execution
 
 ## Supervised diagnostic commands
 
-`run_command` is restricted to a fixed argument allowlist and always requires explicit caller approval. It launches processes with `shell: false`, uses the authorized working directory, enforces a 5-second default / 30-second maximum deadline, and caps combined stdout/stderr at 64 KiB. The initial allowlist is deliberately small:
+`run_command` is restricted to a fixed argument allowlist and always requires explicit caller approval. Git diagnostics override the system/global Git config and disable the fsmonitor and pager helpers before execution. It launches processes with `shell: false`, uses the authorized working directory, enforces a 5-second default / 30-second maximum deadline, and caps combined stdout/stderr at 64 KiB. The initial allowlist is deliberately small:
 
 - `node --version`
 - `git status --short` and `git status --short --branch`
