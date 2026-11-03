@@ -116,7 +116,8 @@ async function runAllowlistedCommand(command: string, args: string[], cwd: strin
   if (signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
   return await new Promise((resolveResult, rejectResult) => {
     const executable = command === "node" ? process.execPath : command;
-    const child = spawn(executable, args, {
+    const processArgs = command === "git" ? ["-c", "core.fsmonitor=false", "-c", "core.pager=cat", ...args] : args;
+    const child = spawn(executable, processArgs, {
       cwd,
       shell: false,
       windowsHide: true,
@@ -126,6 +127,8 @@ async function runAllowlistedCommand(command: string, args: string[], cwd: strin
         GIT_PAGER: "cat",
         GIT_TERMINAL_PROMPT: "0",
         GIT_OPTIONAL_LOCKS: "0",
+        GIT_CONFIG_NOSYSTEM: "1",
+        GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
       },
     });
     const stdout: Buffer[] = [];
