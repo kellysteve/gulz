@@ -1,19 +1,13 @@
 import { useState } from "react";
 import {
   ArrowRight, ArrowUpRight, Bot, Check, Command,
-  Download, Menu, Monitor, Server, ShieldCheck, Smartphone, Terminal,
+  Download, Laptop, Menu, Monitor, Server, ShieldCheck, Smartphone, Terminal, Code2, AppWindow,
   X, Zap,
 } from "lucide-react";
 
 type Platform = "termux" | "linux" | "macos" | "windows" | "vps";
 
-const platforms: { id: Platform; name: string; detail: string; icon: typeof Terminal; methods: string[]; steps: string[] }[] = [
-  { id: "termux", name: "Android / Termux", detail: "Android phones and tablets", icon: Smartphone, methods: ["Termux package", "Standalone Android build"], steps: ["Install Termux from a supported source.", "Update Termux packages and install the required runtime.", "Install the verified GULZ Android package.", "Run gulz --version to verify the installation."] },
-  { id: "linux", name: "Linux", detail: "Ubuntu, Debian and other distributions", icon: Terminal, methods: ["Standalone installer", "Package manager", "Portable binary"], steps: ["Choose the build matching your CPU architecture.", "Download the installer or package.", "Verify its published checksum and signature.", "Install for your user and verify with gulz --version."] },
-  { id: "macos", name: "macOS", detail: "Apple Silicon and Intel Macs", icon: Command, methods: ["Homebrew", "Signed installer", "Standalone binary"], steps: ["Select Apple Silicon or Intel.", "Choose Homebrew or the standalone installer.", "Verify the downloaded release.", "Open a terminal and run gulz --version."] },
-  { id: "windows", name: "Windows", detail: "Windows 10 and 11", icon: Monitor, methods: ["PowerShell installer", "WinGet", "Standalone executable"], steps: ["Choose the supported Windows architecture.", "Use PowerShell or your preferred package manager.", "Verify the installer before running it.", "Open a new PowerShell window and run gulz --version."] },
-  { id: "vps", name: "VPS / Remote servers", detail: "Ubuntu, Debian and SSH-connected hosts", icon: Server, methods: ["SSH-assisted setup", "Linux installer", "Portable binary"], steps: ["Connect to your server using your own SSH account.", "Check the operating system and CPU architecture.", "Install GULZ as a non-root user where possible.", "Verify the installation and review its permissions."] },
-];
+const platforms: { id: Platform; name: string; detail: string; icon: typeof Terminal; methods: string[]; steps: string[]; commands: string[]; note: string }[] = [{"id":"termux","name":"Android / Termux","detail":"Android phones and tablets","icon": Smartphone,"methods":["Termux source build (developer preview)","Android app package (planned)"],"steps":["Install the current Termux app from a supported source.","Update packages and install Node.js LTS plus Git.","Clone the GULZ repository and install workspace dependencies.","Build and link the CLI locally, then verify the command."],"commands":["pkg update && pkg upgrade -y","pkg install nodejs-lts git","git clone https://github.com/kellysteve/gulz.git","cd gulz","npm install","npm run install:local","gulz --help"],"note":"Use a recent Termux release. The Android-native app installer is planned; this source workflow is the developer preview."},{"id":"linux","name":"Linux","detail":"Ubuntu, Debian and other distributions","icon": Terminal,"methods":["CLI source build (developer preview)","Native packages (planned)"],"steps":["Install Node.js 20.19 or newer and Git using your distribution's trusted package source.","Clone the public GULZ repository.","Install workspace dependencies and build the CLI.","Verify the CLI and run its local diagnostic."],"commands":["git clone https://github.com/kellysteve/gulz.git","cd gulz","npm install","npm run install:local","gulz --version","gulz doctor"],"note":"The source workflow is for testing and contributors. Signed .deb, .rpm, AppImage and other native packages are not published."},{"id":"macos","name":"macOS","detail":"Apple Silicon and Intel Macs","icon": Command,"methods":["CLI source build (developer preview)","Signed desktop app (planned)","Homebrew package (planned)"],"steps":["Install Node.js 20.19 or newer and Git (Homebrew is one option).","Clone the GULZ repository in Terminal.","Install dependencies and build/link the CLI.","Verify the command in a new terminal session."],"commands":["brew install node git","git clone https://github.com/kellysteve/gulz.git","cd gulz","npm install","npm run install:local","gulz --help"],"note":"The macOS desktop app and signed Apple Silicon / Intel installers are planned, not available for download."},{"id":"windows","name":"Windows","detail":"Windows 10 and 11","icon": Monitor,"methods":["PowerShell source build (developer preview)","WinGet package (planned)","Desktop installer (planned)"],"steps":["Install Node.js 20.19 or newer and Git for Windows.","Open a new PowerShell window and clone the repository.","Install workspace dependencies and build/link the CLI.","Verify the command in PowerShell."],"commands":["winget install OpenJS.NodeJS.LTS","winget install Git.Git","git clone https://github.com/kellysteve/gulz.git","cd gulz","npm install","npm run install:local","gulz --help"],"note":"Run the package-manager commands in PowerShell, then open a new terminal so PATH updates apply. Windows desktop installers are planned."},{"id":"vps","name":"VPS / Remote servers","detail":"Ubuntu, Debian and SSH-connected hosts","icon": Server,"methods":["SSH + Linux source build (developer preview)","Server package (planned)"],"steps":["Connect to the server using your own SSH account.","Install Node.js 20.19 or newer and Git.","Clone and build GULZ as your normal user; avoid running it as root.","Verify the CLI locally on the server."],"commands":["ssh your-user@your-server","git clone https://github.com/kellysteve/gulz.git","cd gulz","npm install","npm run install:local","gulz doctor"],"note":"GULZ does not connect to or configure a server automatically yet. The current CLI runs on the machine where you install it."}];
 
 function App() {
   const [selected, setSelected] = useState<Platform>("termux");
@@ -28,6 +22,7 @@ function App() {
           <a href="#capabilities" onClick={() => setMenuOpen(false)}>Capabilities</a>
           <a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a>
           <a href="#install" onClick={() => setMenuOpen(false)}>Installation</a>
+          <a href="#desktop" onClick={() => setMenuOpen(false)}>Desktop app</a>
           <a href="#security" onClick={() => setMenuOpen(false)}>Security</a>
         </nav>
         <a className="nav-cta" href="#install">Get started <ArrowUpRight size={15}/></a>
@@ -87,13 +82,35 @@ function App() {
             </div>
             <div className="install-detail" role="tabpanel">
               <div className="install-detail-top"><div><span className="available-label">INSTALLATION GUIDE</span><h3>{active.name}</h3><p>{active.detail}</p></div><Download size={23}/></div>
-              <h4>Planned installation methods</h4><div className="method-list">{active.methods.map((method) => <span key={method}><Check size={14}/>{method}</span>)}</div>
+              <h4>Distribution status</h4><div className="method-list">{active.methods.map((method) => <span key={method}><Check size={14}/>{method}</span>)}</div>
+              <h4>Developer preview commands</h4><pre className="install-code"><code>{active.commands.join("\n")}</code></pre><p className="install-note">{active.note}</p>
               <h4>Step-by-step setup</h4><ol className="steps-list">{active.steps.map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}</ol>
-              <div className="release-notice"><ShieldCheck size={17}/><p><b>Downloads are not published yet.</b><br/>We're building and testing platform-specific packages before providing live install commands. This guide currently describes the planned process.</p></div>
+              <div className="release-notice"><ShieldCheck size={17}/><p><b>These are source-build instructions, not a stable installer.</b><br/>The CLI is in early development. Native packages and signed downloads will only be listed after platform builds and security checks pass.</p></div>
             </div>
           </div>
         </section>
 
+        <section className="section cli-reference" id="commands">
+          <div className="section-kicker">CLI QUICK REFERENCE</div><h2>What the developer-preview CLI can do today.</h2>
+          <p className="section-lead">The current command line is intentionally small. File changes and diagnostic commands ask for typed approval. It is not an unrestricted shell or an AI agent yet.</p>
+          <div className="command-grid">
+            <article><h3><Terminal size={17}/> Start and inspect</h3><pre><code>{"gulz --help\ngulz doctor\ngulz init\ngulz goals"}</code></pre></article>
+            <article><h3><Code2 size={17}/> Goals and files</h3><pre><code>{'gulz goal create "Prepare my project"\ngulz inspect .\ngulz read README.md\ngulz write notes.txt'}</code></pre></article>
+            <article><h3><ShieldCheck size={17}/> Approved diagnostics</h3><pre><code>{"gulz run node --version\ngulz run git status --short\ngulz restore <backup> <target>"}</code></pre></article>
+          </div>
+          <div className="release-notice"><ShieldCheck size={17}/><p><b>Safety boundary:</b><br/>Only a fixed list of read-only diagnostic commands is accepted. GULZ does not yet support arbitrary shell commands, package installs, deletes, remote SSH execution or unattended AI-driven machine changes.</p></div>
+        </section>
+
+        <section className="section desktop-section" id="desktop">
+          <div className="section-kicker">DESKTOP EXPERIENCE</div><h2>A native workspace is on the roadmap.</h2>
+          <p className="section-lead">The planned desktop app will bring the GULZ task workspace, approvals, execution activity and local project access together in one focused interface.</p>
+          <div className="desktop-grid">
+            <article><AppWindow/><h3>Windows</h3><p>Desktop installer and signed updates planned.</p><span>Planned</span></article>
+            <article><Laptop/><h3>macOS</h3><p>Apple Silicon and Intel builds planned.</p><span>Planned</span></article>
+            <article><Monitor/><h3>Linux</h3><p>Desktop packages for supported distributions planned.</p><span>Planned</span></article>
+          </div>
+          <p className="desktop-footnote">The desktop application has not been released. The current developer preview is a Node.js CLI; no desktop download is available yet.</p>
+        </section>
         <section className="security-section" id="security">
           <div className="security-icon"><ShieldCheck size={28}/></div><div><div className="section-kicker">CONTROL IS NOT OPTIONAL</div><h2>Autonomy, with boundaries.</h2><p>GULZ is being built around least-privilege access, clear approvals, transparent activity logs and verified outcomes. Your credentials stay yours. Sensitive actions do not happen silently.</p></div>
         </section>
