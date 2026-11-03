@@ -129,11 +129,11 @@ function App() {
 
         <section className="section cli-reference" id="commands">
           <div className="section-kicker">CLI QUICK REFERENCE</div><h2>Commands available in the CLI developer preview.</h2>
-          <p className="section-lead">The current CLI manages local goals, inspects files, writes approved text changes with backups, and runs a small fixed set of read-only diagnostics. Commands that change files or start a process require typed approval.</p>
+          <p className="section-lead">The current CLI manages local goals, inspects files, writes approved text changes with backups, restores backups and runs a small fixed set of read-only diagnostics. File changes and process execution require typed approval.</p>
           <div className="command-grid">
             <article><h3><Terminal size={17}/> Start and inspect</h3><pre><code>{"gulz --help\ngulz doctor\ngulz init\ngulz goals"}</code></pre></article>
             <article><h3><Code2 size={17}/> Goals and files</h3><pre><code>{'gulz goal create "Prepare my project"\ngulz inspect .\ngulz read README.md\ngulz write notes.txt'}</code></pre></article>
-            <article><h3><ShieldCheck size={17}/> Approved diagnostics</h3><pre><code>{"gulz run node --version\ngulz run git status --short\ngulz restore <backup> <target>"}</code></pre></article>
+            <article><h3><ShieldCheck size={17}/> Approved diagnostics</h3><pre><code>{"gulz run node --version\ngulz run git status --short\ngulz run git status --short --branch\ngulz run git branch --show-current\ngulz run git log -1 --oneline\ngulz run git diff --stat\ngulz run git rev-parse --show-toplevel\ngulz restore <backup> <target>"}</code></pre></article>
           </div>
           <div className="release-notice"><ShieldCheck size={17}/><p><b>Safety boundary:</b><br/>The run command uses a fixed allowlist, starts processes without a shell, strips inherited command-injection environment variables, caps output and requires typed approval. Arbitrary shell commands, package installs, deletes, remote SSH execution and unattended AI-driven machine changes are not available.</p></div>
         </section>
