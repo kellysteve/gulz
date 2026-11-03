@@ -151,9 +151,10 @@ export async function executeLocalOperation(
     if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
     const root = await realpath(options.rootDirectory);
     const target = resolveInsideRoot(root, requestedTarget);
-    const parent = await realpath(target === root ? root : dirname(target));
+    const parentPath = target === root ? root : dirname(target);
+    await rejectSymlinkComponents(root, parentPath);
+    const parent = await realpath(parentPath);
     if (parent !== root && !parent.startsWith(root + sep)) throw new ExecutionError("Target parent escapes the authorized root directory.");
-    await rejectSymlinkComponents(root, parent);
     let targetInfo;
     try { targetInfo = await lstat(target); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
     if (targetInfo?.isSymbolicLink()) throw new ExecutionError("Symbolic links are not allowed in execution targets.");
