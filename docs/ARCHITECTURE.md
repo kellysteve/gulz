@@ -68,7 +68,7 @@ The CLI and execution engine are the immediate product priority. Release infrast
 
 1. Verify the existing core, CLI and website builds/tests; fix foundational defects.
 2. Complete reliable local persistence and resumable goal/task orchestration.
-3. Expand the initial bounded local filesystem adapter (inspect, read and explicitly approved text writes with backups and restore) with permission-aware typed operations, approval gates, cancellation, audit events and independent verification. Keep arbitrary shell execution out of scope until a separate allowlist and approval design is complete.
+3. Extend the local execution adapter with bounded inspect/read operations, explicitly approved text writes with backups/restore, and a tiny fixed allowlist of read-only diagnostic commands. Every command runs without a shell, with explicit approval, output/time limits and an audit result. Arbitrary shell execution, installs, deletes and SSH execution remain out of scope.
 4. Add provider-neutral AI planning and supervised execution; AI output remains untrusted.
 5. Add SSH and remote-environment adapters behind the same policy and approval boundary.
 6. Prepare signed platform packages, immutable release artifacts and verified updates.
