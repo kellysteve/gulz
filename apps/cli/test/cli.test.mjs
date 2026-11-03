@@ -107,6 +107,7 @@ test("tightens existing storage directory and goals file permissions", async () 
 });
 
 test("refuses a symbolic link as the goals storage file", async () => {
+  if (process.platform === "win32") return;
   await withHome(async (home) => {
     const outside = join(home, "outside.json");
     const linked = join(home, "goals.json");
