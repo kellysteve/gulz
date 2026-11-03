@@ -39,7 +39,8 @@ The CLI includes local execution commands:
 gulz inspect ./relative/path
 gulz read ./relative/file.txt
 gulz write ./relative/file.txt
+gulz restore ./.file.txt.gulz-backup-<id> ./relative/file.txt
 ```
 
-All commands are confined to the current working directory. Absolute paths, traversal outside that directory and symbolic links are rejected. Reads and writes are capped at 256 KiB by default. `gulz write` asks for one line of text and requires the user to type `WRITE <path>` at an interactive terminal; non-interactive writes fail closed. Replaced files are retained as uniquely named `.gulz-backup-*` files beside the target. There is not yet a dedicated rollback command, so keep the backup until the result is checked. No shell commands are run.
+All commands are confined to the current working directory. Absolute paths, traversal outside that directory and symbolic links are rejected. Reads and writes are capped at 256 KiB by default. `gulz write` asks for one line of text and requires the user to type `WRITE <path>` at an interactive terminal; non-interactive writes fail closed. Replaced files are retained as uniquely named `.gulz-backup-*` files beside the target. Use `gulz restore <backup-path> <target-path>` to restore a backup; it asks for a separate typed confirmation and preserves the currently replaced file as another backup. No shell commands are run.
 
