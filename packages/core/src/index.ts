@@ -180,6 +180,15 @@ export function createPlannedOperation(input: CreatePlannedOperationInput): Plan
   if (input.commandPreview !== undefined && typeof input.commandPreview !== "string") {
     throw new GoalStateError("An operation command preview must be a string.");
   }
+  if (input.kind === "run_command") {
+    if (typeof input.command !== "string" || !input.command.trim() || !Array.isArray(input.args)) {
+      throw new GoalStateError("A command operation requires an executable and an argument array.");
+    }
+    const canonicalPreview = [input.command, ...input.args].join(" ");
+    if (input.commandPreview !== undefined && input.commandPreview !== canonicalPreview) {
+      throw new GoalStateError("A command preview must match its executable and arguments.");
+    }
+  }
 
   return {
     ...input,
