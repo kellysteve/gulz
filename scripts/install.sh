@@ -115,16 +115,14 @@ else
 fi
 cd "$INSTALL_DIR"
 npm install
-npm run install:local
-
-bold "5/5 · Link the gulz command"
-mkdir -p "$GULZ_BIN_DIR"
 if [ "$PLATFORM" != "termux" ]; then
   npm config set prefix "$HOME/.local"
 fi
 GULZ_BIN_DIR="$(npm config get prefix)/bin"
 mkdir -p "$GULZ_BIN_DIR"
-npm link --workspace @gulz/cli
+npm run install:local
+
+bold "5/5 · Verify the gulz command"
 case ":$PATH:" in
   *":$GULZ_BIN_DIR:"*) ;;
   *)
