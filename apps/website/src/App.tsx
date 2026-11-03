@@ -19,7 +19,7 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
     id: "linux", name: "Linux", detail: "Ubuntu, Debian and other distributions", icon: Terminal,
     methods: ["CLI source build (developer preview)", "AppImage / .deb / .rpm packages (planned)", "Desktop app (planned)"],
     steps: ["Install Node.js 20.19+ from the official Node.js download page and install Git using your distribution's package manager.", "Open a terminal and confirm node --version reports v20.19 or newer.", "Clone the public GULZ repository.", "Install workspace dependencies, build and link the CLI."],
-    commands: ["sudo apt update && sudo apt install -y git", "node --version", "npm --version", "git clone https://github.com/kellysteve/gulz.git", "cd gulz", "npm install", "npm run install:local", "gulz --version", "gulz doctor"],
+    commands: ["sudo apt update && sudo apt install -y git","node --version","npm --version","npm config set prefix \"$HOME/.local\"","mkdir -p \"$HOME/.local/bin\"","echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.profile",". ~/.profile","git clone https://github.com/kellysteve/gulz.git","cd gulz","npm install","npm run install:local","gulz --version","gulz doctor"],
     note: "Install Node.js 20.19+ separately from the official download page before running these commands. The source workflow is for developers; signed .deb, .rpm and AppImage packages are not published.",
   },
   {
@@ -40,7 +40,7 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
     id: "vps", name: "VPS / Remote servers", detail: "Ubuntu, Debian and SSH-connected hosts", icon: Server,
     methods: ["SSH + Linux CLI source build (developer preview)", "Headless server package (planned)"],
     steps: ["Connect to your server using your own SSH account.", "Install Node.js 20.19+ from the official download page and Git from your distribution's package manager.", "Clone and build GULZ as your normal user; do not run it as root.", "Run the CLI on the server itself. SSH-based remote orchestration is not available yet."],
-    commands: ["ssh your-user@your-server", "sudo apt update && sudo apt install -y git", "node --version", "git clone https://github.com/kellysteve/gulz.git", "cd gulz", "npm install", "npm run install:local", "gulz doctor"],
+    commands: ["sudo apt update && sudo apt install -y git","node --version","npm --version","npm config set prefix \"$HOME/.local\"","mkdir -p \"$HOME/.local/bin\"","echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.profile",". ~/.profile","git clone https://github.com/kellysteve/gulz.git","cd gulz","npm install","npm run install:local","gulz doctor"],
     note: "The current CLI runs on the VPS where it is installed. It does not yet connect to or administer other machines automatically.",
   },
 ];
