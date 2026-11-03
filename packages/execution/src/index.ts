@@ -289,7 +289,7 @@ export async function executeLocalOperation(
       };
       return {
         operationId: operation.id,
-        verified: commandResult.exitCode !== null,
+        verified: commandResult.exitCode === 0,
         output,
         audit: audit(operation, commandResult.exitCode === 0 ? "succeeded" : "failed", output.path, `Allowlisted command completed with exit code ${commandResult.exitCode}.`),
       };
