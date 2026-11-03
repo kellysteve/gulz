@@ -68,10 +68,11 @@ The CLI and execution engine are the immediate product priority. Release infrast
 
 1. Verify the existing core, CLI and website builds/tests; fix foundational defects.
 2. Complete reliable local persistence and resumable goal/task orchestration.
-3. Extend the local execution adapter with bounded inspect/read operations, explicitly approved text writes with backups/restore, and a tiny fixed allowlist of read-only diagnostic commands. Every command runs without a shell, with explicit approval, output/time limits and an audit result. Arbitrary shell execution, installs, deletes and SSH execution remain out of scope.
-4. Add provider-neutral AI planning and supervised execution; AI output remains untrusted.
-5. Add SSH and remote-environment adapters behind the same policy and approval boundary.
-6. Prepare signed platform packages, immutable release artifacts and verified updates.
-7. Complete end-to-end security and platform testing before public releases.
+3. Complete the local execution foundation: bounded inspect/read operations, explicitly approved text writes with backups/restore, and a tiny fixed allowlist of read-only diagnostic commands. Every command runs without a shell, with explicit approval, a sanitized environment, output/time limits and an audit result. Arbitrary shell execution, installs, deletes and SSH execution remain out of scope.
+4. Build the interactive CLI experience on top of the verified core and execution packages: session UX, command discovery, goal/task views, clear approval previews, cancellation and recoverable activity. Keep the non-interactive command interface available for scripts where safe.
+5. Add provider-neutral AI planning and supervised execution; AI output remains untrusted.
+6. Add SSH and remote-environment adapters behind the same policy and approval boundary.
+7. Prepare signed platform packages, immutable release artifacts and verified updates.
+8. Complete end-to-end security and platform testing before public releases.
 
 The public website may describe the roadmap, but it must not present planned capabilities or installation methods as available. Supabase release storage and updater work should be implemented when release artifacts are ready to ship, not as a prerequisite for local CLI execution.
