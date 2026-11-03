@@ -129,7 +129,18 @@ case ":$PATH:" in
   *":$GULZ_BIN_DIR:"*) ;;
   *)
     warn "$GULZ_BIN_DIR is not currently in PATH."
-    printf 'Add this line to your shell profile, then open a new terminal:\n  export PATH="$GULZ_BIN_DIR:$PATH"\n'
+    PROFILE="$HOME/.profile"
+    case "${SHELL##*/}" in zsh) PROFILE="$HOME/.zprofile" ;; bash) PROFILE="$HOME/.bashrc" ;; esac
+    if ask_yes_no "Add $GULZ_BIN_DIR to PATH in $PROFILE?"; then
+      touch "$PROFILE"
+      if ! grep -Fq 'export PATH="$HOME/.local/bin:$PATH"' "$PROFILE"; then
+        printf '\n# GULZ command-line tools\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$PROFILE"
+      fi
+      export PATH="$GULZ_BIN_DIR:$PATH"
+      info "Updated $PROFILE. The PATH change is active in this installer session."
+    else
+      printf 'You can add this line to your shell profile later:\n  export PATH="%s:$PATH"\n' "$GULZ_BIN_DIR"
+    fi
     ;;
 esac
 
