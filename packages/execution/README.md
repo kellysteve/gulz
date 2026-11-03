@@ -25,3 +25,16 @@ The adapter is an initial local safety boundary, not a hardened sandbox against 
 npm run build --workspace @gulz/execution
 npm run test --workspace @gulz/execution
 ```
+
+## Supervised diagnostic commands
+
+`run_command` is restricted to a fixed argument allowlist and always requires explicit caller approval. It launches processes with `shell: false`, uses the authorized working directory, enforces a 5-second default / 30-second maximum deadline, and caps combined stdout/stderr at 64 KiB. The initial allowlist is deliberately small:
+
+- `node --version`
+- `git status --short` and `git status --short --branch`
+- `git branch --show-current`
+- `git log -1 --oneline`
+- `git diff --stat`
+- `git rev-parse --show-toplevel`
+
+Arguments are matched as exact token arrays. Arbitrary commands, shell operators, scripts, package installation, network tools and destructive commands are rejected. A non-zero exit code is returned as a failed audit outcome; it is not reported as a successful operation.
