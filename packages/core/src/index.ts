@@ -45,6 +45,7 @@ export interface PlannedOperation {
   description: string;
   risk: RiskLevel;
   target?: string;
+  content?: string;
   commandPreview?: string;
   requiresApproval: boolean;
 }
@@ -136,6 +137,7 @@ export interface CreatePlannedOperationInput {
   description: string;
   risk: RiskLevel;
   target?: string;
+  content?: string;
   commandPreview?: string;
 }
 
@@ -161,6 +163,9 @@ export function createPlannedOperation(input: CreatePlannedOperationInput): Plan
   }
   if (input.target !== undefined && typeof input.target !== "string") {
     throw new GoalStateError("An operation target must be a string.");
+  }
+  if (input.content !== undefined && typeof input.content !== "string") {
+    throw new GoalStateError("Operation content must be a string.");
   }
   if (input.commandPreview !== undefined && typeof input.commandPreview !== "string") {
     throw new GoalStateError("An operation command preview must be a string.");
