@@ -5,7 +5,8 @@ import { access, chmod, lstat, mkdir, readFile, rename, rm, writeFile } from "no
 import { constants } from "node:fs";
 import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
-import { createGoal, operationRequiresApproval, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
+import { createGoal, createPlannedOperation, operationRequiresApproval, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
+import { executeLocalOperation } from "@gulz/execution";
 
 const VERSION = "0.1.0";
 const dataHome = resolve(process.env.GULZ_HOME || join(homedir(), ".gulz"));
@@ -86,11 +87,14 @@ function help(): void {
     "  goal create <title>   Save a new goal locally",
     "  goals                 List saved goals",
     "  goal show <id>        Show a saved goal",
+    "  inspect <path>        Inspect a path inside the current directory",
+    "  read <path>           Read a file inside the current directory (256 KiB max)",
     "  --help, -h            Show this help",
     "  --version, -v         Show the installed version",
     "",
     "Data is stored locally in ~/.gulz (or GULZ_HOME if configured).",
-    "This first build does not execute shell commands or use an AI provider.",
+    "Filesystem commands are read-only and confined to the current working directory.",
+    "Shell commands, writes, installs, deletes and network operations are not available yet.",
   ].join("\n"));
 }
 
@@ -226,6 +230,24 @@ async function main(): Promise<void> {
   if (command === "doctor") {
     const ok = await doctor();
     if (!ok) process.exitCode = 1;
+    return;
+  }
+  if (command === "inspect" || command === "read") {
+    const target = args.join(" ").trim();
+    if (!target) {
+      console.error(`Usage: gulz ${command} <relative-path>`);
+      process.exitCode = 2;
+      return;
+    }
+    const operation = createPlannedOperation({
+      id: randomUUID(),
+      kind: command === "inspect" ? "inspect" : "read_file",
+      description: command === "inspect" ? "Inspect a local path" : "Read a local file",
+      risk: "low",
+      target,
+    });
+    const result = await executeLocalOperation(operation, { rootDirectory: process.cwd() });
+    console.log(JSON.stringify(result, null, 2));
     return;
   }
   if (command === "goals") {
