@@ -228,7 +228,7 @@ async function interactiveSession(): Promise<void> {
     console.log("\nGULZ — Goals. Executed.");
     console.log("Your local supervised workspace");
     console.log("\n  1. Create a goal");
-    console.log("  2. View saved goals");
+    console.log("  2. View saved goals and inspect a goal");
     console.log("  3. System check");
     console.log("  4. Command reference");
     console.log("  0. Exit");
@@ -241,7 +241,7 @@ async function interactiveSession(): Promise<void> {
     while (true) {
       showMenu();
       const choice = await ask("\nChoose an option: ");
-      if (choice === "0" || choice.toLowerCase() === "exit" || choice.toLowerCase() === "quit") {
+      if (choice === "0" || choice.toLowerCase() === "exit" || choice.toLowerCase() === "quit" || choice.toLowerCase() === "q") {
         console.log("GULZ session closed. Your saved goals remain on this device.");
         break;
       }
@@ -261,10 +261,35 @@ async function interactiveSession(): Promise<void> {
         console.log("Next: planning and task execution will become available in a later CLI update.");
         continue;
       }
-      if (choice === "2" || choice.toLowerCase() === "goals") {
+      if (choice === "2" || choice.toLowerCase() === "goals" || choice.toLowerCase() === "view") {
         const goals = await readGoals();
-        if (!goals.length) console.log("No saved goals yet. Choose 1 to create your first goal.");
-        else for (const goal of goals) console.log("\n" + goal.id + "  [" + goal.status + "]  " + goal.title);
+        if (!goals.length) {
+          console.log("No saved goals yet. Choose 1 to create your first goal.");
+          continue;
+        }
+        console.log("\nSaved goals:");
+        goals.forEach((goal, index) => {
+          console.log("  " + (index + 1) + ". " + goal.title + "  [" + goal.status + "]");
+          console.log("     ID: " + goal.id);
+        });
+        const selected = await ask("\nEnter a goal number or ID to view details (Enter to return): ");
+        if (!selected) continue;
+        const index = Number(selected);
+        const goal = Number.isInteger(index) && index >= 1 && index <= goals.length ? goals[index - 1] : goals.find((item) => item.id === selected);
+        if (!goal) {
+          console.log("That goal was not found. Your saved data was not changed.");
+          continue;
+        }
+        console.log("\nGOAL DETAILS");
+        console.log("Title:       " + goal.title);
+        console.log("ID:          " + goal.id);
+        console.log("Status:      " + goal.status);
+        console.log("Description: " + (goal.description || "Not added yet"));
+        console.log("Created:     " + goal.createdAt);
+        console.log("Updated:     " + goal.updatedAt);
+        console.log("Tasks:       " + goal.tasks.length);
+        for (const task of goal.tasks) console.log("  - [" + task.status + "] " + task.title);
+        console.log("This preview stores goals; AI planning and task execution are not available yet.");
         continue;
       }
       if (choice === "3" || choice.toLowerCase() === "doctor") {
