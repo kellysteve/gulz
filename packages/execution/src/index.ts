@@ -100,7 +100,7 @@ function verifyOperation(input: PlannedOperation): PlannedOperation {
       throw new ExecutionError("Operation approval metadata is inconsistent with its risk level.");
     }
     if (validated.kind !== "inspect" && validated.kind !== "read_file" && validated.kind !== "write_file") {
-      throw new ExecutionError("This execution engine currently supports only inspect and read_file operations.");
+      throw new ExecutionError("This execution engine supports inspect, read_file and write_file operations.");
     }
     if (validated.kind === "write_file" && validated.risk !== "moderate") {
       throw new ExecutionError("write_file operations must be moderate-risk and explicitly approved.");
@@ -194,6 +194,8 @@ export async function executeLocalOperation(
         await writeFile(temporary, bytes, { flag: "wx", mode: 0o600 });
         if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
         await rename(temporary, target);
+        const writtenBytes = await readFile(target);
+        if (!writtenBytes.equals(bytes)) throw new ExecutionError("Write verification failed; the saved file does not match the approved content.");
       } catch (error) {
         await rm(temporary, { force: true }).catch(() => undefined);
         throw error;
@@ -208,7 +210,7 @@ export async function executeLocalOperation(
     if (bytes.byteLength > maxReadBytes) throw new ExecutionError("File grew beyond the configured read limit during execution.");
     if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
     const digest = createHash("sha256").update(bytes).digest("hex");
-    const content = bytes.toString("utf8");
+    const content = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     const verifyDigest = createHash("sha256").update(Buffer.from(content, "utf8")).digest("hex");
     if (digest !== verifyDigest) throw new ExecutionError("Read verification failed.");
     const output = {
