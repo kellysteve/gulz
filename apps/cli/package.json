@@ -12,7 +12,8 @@
     "test": "npm run build && node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@gulz/core": "0.1.0"
+    "@gulz/core": "0.1.0",
+    "@gulz/execution": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
