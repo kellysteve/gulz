@@ -104,7 +104,7 @@ fi
 printf 'GULZ source will be stored at: %s\n' "$INSTALL_DIR"
 
 bold "3/5 · Review installation"
-printf 'The installer will clone or fast-forward the GULZ repository, install declared npm dependencies, build the CLI and create a user-level command link.\n'
+printf 'The installer will clone or fast-forward the GULZ repository, install only CLI workspace dependencies (including TypeScript), build the CLI and create a user-level command link. The website and Wrangler/Workerd are excluded.\n'
 printf 'It may use sudo only if you explicitly approve installing a missing Git package. It will not run GULZ operations on your files or install a background service.\n'
 ask_yes_no "Continue with installation?" || { printf 'Installation cancelled.\n'; exit 0; }
 
