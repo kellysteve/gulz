@@ -110,7 +110,7 @@ gulz goals
 gulz goal show <goal-id>
 ~~~
 
-Goals are stored locally in ~/.gulz/goals.json. Set GULZ_HOME to choose another data directory. The CLI validates stored records before use and refuses malformed data instead of silently overwriting it.
+Run `gulz` with no arguments whenever you want to open the interactive terminal session. You do not need to repeat the installation commands each time; once linked, the `gulz` command is available from your terminal. Close the session with option 0.\n\nTo update this developer-preview installation later, enter the cloned repository folder and run `git pull --ff-only`, `npm install`, then `npm run install:local`. Restart any open GULZ session after updating. This is a source-repository update process, not an automatic updater; verified one-command updates will be added with the published package/release system.\n\nGoals are stored locally in ~/.gulz/goals.json. Set GULZ_HOME to choose another data directory. The CLI validates stored records before use and refuses malformed data instead of silently overwriting it.
 
 ## Filesystem and diagnostic commands
 
