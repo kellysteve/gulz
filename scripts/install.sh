@@ -10,7 +10,7 @@ info() { printf '  %s\n' "$*"; }
 warn() { printf '\nWarning: %s\n' "$*" >&2; }
 fail() { printf '\nError: %s\n' "$*" >&2; exit 1; }
 ask_yes_no() {
-  local prompt="$1" answer=""
+  local prompt="$1" answer="" answer_lc=""
   while true; do
     read -r -p "$prompt [y/N] " answer </dev/tty || true
     answer_lc="$(printf '%s' "$answer" | tr '[:upper:]' '[:lower:]')"
@@ -129,7 +129,7 @@ case ":$PATH:" in
   *)
     warn "$GULZ_BIN_DIR is not currently in PATH."
     PROFILE="$HOME/.profile"
-    case "${SHELL:-/bin/bash}" in */zsh) PROFILE="$HOME/.zprofile" ;; bash) PROFILE="$HOME/.bashrc" ;; esac
+    case "${SHELL:-/bin/bash}" in */zsh) PROFILE="$HOME/.zprofile" ;; */bash) PROFILE="$HOME/.bashrc" ;; esac
     if ask_yes_no "Add $GULZ_BIN_DIR to PATH in $PROFILE?"; then
       touch "$PROFILE"
       if ! grep -Fq 'export PATH="$HOME/.local/bin:$PATH"' "$PROFILE"; then
