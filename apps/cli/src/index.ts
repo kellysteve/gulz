@@ -43,7 +43,8 @@ function isValidOperation(value: unknown): boolean {
   if (typeof value.risk !== "string" || !risks.has(value.risk as RiskLevel)) return false;
   if (value.requiresApproval !== operationRequiresApproval(value.risk as RiskLevel)) return false;
   const validArgs = value.args === undefined || (Array.isArray(value.args) && value.args.every((arg) => typeof arg === "string"));
-  return isOptionalString(value.target) && isOptionalString(value.content) && isOptionalString(value.command) && validArgs && isOptionalString(value.commandPreview);
+  const validCommand = value.kind !== "run_command" || (isNonEmptyString(value.command) && Array.isArray(value.args) && value.args.every((arg) => typeof arg === "string") && value.commandPreview === [value.command, ...value.args].join(" "));
+  return isOptionalString(value.target) && isOptionalString(value.content) && isOptionalString(value.command) && validArgs && validCommand && isOptionalString(value.commandPreview);
 }
 
 function isValidTask(value: unknown): boolean {
