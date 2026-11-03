@@ -30,3 +30,15 @@ gulz --help
 Requires Node.js 20 or newer. Run the full repository checks with `npm test` from the repository root.
 
 Licensed under Apache-2.0. See [LICENSE](./LICENSE).
+
+## Read-only filesystem commands
+
+The CLI includes two initial local execution commands:
+
+```sh
+gulz inspect ./relative/path
+gulz read ./relative/file.txt
+```
+
+Both commands are confined to the current working directory. Absolute paths, traversal outside that directory and symbolic links are rejected. File reads are capped at 256 KiB by default. These commands do not run shell commands or modify files.
+
