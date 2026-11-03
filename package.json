@@ -9,14 +9,14 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace @gulz/website",
-    "build": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/cli && npm run build --workspace @gulz/execution && npm run build --workspace @gulz/website",
+    "build": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/execution && npm run build --workspace @gulz/cli && npm run build --workspace @gulz/website",
     "typecheck": "npm run typecheck --workspace @gulz/core && npm run typecheck --workspace @gulz/cli && npm run typecheck --workspace @gulz/execution && npm run typecheck --workspace @gulz/website",
     "dev:website": "npm run dev --workspace @gulz/website",
     "deploy:website": "npm run build --workspace @gulz/website && npx wrangler deploy --config apps/website/wrangler.toml",
     "build:core": "npm run build --workspace @gulz/core",
-    "build:cli": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/cli",
+    "build:cli": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/execution && npm run build --workspace @gulz/cli",
     "install:local": "npm run build:cli && npm link --workspace @gulz/cli",
-    "test": "npm run test --workspace @gulz/core && npm run test --workspace @gulz/cli && npm run test --workspace @gulz/execution && npm run typecheck",
+    "test": "npm run test --workspace @gulz/core && npm run test --workspace @gulz/execution && npm run test --workspace @gulz/cli && npm run typecheck",
     "build:execution": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/execution"
   },
   "engines": {
