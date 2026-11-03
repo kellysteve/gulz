@@ -143,6 +143,21 @@ test("preserves every goal when multiple CLI processes create goals concurrently
   });
 });
 
+test("inspects and reads files only inside the current working directory", async () => {
+  await withHome(async (home) => {
+    await writeFile(join(home, "hello.txt"), "Hello from GULZ");
+    const inspected = invoke(home, "inspect", "hello.txt");
+    assert.equal(inspected.status, 0, inspected.stderr);
+    assert.match(inspected.stdout, /file_metadata/);
+    const read = invoke(home, "read", "hello.txt");
+    assert.equal(read.status, 0, read.stderr);
+    assert.match(read.stdout, /Hello from GULZ/);
+    const traversal = invoke(home, "read", "../outside.txt");
+    assert.equal(traversal.status, 1);
+    assert.match(traversal.stderr, /escapes/);
+  });
+});
+
 test("requires a title when creating a goal", async () => {
   await withHome(async (home) => {
     const result = invoke(home, "goal", "create");
