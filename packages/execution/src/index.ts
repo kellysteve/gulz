@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, realpath, readFile } from "node:fs/promises";
+import { copyFile, lstat, realpath, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { createPlannedOperation, type PlannedOperation } from "@gulz/core";
 
@@ -19,7 +20,7 @@ export interface ExecutionAuditEvent {
   id: string;
   timestamp: string;
   operationId: string;
-  kind: "inspect" | "read_file";
+  kind: "inspect" | "read_file" | "write_file";
   risk: "low" | "moderate" | "high" | "critical";
   outcome: "succeeded" | "denied" | "failed";
   target: string;
@@ -30,12 +31,13 @@ export interface LocalExecutionResult {
   operationId: string;
   verified: boolean;
   output: {
-    kind: "file_metadata" | "file_content";
+    kind: "file_metadata" | "file_content" | "file_written";
     path: string;
     sizeBytes: number;
     sha256?: string;
     content?: string;
     isDirectory?: boolean;
+    backupPath?: string;
   };
   audit: ExecutionAuditEvent;
 }
@@ -90,16 +92,19 @@ function verifyOperation(input: PlannedOperation): PlannedOperation {
       kind: input.kind,
       description: input.description,
       risk: input.risk,
-      ...(input.target === undefined ? {} : { target: input.target }),
+      ...(input.target === undefined ? {} : { target: input.target }),\n      ...(input.content === undefined ? {} : { content: input.content }),
       ...(input.commandPreview === undefined ? {} : { commandPreview: input.commandPreview }),
     });
     if (input.requiresApproval !== validated.requiresApproval) {
       throw new ExecutionError("Operation approval metadata is inconsistent with its risk level.");
     }
-    if (validated.kind !== "inspect" && validated.kind !== "read_file") {
+    if (validated.kind !== "inspect" && validated.kind !== "read_file" && validated.kind !== "write_file") {
       throw new ExecutionError("This execution engine currently supports only inspect and read_file operations.");
     }
-    if (validated.risk !== "low") {
+    if (validated.kind === "write_file" && validated.risk !== "moderate") {
+      throw new ExecutionError("write_file operations must be moderate-risk and explicitly approved.");
+    }
+    if (validated.kind !== "write_file" && validated.risk !== "low") {
       throw new ExecutionError("Filesystem inspection and reading are currently restricted to low-risk operations.");
     }
     return validated;
@@ -168,7 +173,7 @@ export async function executeLocalOperation(
       };
     }
 
-    if (!info.isFile()) throw new ExecutionError("read_file can only read regular files.");
+    if (operation.kind === "write_file") {\n      const content = operation.content;\n      if (typeof content !== "string") throw new ExecutionError("write_file requires UTF-8 text content.");\n      const bytes = Buffer.from(content, "utf8");\n      if (bytes.byteLength > maxReadBytes) throw new ExecutionError(`Content exceeds the configured write limit of ${maxReadBytes} bytes.`);\n      if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");\n      const backupPath = info ? resolve(parent, `.${target.split(sep).pop()}.gulz-backup-${randomUUID()}`) : undefined;\n      const temporary = resolve(parent, `.gulz-write-${randomUUID()}.tmp`);\n      try {\n        if (info && backupPath) await copyFile(realTarget, backupPath, constants.COPYFILE_EXCL);\n        await writeFile(temporary, bytes, { flag: "wx", mode: 0o600 });\n        if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");\n        await rename(temporary, target);\n      } catch (error) {\n        await rm(temporary, { force: true }).catch(() => undefined);\n        throw error;\n      }\n      const output = { kind: "file_written" as const, path: relative(root, target), sizeBytes: bytes.byteLength, sha256: createHash("sha256").update(bytes).digest("hex"), ...(backupPath ? { backupPath: relative(root, backupPath) } : {}) };\n      return { operationId: operation.id, verified: true, output, audit: audit(operation, "succeeded", output.path, backupPath ? "Atomic write completed; original file preserved as a backup." : "Atomic write completed for a new file.") };\n    }\n\n    if (!info.isFile()) throw new ExecutionError("read_file can only read regular files.");
     if (info.size > maxReadBytes) throw new ExecutionError(`File exceeds the configured read limit of ${maxReadBytes} bytes.`);
     const bytes = await readFile(realTarget, { signal: controller.signal });
     if (bytes.byteLength > maxReadBytes) throw new ExecutionError("File grew beyond the configured read limit during execution.");
