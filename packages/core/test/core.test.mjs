@@ -101,3 +101,11 @@ test("rejects invalid operation kinds and direct invalid risk checks", () => {
   );
   assert.throws(() => operationRequiresApproval("__proto__"), /valid operation risk/);
 });
+
+test("requires structured command arguments and prevents misleading previews", () => {
+  assert.throws(() => createPlannedOperation({ id: "run-1", kind: "run_command", description: "Run", risk: "moderate", command: "node" }), /executable and an argument array/);
+  assert.throws(() => createPlannedOperation({ id: "run-2", kind: "run_command", description: "Run", risk: "moderate", command: "node", args: ["--version"], commandPreview: "node -e unsafe" }), /preview must match/);
+  const command = createPlannedOperation({ id: "run-3", kind: "run_command", description: "Run", risk: "moderate", command: "node", args: ["--version"], commandPreview: "node --version" });
+  assert.equal(command.requiresApproval, true);
+  assert.equal(command.commandPreview, "node --version");
+});
