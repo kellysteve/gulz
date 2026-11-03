@@ -30,7 +30,7 @@ npm install --global @gulz/cli
 gulz --help
 ```
 
-Requires Node.js 20 or newer. Run the full repository checks with `npm test` from the repository root.
+Requires Node.js 20.19 or newer. Run the full repository checks with `npm test` from the repository root.
 
 Licensed under Apache-2.0. See [LICENSE](./LICENSE).
 
