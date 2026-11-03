@@ -107,3 +107,16 @@ test("enforces the write content size limit", async () => withRoot(async (root) 
   const write = createPlannedOperation({ id: "write-large", kind: "write_file", description: "Write", risk: "moderate", target: "large.txt", content: "123456" });
   await assert.rejects(executeLocalOperation(write, { rootDirectory: root, approved: true, maxReadBytes: 5 }), /write limit/);
 }));
+
+
+test("rejects symlinked parent directories even when they point inside the root", async () => withRoot(async (root) => {
+  await mkdir(join(root, "real-folder"));
+  await symlink(join(root, "real-folder"), join(root, "alias-folder"));
+  const write = createPlannedOperation({ id: "write-parent-link", kind: "write_file", description: "Write", risk: "moderate", target: "alias-folder/file.txt", content: "unsafe" });
+  await assert.rejects(executeLocalOperation(write, { rootDirectory: root, approved: true }), /Symbolic links/);
+}));
+
+test("can inspect the authorized root itself", async () => withRoot(async (root) => {
+  const result = await executeLocalOperation(operation("inspect", "."), { rootDirectory: root });
+  assert.equal(result.output.isDirectory, true);
+}));
