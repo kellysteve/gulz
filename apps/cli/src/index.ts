@@ -233,10 +233,10 @@ async function updateSourcePreview(): Promise<void> {
     const confirmation = await rl.question("Type UPDATE GULZ to continue: ");
     if (confirmation !== "UPDATE GULZ") { console.log("Update cancelled."); return; }
   } finally { rl.close(); }
+  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
   const steps = [
     ["git", ["pull", "--ff-only"]],
-    [process.platform === "win32" ? "npm.cmd" : "npm", ["install"]],
-    [process.platform === "win32" ? "npm.cmd" : "npm", ["run", "install:local"]],
+    [npm, ["run", "install:cli"]],
   ] as const;
   for (const [program, args] of steps) {
     console.log("\n$ " + program + " " + args.join(" "));
