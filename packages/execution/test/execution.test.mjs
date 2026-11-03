@@ -166,8 +166,10 @@ test("runs the explicitly approved Node version command without a shell", async 
   const result = await executeLocalOperation(command, { rootDirectory: root, approved: true });
   assert.equal(result.output.kind, "command_result");
   assert.equal(result.output.exitCode, 0);
+  assert.equal(result.verified, true);
   assert.match(result.output.stdout ?? "", /^v\\d+\\./);
   assert.equal(result.audit.kind, "run_command");
+  assert.equal(result.audit.outcome, "succeeded");
 }));
 
 test("rejects arbitrary shell-like commands and unsafe arguments", async () => withRoot(async (root) => {
@@ -262,4 +264,17 @@ test("ignores inherited Git directory overrides and runs only inside the authori
   } finally {
     await rm(outside, { recursive: true, force: true });
   }
+}));
+
+test("rejects diagnostic command operations that are not moderate-risk", async () => withRoot(async (root) => {
+  const command = createPlannedOperation({
+    id: "low-risk-command",
+    kind: "run_command",
+    description: "Check Node version",
+    risk: "low",
+    command: "node",
+    args: ["--version"],
+    target: ".",
+  });
+  await assert.rejects(executeLocalOperation(command, { rootDirectory: root }), /must be moderate-risk/);
 }));
