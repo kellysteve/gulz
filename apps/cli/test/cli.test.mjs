@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { chmod, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { promisify } from "node:util";
 
 const cliPath = resolve("dist/index.js");
 
@@ -117,6 +118,29 @@ test("refuses a symbolic link as the goals storage file", async () => {
     assert.equal(result.status, 1);
     assert.match(result.stderr, /regular file, not a symbolic link/);
     assert.equal(await readFile(outside, "utf8"), "[]");
+  });
+});
+
+test("preserves every goal when multiple CLI processes create goals concurrently", async () => {
+  await withHome(async (home) => {
+    const run = (...args) => new Promise((resolveRun, rejectRun) => {
+      const child = spawn(process.execPath, [cliPath, ...args], {
+        encoding: "utf8",
+        env: { ...process.env, GULZ_HOME: home },
+      });
+      let stderr = "";
+      child.stderr.setEncoding("utf8");
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", rejectRun);
+      child.on("close", (status) => {
+        if (status !== 0) rejectRun(new Error(stderr || `CLI exited with ${status}`));
+        else resolveRun();
+      });
+    });
+    await Promise.all(Array.from({ length: 8 }, (_, index) => run("goal", "create", `Concurrent goal ${index}`)));
+    const saved = JSON.parse(await readFile(join(home, "goals.json"), "utf8"));
+    assert.equal(saved.length, 8);
+    assert.equal(new Set(saved.map((goal) => goal.id)).size, 8);
   });
 });
 
