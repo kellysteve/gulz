@@ -103,6 +103,7 @@ async function ensureDataHome(): Promise<void> {
 }
 
 async function readGoals(): Promise<GoalRecord[]> {
+  await ensureDataHome();
   let raw: string;
   try {
     const info = await lstat(goalsFile);
