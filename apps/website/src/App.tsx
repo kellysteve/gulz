@@ -10,24 +10,24 @@ type Platform = "termux" | "linux" | "macos" | "windows" | "vps";
 const platforms: { id: Platform; name: string; detail: string; icon: typeof Terminal; methods: string[]; steps: string[]; commands: string[]; note: string }[] = [
   {
     id: "termux", name: "Android / Termux", detail: "Android phones and tablets", icon: Smartphone,
-    methods: ["CLI source build (developer preview)", "Native Android app (planned)"],
+    methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "Native Android app (planned)"],
     steps: ["Install Termux from F-Droid or the official GitHub releases.", "Update Termux and install Node.js LTS plus Git.", "Confirm Node.js is version 20.19 or newer.", "Clone GULZ, install dependencies and link the CLI."],
-    commands: ["pkg update && pkg upgrade -y", "pkg install nodejs-lts git", "node --version", "git clone https://github.com/kellysteve/gulz.git", "cd gulz", "npm install", "npm run install:local", "gulz", "gulz --help"],
-    note: "Use a recent Termux release. This installs the developer-preview CLI inside Termux, not a standalone Android app. Native Android packaging is planned.",
+    commands: ["pkg update && pkg upgrade -y", "pkg install curl", "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "less gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz --help"],
+    note: "Use a recent Termux release and install curl first. The Bash installer detects Termux, asks permission before installing missing Git/Node.js LTS, then builds the developer-preview CLI. This is not a standalone Android app.",
   },
   {
     id: "linux", name: "Linux", detail: "Ubuntu, Debian and other distributions", icon: Terminal,
-    methods: ["CLI source build (developer preview)", "AppImage / .deb / .rpm packages (planned)", "Desktop app (planned)"],
+    methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "AppImage / .deb / .rpm packages (planned)", "Desktop app (planned)"],
     steps: ["Install Node.js 20.19+ from the official Node.js download page and install Git using your distribution's package manager.", "Open a terminal and confirm node --version reports v20.19 or newer.", "Clone the public GULZ repository.", "Install workspace dependencies, build and link the CLI."],
-    commands: ["sudo apt update && sudo apt install -y git","node --version","npm --version","npm config set prefix \"$HOME/.local\"","mkdir -p \"$HOME/.local/bin\"","echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.profile",". ~/.profile","git clone https://github.com/kellysteve/gulz.git","cd gulz","npm install","npm run install:local","gulz","gulz --version","gulz doctor"],
-    note: "Install Node.js 20.19+ separately from the official download page before running these commands. The source workflow is for developers; signed .deb, .rpm and AppImage packages are not published.",
+    commands: ["curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "less gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz --version", "gulz doctor"],
+    note: "Install Node.js 20.19+ and curl first. The installer asks for an install folder and confirmation, then builds the CLI. Signed .deb, .rpm and AppImage packages are not published.",
   },
   {
     id: "macos", name: "macOS", detail: "Apple Silicon and Intel Macs", icon: Command,
-    methods: ["CLI source build (developer preview)", "Signed .dmg desktop app (planned)", "Homebrew package (planned)"],
+    methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "Signed .dmg desktop app (planned)", "Homebrew package (planned)"],
     steps: ["Install Homebrew if you use it, then install Node.js and Git.", "Confirm Node.js is version 20.19 or newer.", "Clone the GULZ repository in Terminal.", "Install dependencies and build/link the CLI."],
-    commands: ["brew install node git", "node --version", "git clone https://github.com/kellysteve/gulz.git", "cd gulz", "npm install", "npm run install:local", "gulz", "gulz --help"],
-    note: "The CLI source build is a developer preview. Signed desktop .dmg installers for Apple Silicon and Intel are planned, not available for download.",
+    commands: ["curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "less gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz --help"],
+    note: "Install Node.js 20.19+ and curl first. The installer asks before making changes. Signed desktop .dmg installers for Apple Silicon and Intel are planned, not available for download.",
   },
   {
     id: "windows", name: "Windows", detail: "Windows 10 and 11 · PowerShell", icon: Monitor,
@@ -38,10 +38,10 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
   },
   {
     id: "vps", name: "VPS / Remote servers", detail: "Ubuntu, Debian and SSH-connected hosts", icon: Server,
-    methods: ["SSH + Linux CLI source build (developer preview)", "Headless server package (planned)"],
+    methods: ["SSH + interactive Bash installer (developer preview)", "Headless server package (planned)"],
     steps: ["Connect to your server using your own SSH account.", "Install Node.js 20.19+ from the official download page and Git from your distribution's package manager.", "Clone and build GULZ as your normal user; do not run it as root.", "Run the CLI on the server itself. SSH-based remote orchestration is not available yet."],
     commands: ["sudo apt update && sudo apt install -y git","node --version","npm --version","npm config set prefix \"$HOME/.local\"","mkdir -p \"$HOME/.local/bin\"","echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.profile",". ~/.profile","git clone https://github.com/kellysteve/gulz.git","cd gulz","npm install","npm run install:local","gulz doctor"],
-    note: "The current CLI runs on the VPS where it is installed. It does not yet connect to or administer other machines automatically.",
+    note: "Install Node.js 20.19+ and curl first, then run the installer as your normal SSH user (not root). The current CLI runs on this VPS; it does not yet administer other machines automatically.",
   },
 ];
 
