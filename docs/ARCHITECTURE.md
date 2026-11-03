@@ -68,7 +68,7 @@ The CLI and execution engine are the immediate product priority. Release infrast
 
 1. Verify the existing core, CLI and website builds/tests; fix foundational defects.
 2. Complete reliable local persistence and resumable goal/task orchestration.
-3. Build the permission-aware local execution engine: typed operations, approvals, bounded execution, cancellation, audit events and independent verification.
+3. Expand the initial read-only local execution adapter with permission-aware typed operations, approval gates, bounded execution, cancellation, audit events and independent verification.
 4. Add provider-neutral AI planning and supervised execution; AI output remains untrusted.
 5. Add SSH and remote-environment adapters behind the same policy and approval boundary.
 6. Prepare signed platform packages, immutable release artifacts and verified updates.
