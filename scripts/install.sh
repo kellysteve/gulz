@@ -115,13 +115,12 @@ else
   git clone --depth 1 "$GULZ_REPO" "$INSTALL_DIR"
 fi
 cd "$INSTALL_DIR"
-npm install
 if [ "$PLATFORM" != "termux" ]; then
   npm config set prefix "$HOME/.local"
 fi
 GULZ_BIN_DIR="$(npm config get prefix)/bin"
 mkdir -p "$GULZ_BIN_DIR"
-npm run install:local
+npm run install:cli
 
 bold "5/5 · Verify the gulz command"
 case ":$PATH:" in
