@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createPlannedOperation } from "@gulz/core";
@@ -230,4 +231,35 @@ test("does not pass NODE_OPTIONS preload hooks to diagnostic subprocesses", asyn
   }
   const { access } = await import("node:fs/promises");
   await assert.rejects(access(marker));
+}));
+
+test("ignores inherited Git directory overrides and runs only inside the authorized workspace", async () => withRoot(async (root) => {
+  const outside = join(root, "..", `gulz-external-git-${Date.now()}`);
+  await mkdir(outside, { recursive: true });
+  try {
+    execFileSync("git", ["init", root], { stdio: "ignore" });
+    execFileSync("git", ["init", outside], { stdio: "ignore" });
+    await writeFile(join(root, "workspace-file.txt"), "inside");
+    const previous = process.env.GIT_DIR;
+    process.env.GIT_DIR = join(outside, ".git");
+    try {
+      const command = createPlannedOperation({
+        id: "git-status-scope",
+        kind: "run_command",
+        description: "Inspect workspace status",
+        risk: "moderate",
+        command: "git",
+        args: ["status", "--short"],
+        target: ".",
+      });
+      const result = await executeLocalOperation(command, { rootDirectory: root, approved: true });
+      assert.match(result.output.stdout ?? "", /workspace-file\.txt/);
+      assert.equal(result.output.exitCode, 0);
+    } finally {
+      if (previous === undefined) delete process.env.GIT_DIR;
+      else process.env.GIT_DIR = previous;
+    }
+  } finally {
+    await rm(outside, { recursive: true, force: true });
+  }
 }));
