@@ -31,7 +31,7 @@ Requires Node.js 20 or newer. Run the full repository checks with `npm test` fro
 
 Licensed under Apache-2.0. See [LICENSE](./LICENSE).
 
-## Read-only filesystem commands
+## Local filesystem commands
 
 The CLI includes local execution commands:
 
