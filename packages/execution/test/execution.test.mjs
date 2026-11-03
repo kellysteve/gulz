@@ -44,7 +44,7 @@ test("rejects symlink targets", async () => withRoot(async (root) => {
 }));
 
 test("rejects unsupported operation kinds", async () => withRoot(async (root) => {
-  const unsupported = createPlannedOperation({ id: "shell", kind: "run_command", description: "Run shell", risk: "high" });
+  const unsupported = createPlannedOperation({ id: "shell", kind: "run_command", description: "Run shell", risk: "high", command: "sh", args: ["-c", "echo unsafe"] });
   await assert.rejects(executeLocalOperation(unsupported, { rootDirectory: root, approved: true }), /supports inspect, read_file, write_file and allowlisted run_command/);
 }));
 
