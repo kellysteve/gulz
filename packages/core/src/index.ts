@@ -192,6 +192,7 @@ export function createPlannedOperation(input: CreatePlannedOperationInput): Plan
 
   return {
     ...input,
+    ...(input.kind === "run_command" ? { commandPreview: [input.command, ...(input.args ?? [])].join(" ") } : {}),
     id: input.id.trim(),
     description: input.description.trim(),
     requiresApproval: operationRequiresApproval(input.risk),
