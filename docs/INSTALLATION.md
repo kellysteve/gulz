@@ -83,7 +83,6 @@ brew install node git
 node --version
 git clone https://github.com/kellysteve/gulz.git
 cd gulz
-npm install
 npm run install:cli
 gulz --help
 gulz doctor
@@ -106,8 +105,7 @@ Close and reopen PowerShell so the PATH changes apply. Then:
 node --version
 git clone https://github.com/kellysteve/gulz.git
 cd gulz
-npm install
-npm run install:local
+npm run install:cli
 gulz --help
 gulz doctor
 ~~~
@@ -172,7 +170,7 @@ From the repository root:
 npm test
 ~~~
 
-This builds and tests the core, execution and CLI packages and typechecks the workspaces. These checks are present in the repository; they must be run in a clean environment before a public release. Do not treat a source build as production-ready machine administration software.
+On Termux or another host where the website's Wrangler/Workerd runtime is unavailable, run `npm run test:cli` to test and typecheck only the CLI workspaces. On supported desktop/Linux development hosts, `npm test` also typechecks the website. These checks are present in the repository; they must be run in a clean environment before a public release. Do not treat a source build as production-ready machine administration software.
 
 ## Planned desktop and package distribution
 
