@@ -40,7 +40,7 @@ function App() {
             <div className="hero-note"><ShieldCheck size={15}/> You stay in control. Sensitive actions need your approval.</div>
           </div>
           <div className="terminal-card" aria-label="Illustrative GULZ terminal preview">
-            <div className="terminal-head"><div className="window-dots"><i/><i/><i/></div><span>gulz — interactive session</span><span className="terminal-live">PREVIEW</span></div>
+            <div className="terminal-head"><div className="window-dots"><i/><i/><i/></div><span>gulz — interactive session</span><span className="terminal-live">CONCEPT</span></div>
             <div className="terminal-body">
               <div className="terminal-prompt"><b>❯</b> gulz</div>
               <div className="terminal-title">Good evening. I'm GULZ.</div>
@@ -49,7 +49,7 @@ function App() {
               <div className="terminal-line"><span className="ok"><Check size={13}/></span> Goal understood</div>
               <div className="terminal-line"><span className="ok"><Check size={13}/></span> Environment inspection planned</div>
               <div className="terminal-line"><span className="wait">◌</span> Awaiting execution approval</div>
-              <div className="terminal-footer"><span><Bot size={13}/> GULZ AI</span><span>SUPERVISED MODE</span></div>
+              <div className="terminal-footer"><span><Bot size={13}/> PLANNED AI LAYER</span><span>SUPERVISED MODE</span></div>
             </div>
           </div>
         </section>
@@ -84,7 +84,7 @@ function App() {
             <div className="install-detail" role="tabpanel">
               <div className="install-detail-top"><div><span className="available-label">INSTALLATION GUIDE</span><h3>{active.name}</h3><p>{active.detail}</p></div><Download size={23}/></div>
               <h4>Distribution status</h4><div className="method-list">{active.methods.map((method) => <span key={method}><ArrowRight size={14}/>{method}</span>)}</div>
-              <h4>Developer preview commands</h4><pre className="install-code"><code>{active.commands.join("\n")}</code></pre><p className="install-note">{active.note} <a href="https://nodejs.org/en/download" target="_blank" rel="noreferrer">Get Node.js</a>. {active.id === "termux" && <>Get Termux from <a href="https://f-droid.org/packages/com.termux/" target="_blank" rel="noreferrer">F-Droid</a> or the <a href="https://github.com/termux/termux-app/releases" target="_blank" rel="noreferrer">official releases</a>.</>}</p>
+              <h4>Developer preview commands</h4><pre className="install-code"><code>{active.commands.join("\n")}</code></pre><p className="install-note">{active.note} {active.id !== "termux" && <><a href="https://nodejs.org/en/download" target="_blank" rel="noreferrer">Get Node.js</a>. </>} {active.id === "termux" && <>Get Termux from <a href="https://f-droid.org/packages/com.termux/" target="_blank" rel="noreferrer">F-Droid</a> or the <a href="https://github.com/termux/termux-app/releases" target="_blank" rel="noreferrer">official releases</a>.</>}</p>
               <h4>Step-by-step setup</h4><ol className="steps-list">{active.steps.map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}</ol>
               <div className="release-notice"><ShieldCheck size={17}/><p><b>These are source-build instructions, not a stable installer.</b><br/>The CLI is in early development. Native packages and signed downloads will only be listed after platform builds and security checks pass.</p></div>
             </div>
