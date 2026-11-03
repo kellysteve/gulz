@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { homedir, platform, arch, release } from "node:os";
-import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { access, chmod, lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -95,11 +95,21 @@ function help(): void {
 
 async function ensureDataHome(): Promise<void> {
   await mkdir(dataHome, { recursive: true, mode: 0o700 });
+  const info = await lstat(dataHome);
+  if (!info.isDirectory() || info.isSymbolicLink()) {
+    throw new Error("GULZ data path must be a real directory, not a symbolic link.");
+  }
+  await chmod(dataHome, 0o700);
 }
 
 async function readGoals(): Promise<GoalRecord[]> {
   let raw: string;
   try {
+    const info = await lstat(goalsFile);
+    if (!info.isFile() || info.isSymbolicLink()) {
+      throw new Error("GULZ goals storage must be a regular file, not a symbolic link.");
+    }
+    await chmod(goalsFile, 0o600);
     raw = await readFile(goalsFile, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
