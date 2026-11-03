@@ -134,3 +134,19 @@ test("does not overwrite an existing file without explicit approval", async () =
   const { readFile } = await import("node:fs/promises");
   assert.equal(await readFile(join(root, "existing.txt"), "utf8"), "keep me");
 }));
+
+test("restores a backup through the same approved write policy", async () => withRoot(async (root) => {
+  await writeFile(join(root, "note.txt"), "original");
+  const replace = createPlannedOperation({ id: "replace-for-restore", kind: "write_file", description: "Replace", risk: "moderate", target: "note.txt", content: "new value" });
+  const replaced = await executeLocalOperation(replace, { rootDirectory: root, approved: true });
+  assert.ok(replaced.output.backupPath);
+  const backupRead = await executeLocalOperation(operation("read_file", replaced.output.backupPath), { rootDirectory: root });
+  const restore = createPlannedOperation({ id: "restore-note", kind: "write_file", description: "Restore backup", risk: "moderate", target: "note.txt", content: backupRead.output.content });
+  const restored = await executeLocalOperation(restore, { rootDirectory: root, approved: true });
+  const { readFile, stat } = await import("node:fs/promises");
+  assert.equal(await readFile(join(root, "note.txt"), "utf8"), "original");
+  assert.ok(restored.output.backupPath, "the replaced version should itself be preserved");
+  if (process.platform !== "win32") {
+    assert.equal((await stat(join(root, replaced.output.backupPath))).mode & 0o777, 0o600);
+  }
+}));
