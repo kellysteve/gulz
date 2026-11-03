@@ -218,7 +218,35 @@ async function doctor(): Promise<boolean> {
 }
 
 
-async function updateSourcePreview(): Promise<void> {\n  const installDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");\n  if (!existsSync(join(installDirectory, ".git")) || !existsSync(join(installDirectory, "package.json"))) {\n    throw new Error("This GULZ installation is not linked from a source checkout. Published package updates are not available yet. Follow the platform update instructions at gulz.gaxity.com.ng.");\n  }\n  if (!stdin.isTTY || !stdout.isTTY) throw new Error("Updates require an interactive terminal and explicit confirmation.");\n  const rl = createInterface({ input: stdin, output: stdout });\n  try {\n    console.log("GULZ source update");\n    console.log("Repository: " + installDirectory);\n    console.log("This will fast-forward the source checkout, install its declared dependencies, rebuild the CLI and refresh the global link.");\n    console.log("Local goal data in " + dataHome + " will not be intentionally changed.");\n    const confirmation = await rl.question("Type UPDATE GULZ to continue: ");\n    if (confirmation !== "UPDATE GULZ") { console.log("Update cancelled."); return; }\n  } finally { rl.close(); }\n  const steps = [\n    ["git", ["pull", "--ff-only"]],\n    [process.platform === "win32" ? "npm.cmd" : "npm", ["install"]],\n    [process.platform === "win32" ? "npm.cmd" : "npm", ["run", "install:local"]],\n  ] as const;\n  for (const [program, args] of steps) {\n    console.log("\\n$ " + program + " " + args.join(" "));\n    const result = spawnSync(program, [...args], { cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32" });\n    if (result.error) throw result.error;\n    if (result.status !== 0) throw new Error("Update stopped because " + program + " exited with status " + String(result.status) + ". Fix the reported issue and run `gulz update` again.");\n  }\n  console.log("\\nGULZ update completed. Close this session and run `gulz` again to use the updated CLI.");\n}\nasync function interactiveSession(): Promise<void> {
+async function updateSourcePreview(): Promise<void> {
+  const installDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+  if (!existsSync(join(installDirectory, ".git")) || !existsSync(join(installDirectory, "package.json"))) {
+    throw new Error("This GULZ installation is not linked from a source checkout. Published package updates are not available yet. Follow the platform update instructions at gulz.gaxity.com.ng.");
+  }
+  if (!stdin.isTTY || !stdout.isTTY) throw new Error("Updates require an interactive terminal and explicit confirmation.");
+  const rl = createInterface({ input: stdin, output: stdout });
+  try {
+    console.log("GULZ source update");
+    console.log("Repository: " + installDirectory);
+    console.log("This will fast-forward the source checkout, install its declared dependencies, rebuild the CLI and refresh the global link.");
+    console.log("Local goal data in " + dataHome + " will not be intentionally changed.");
+    const confirmation = await rl.question("Type UPDATE GULZ to continue: ");
+    if (confirmation !== "UPDATE GULZ") { console.log("Update cancelled."); return; }
+  } finally { rl.close(); }
+  const steps = [
+    ["git", ["pull", "--ff-only"]],
+    [process.platform === "win32" ? "npm.cmd" : "npm", ["install"]],
+    [process.platform === "win32" ? "npm.cmd" : "npm", ["run", "install:local"]],
+  ] as const;
+  for (const [program, args] of steps) {
+    console.log("\\n$ " + program + " " + args.join(" "));
+    const result = spawnSync(program, [...args], { cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32" });
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error("Update stopped because " + program + " exited with status " + String(result.status) + ". Fix the reported issue and run `gulz update` again.");
+  }
+  console.log("\\nGULZ update completed. Close this session and run `gulz` again to use the updated CLI.");
+}
+async function interactiveSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) {
     help();
     console.log("\nTip: run `gulz` in a terminal to open the interactive session.");
