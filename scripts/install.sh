@@ -10,7 +10,7 @@ info() { printf '  %s\n' "$*"; }
 warn() { printf '\nWarning: %s\n' "$*" >&2; }
 fail() { printf '\nError: %s\n' "$*" >&2; exit 1; }
 ask_yes_no() {
-  local prompt="$1" answer
+  local prompt="$1" answer=""
   while true; do
     read -r -p "$prompt [y/N] " answer </dev/tty || true
     answer_lc="$(printf '%s' "$answer" | tr '[:upper:]' '[:lower:]')"
