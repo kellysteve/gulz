@@ -14,7 +14,7 @@ After the developer-preview installation is linked, run `gulz` with no arguments
 
 This preview is a local goal workspace, not yet an AI agent: AI planning, task execution, pause/resume, and background recovery are not connected. The interface does not pretend those features are running.
 
-Install/link the CLI once. To update this source preview later, run `gulz update` from an interactive terminal. Review the displayed repository path and type `UPDATE GULZ` to approve. It fast-forwards the checkout, installs declared dependencies, rebuilds and refreshes the global link. Close the current session and run `gulz` again. Published package updates are not available yet.
+Install/link the CLI once. To update this source preview later, run `gulz update` from an interactive terminal. Review the displayed repository path and type `UPDATE GULZ` to approve. It fast-forwards the checkout, installs only the CLI workspace dependencies (including TypeScript), rebuilds and refreshes the global link. Close the current session and run `gulz` again. Published package updates are not available yet.
 
 ## Current capabilities
 
@@ -37,7 +37,7 @@ npm install --global @gulz/cli
 gulz --help
 ~~~
 
-Requires Node.js 20.19 or newer. Run the repository checks with npm test from the repository root.
+Requires Node.js 20.19 or newer. Run CLI-only checks with `npm run test:cli` from the repository root. This avoids requiring the website's Wrangler/Workerd dependency on Termux.
 
 ## Command reference
 
