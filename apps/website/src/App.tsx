@@ -130,7 +130,7 @@ function App() {
 
         <section className="section cli-reference" id="commands">
           <div className="section-kicker">CLI QUICK REFERENCE</div><h2>Open GULZ whenever you need it.</h2>
-          <p className="section-lead">Run `gulz` to open the interactive terminal session. Create and revisit locally saved goals, or use the commands below. Install once; to update this source preview later, enter the cloned repository and run `git pull --ff-only`, `npm install` and `npm run install:local`, then restart GULZ.</p>
+          <p className="section-lead">Run `gulz` to open the interactive terminal session. Create and revisit locally saved goals, or use the commands below. Install once; to update this source preview later, enter the cloned repository and run `git pull --ff-only` followed by `npm run install:cli`, then restart GULZ. This CLI-only command skips the website Wrangler/Workerd dependency.</p>
           <div className="command-grid">
             <article><h3><Terminal size={17}/> Start and inspect</h3><pre><code>{"gulz --help\ngulz doctor\ngulz init\ngulz goals"}</code></pre></article>
             <article><h3><Code2 size={17}/> Goals and files</h3><pre><code>{'gulz goal create "Prepare my project"\ngulz inspect .\ngulz read README.md\ngulz write notes.txt'}</code></pre></article>
