@@ -218,16 +218,16 @@ async function doctor(): Promise<boolean> {
 async function interactiveSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) {
     help();
-    console.log("\\nTip: run `gulz` in a terminal to open the interactive session.");
+    console.log("\nTip: run `gulz` in a terminal to open the interactive session.");
     return;
   }
 
   const rl = createInterface({ input: stdin, output: stdout });
   const ask = async (question: string): Promise<string> => (await rl.question(question)).trim();
   const showMenu = (): void => {
-    console.log("\\nGULZ — Goals. Executed.");
+    console.log("\nGULZ — Goals. Executed.");
     console.log("Your local supervised workspace");
-    console.log("\\n  1. Create a goal");
+    console.log("\n  1. Create a goal");
     console.log("  2. View saved goals");
     console.log("  3. System check");
     console.log("  4. Command reference");
@@ -240,7 +240,7 @@ async function interactiveSession(): Promise<void> {
     console.log("AI planning and autonomous task execution are not connected in this preview yet.");
     while (true) {
       showMenu();
-      const choice = await ask("\\nChoose an option: ");
+      const choice = await ask("\nChoose an option: ");
       if (choice === "0" || choice.toLowerCase() === "exit" || choice.toLowerCase() === "quit") {
         console.log("GULZ session closed. Your saved goals remain on this device.");
         break;
@@ -254,7 +254,7 @@ async function interactiveSession(): Promise<void> {
           await saveGoals([...goals, created]);
           return created;
         });
-        console.log("\\nGoal saved successfully.");
+        console.log("\nGoal saved successfully.");
         console.log("Title:  " + goal.title);
         console.log("ID:     " + goal.id);
         console.log("Status: draft");
@@ -264,7 +264,7 @@ async function interactiveSession(): Promise<void> {
       if (choice === "2" || choice.toLowerCase() === "goals") {
         const goals = await readGoals();
         if (!goals.length) console.log("No saved goals yet. Choose 1 to create your first goal.");
-        else for (const goal of goals) console.log("\\n" + goal.id + "  [" + goal.status + "]  " + goal.title);
+        else for (const goal of goals) console.log("\n" + goal.id + "  [" + goal.status + "]  " + goal.title);
         continue;
       }
       if (choice === "3" || choice.toLowerCase() === "doctor") {
