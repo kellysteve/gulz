@@ -2,8 +2,10 @@
 
 import { homedir, platform, arch, release } from "node:os";
 import { access, chmod, lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { constants } from "node:fs";
-import { join, resolve } from "node:path";
+import { constants, existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
@@ -88,6 +90,7 @@ function help(): void {
     "Commands:",
     "  init                  Create the local GULZ data directory",
     "  doctor                Check the local runtime and data directory",
+    "  update                Update this source-preview installation",
     "  goal create <title>   Save a new goal locally",
     "  goals                 List saved goals",
     "  goal show <id>        Show a saved goal",
@@ -215,7 +218,7 @@ async function doctor(): Promise<boolean> {
 }
 
 
-async function interactiveSession(): Promise<void> {
+async function updateSourcePreview(): Promise<void> {\n  const installDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");\n  if (!existsSync(join(installDirectory, ".git")) || !existsSync(join(installDirectory, "package.json"))) {\n    throw new Error("This GULZ installation is not linked from a source checkout. Published package updates are not available yet. Follow the platform update instructions at gulz.gaxity.com.ng.");\n  }\n  if (!stdin.isTTY || !stdout.isTTY) throw new Error("Updates require an interactive terminal and explicit confirmation.");\n  const rl = createInterface({ input: stdin, output: stdout });\n  try {\n    console.log("GULZ source update");\n    console.log("Repository: " + installDirectory);\n    console.log("This will fast-forward the source checkout, install its declared dependencies, rebuild the CLI and refresh the global link.");\n    console.log("Local goal data in " + dataHome + " will not be intentionally changed.");\n    const confirmation = await rl.question("Type UPDATE GULZ to continue: ");\n    if (confirmation !== "UPDATE GULZ") { console.log("Update cancelled."); return; }\n  } finally { rl.close(); }\n  const steps = [\n    ["git", ["pull", "--ff-only"]],\n    [process.platform === "win32" ? "npm.cmd" : "npm", ["install"]],\n    [process.platform === "win32" ? "npm.cmd" : "npm", ["run", "install:local"]],\n  ] as const;\n  for (const [program, args] of steps) {\n    console.log("\\n$ " + program + " " + args.join(" "));\n    const result = spawnSync(program, [...args], { cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32" });\n    if (result.error) throw result.error;\n    if (result.status !== 0) throw new Error("Update stopped because " + program + " exited with status " + String(result.status) + ". Fix the reported issue and run `gulz update` again.");\n  }\n  console.log("\\nGULZ update completed. Close this session and run `gulz` again to use the updated CLI.");\n}\nasync function interactiveSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) {
     help();
     console.log("\nTip: run `gulz` in a terminal to open the interactive session.");
@@ -231,6 +234,7 @@ async function interactiveSession(): Promise<void> {
     console.log("  2. View saved goals and inspect a goal");
     console.log("  3. System check");
     console.log("  4. Command reference");
+    console.log("  5. Update GULZ");
     console.log("  0. Exit");
   };
 
@@ -296,11 +300,11 @@ async function interactiveSession(): Promise<void> {
         await doctor();
         continue;
       }
-      if (choice === "4" || choice.toLowerCase() === "help") {
+      if (choice === "5" || choice.toLowerCase() === "update") {\n        await updateSourcePreview();\n        continue;\n      }\n      if (choice === "4" || choice.toLowerCase() === "help") {
         help();
         continue;
       }
-      console.log("I didn't recognise that option. Choose 1, 2, 3, 4 or 0.");
+      console.log("I didn't recognise that option. Choose 1, 2, 3, 4, 5 or 0.");
     }
   } finally {
     rl.close();
@@ -329,7 +333,7 @@ async function main(): Promise<void> {
     console.log(`Local data: ${dataHome}`);
     return;
   }
-  if (command === "doctor") {
+  if (command === "update") {\n    await updateSourcePreview();\n    return;\n  }\n  if (command === "doctor") {
     const ok = await doctor();
     if (!ok) process.exitCode = 1;
     return;
