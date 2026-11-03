@@ -11,22 +11,22 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
   {
     id: "termux", name: "Android / Termux", detail: "Android phones and tablets", icon: Smartphone,
     methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "Native Android app (planned)"],
-    steps: ["Install Termux from F-Droid or the official GitHub releases.", "Update Termux and install Node.js LTS plus Git.", "Confirm Node.js is version 20.19 or newer.", "Clone GULZ, install dependencies and link the CLI."],
-    commands: ["pkg update && pkg upgrade -y","pkg install nodejs-lts git curl","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz","gulz doctor"],
+    steps: ["Install Termux from F-Droid or the official GitHub releases.", "Update Termux and install curl. The installer can offer to install Git and Node.js LTS if missing.", "Download and review the installer script.", "Run bash gulz-install.sh, answer its prompts, then launch gulz."],
+    commands: ["pkg update && pkg upgrade -y", "pkg install curl", "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "less gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz doctor"],
     note: "The installer asks for the install folder and confirmation. It can offer to install missing Termux Git and Node.js LTS packages. This is a developer-preview CLI inside Termux, not a standalone Android app. Native Android packaging is planned.",
   },
   {
     id: "linux", name: "Linux", detail: "Ubuntu, Debian and other distributions", icon: Terminal,
     methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "AppImage / .deb / .rpm packages (planned)", "Desktop app (planned)"],
     steps: ["Install Node.js 20.19+ and curl.", "Download the public installer and review the script if desired.", "Run bash gulz-install.sh and answer the install-folder and confirmation prompts.", "Open a new terminal and run gulz."],
-    commands: ["# Install Node.js 20.19+ and curl first","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz","gulz doctor"],
+    commands: ["# Install Node.js 20.19+ and curl first", "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "less gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz doctor"],
     note: "The installer detects Linux, asks for the install folder and confirmation, then builds and links the CLI. Review scripts/install.sh before running it. Signed .deb, .rpm and AppImage packages are not published.",
   },
   {
     id: "macos", name: "macOS", detail: "Apple Silicon and Intel Macs", icon: Command,
     methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "Signed .dmg desktop app (planned)", "Homebrew package (planned)"],
     steps: ["Install Node.js 20.19+ and curl.", "Download the public installer and review the script if desired.", "Run bash gulz-install.sh and answer the install-folder and confirmation prompts.", "Open a new terminal and run gulz."],
-    commands: ["brew install node git curl","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz","gulz doctor"],
+    commands: ["brew install node git curl", "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "less gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz doctor"],
     note: "Install Node.js 20.19+ and Git first. The interactive installer asks where to install GULZ and requests confirmation. Signed desktop .dmg installers for Apple Silicon and Intel are planned, not available for download.",
   },
   {
@@ -40,7 +40,7 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
     id: "vps", name: "VPS / Remote servers", detail: "Ubuntu, Debian and SSH-connected hosts", icon: Server,
     methods: ["SSH + interactive Bash installer (developer preview)", "Headless server package (planned)"],
     steps: ["Connect to your server using your own SSH account.", "Install Node.js 20.19+ and curl on the VPS.", "Download and run the Bash installer as your normal user, not root.", "Run gulz on the server itself. SSH-based remote orchestration is not available yet."],
-    commands: ["# Install Node.js 20.19+ and curl first","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz doctor"],
+    commands: ["# Install Node.js 20.19+ and curl first", "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "less gulz-install.sh", "bash gulz-install.sh", "gulz doctor"],
     note: "Install Node.js 20.19+ and curl first, then run the interactive installer as your normal non-root SSH user. The CLI runs on this VPS; it does not yet connect to or administer other machines automatically.",
   },
 ];
