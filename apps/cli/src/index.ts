@@ -163,7 +163,7 @@ async function withGoalsLock<T>(run: () => Promise<T>): Promise<T> {
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
       if (Date.now() - started > 15_000) {
-        throw new Error("GULZ storage is locked by another process. If no GULZ process is running, remove the stale lock file at ${goalsLockFile} and retry.");
+        throw new Error(`GULZ storage is locked by another process. If no GULZ process is running, remove the stale lock file at ${goalsLockFile} and retry.`);
       }
       await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
     }
