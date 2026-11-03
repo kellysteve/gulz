@@ -5,6 +5,8 @@ import { access, chmod, lstat, mkdir, readFile, rename, rm, writeFile } from "no
 import { constants } from "node:fs";
 import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import { createInterface } from "node:readline/promises";
+import { stdin, stdout } from "node:process";
 import { createGoal, createPlannedOperation, operationRequiresApproval, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
 import { executeLocalOperation } from "@gulz/execution";
 
@@ -40,7 +42,7 @@ function isValidOperation(value: unknown): boolean {
   if (typeof value.kind !== "string" || !operationKinds.has(value.kind as OperationKind)) return false;
   if (typeof value.risk !== "string" || !risks.has(value.risk as RiskLevel)) return false;
   if (value.requiresApproval !== operationRequiresApproval(value.risk as RiskLevel)) return false;
-  return isOptionalString(value.target) && isOptionalString(value.commandPreview);
+  return isOptionalString(value.target) && isOptionalString(value.content) && isOptionalString(value.commandPreview);
 }
 
 function isValidTask(value: unknown): boolean {
@@ -89,6 +91,7 @@ function help(): void {
     "  goal show <id>        Show a saved goal",
     "  inspect <path>        Inspect a path inside the current directory",
     "  read <path>           Read a file inside the current directory (256 KiB max)",
+    "  write <path>          Write one line of text after explicit confirmation",
     "  --help, -h            Show this help",
     "  --version, -v         Show the installed version",
     "",
@@ -232,7 +235,7 @@ async function main(): Promise<void> {
     if (!ok) process.exitCode = 1;
     return;
   }
-  if (command === "inspect" || command === "read") {
+  if (command === "write") {\n    const target = args.join(" ").trim();\n    if (!target) { console.error("Usage: gulz write <relative-path>"); process.exitCode = 2; return; }\n    if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error("File writes require an interactive terminal; non-interactive approval is disabled.");\n    const rl = createInterface({ input: stdin, output: stdout });\n    try {\n      const content = await rl.question("Text to write (single line): ");\n      const bytes = Buffer.byteLength(content, "utf8");\n      console.log(`\\nTarget: ${target}\\nBytes:  ${bytes}`);\n      const confirmation = await rl.question(`Type WRITE ${target} to approve this change: `);\n      if (confirmation !== `WRITE ${target}`) { console.log("Write cancelled."); return; }\n      const operation = createPlannedOperation({ id: randomUUID(), kind: "write_file", description: "Write a local text file", risk: "moderate", target, content });\n      const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });\n      console.log(JSON.stringify(result, null, 2));\n    } finally { rl.close(); }\n    return;\n  }\n  if (command === "inspect" || command === "read") {
     const target = args.join(" ").trim();
     if (!target) {
       console.error(`Usage: gulz ${command} <relative-path>`);
