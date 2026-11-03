@@ -19,6 +19,7 @@ async function withHome(run) {
 function invoke(home, ...args) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
+    cwd: home,
     env: { ...process.env, GULZ_HOME: home },
   });
 }
@@ -125,6 +126,7 @@ test("preserves every goal when multiple CLI processes create goals concurrently
     const run = (...args) => new Promise((resolveRun, rejectRun) => {
       const child = spawn(process.execPath, [cliPath, ...args], {
         encoding: "utf8",
+        cwd: home,
         env: { ...process.env, GULZ_HOME: home },
       });
       let stderr = "";
