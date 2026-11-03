@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible problem in GULZ.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: "Please remove secrets, access tokens, private keys, personal data and server addresses before submitting."
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: GULZ version or commit
+      placeholder: "0.1.0 / commit SHA"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Environment
+      options:
+        - Android / Termux
+        - Linux desktop
+        - Linux VPS
+        - macOS
+        - Windows / PowerShell
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Node.js and npm versions
+      placeholder: "node v22.x / npm 10.x"
+    validations:
+      required: false
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the smallest safe sequence of steps.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Redact secrets, usernames, hostnames and private paths before pasting.
+      render: shell
+    validations:
+      required: false
