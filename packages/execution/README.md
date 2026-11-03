@@ -3,8 +3,8 @@
 The local execution adapter for GULZ supports bounded filesystem operations:
 
 - `inspect`: retrieve metadata for a path inside an explicitly authorized root.
-- `read_file`: read a regular file inside that root, with a configurable byte cap and SHA-256 verification.
-- `write_file`: write UTF-8 text after explicit approval. Writes use a same-directory temporary file and atomic rename; an overwritten regular file is copied to a uniquely named backup beside the target.
+- `read_file`: read a regular UTF-8 text file inside that root, with a configurable byte cap and SHA-256 verification. Invalid UTF-8 is rejected rather than silently corrupted.
+- `write_file`: write UTF-8 text after explicit approval. Writes use a same-directory temporary file and atomic rename; an overwritten regular file is copied to a uniquely named, owner-only backup beside the target. New files and temporary files are also owner-only.
 
 Every operation is reconstructed through the shared core validator. Approval metadata is checked rather than trusted. Inspection and reads are low-risk. Writes are moderate-risk and require an explicit approval signal from the caller. The executor rejects symlink targets, limits content to the configured byte cap, and verifies the saved bytes. It does not execute shell commands, delete, install, change permissions, access networks, or connect over SSH.
 
