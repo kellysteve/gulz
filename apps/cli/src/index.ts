@@ -284,7 +284,8 @@ async function interactiveSession(): Promise<void> {
 
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
-  if (!command) return interactiveSession();\n  if (command === "--help" || command === "-h") return help();
+  if (!command) return interactiveSession();
+  if (command === "--help" || command === "-h") return help();
   if (command === "--version" || command === "-v") {
     console.log(`GULZ ${VERSION}`);
     return;
