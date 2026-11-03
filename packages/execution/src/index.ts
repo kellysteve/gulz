@@ -59,7 +59,7 @@ function audit(operation: PlannedOperation, outcome: ExecutionAuditEvent["outcom
     id: randomUUID(),
     timestamp: new Date().toISOString(),
     operationId: operation.id,
-    kind: operation.kind as "inspect" | "read_file" | "write_file",
+    kind: operation.kind as ExecutionAuditEvent["kind"],
     risk: operation.risk,
     outcome,
     target,
@@ -176,18 +176,20 @@ function verifyOperation(input: PlannedOperation): PlannedOperation {
       risk: input.risk,
       ...(input.target === undefined ? {} : { target: input.target }),
       ...(input.content === undefined ? {} : { content: input.content }),
+      ...(input.command === undefined ? {} : { command: input.command }),
+      ...(input.args === undefined ? {} : { args: input.args }),
       ...(input.commandPreview === undefined ? {} : { commandPreview: input.commandPreview }),
     });
     if (input.requiresApproval !== validated.requiresApproval) {
       throw new ExecutionError("Operation approval metadata is inconsistent with its risk level.");
     }
-    if (validated.kind !== "inspect" && validated.kind !== "read_file" && validated.kind !== "write_file") {
-      throw new ExecutionError("This execution engine supports inspect, read_file and write_file operations.");
+    if (validated.kind !== "inspect" && validated.kind !== "read_file" && validated.kind !== "write_file" && validated.kind !== "run_command") {
+      throw new ExecutionError("This execution engine supports inspect, read_file, write_file and allowlisted run_command operations.");
     }
-    if (validated.kind === "write_file" && validated.risk !== "moderate") {
-      throw new ExecutionError("write_file operations must be moderate-risk and explicitly approved.");
+    if ((validated.kind === "write_file" || validated.kind === "run_command") && validated.risk !== "moderate") {
+      throw new ExecutionError("write_file and run_command operations must be moderate-risk and explicitly approved.");
     }
-    if (validated.kind !== "write_file" && validated.risk !== "low") {
+    if (validated.kind !== "write_file" && validated.kind !== "run_command" && validated.risk !== "low") {
       throw new ExecutionError("Filesystem inspection and reading are currently restricted to low-risk operations.");
     }
     return validated;
@@ -198,9 +200,9 @@ function verifyOperation(input: PlannedOperation): PlannedOperation {
 }
 
 /**
- * Executes bounded local filesystem operations. Writes are moderate-risk,
- * require explicit caller approval and preserve replaced files as backups.
- * No shell, network, install, delete or permission-changing operation is exposed.
+ * Executes bounded local filesystem operations and a tiny fixed command allowlist.
+ * Writes and commands require explicit caller approval. No shell, network, install,
+ * delete or permission-changing operation is exposed.
  */
 export async function executeLocalOperation(
   untrustedOperation: PlannedOperation,
