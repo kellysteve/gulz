@@ -6,13 +6,13 @@ GULZ is in early development. The interactive Bash installer and repository sour
 
 ### Interactive Bash installer (Termux, Linux, macOS and VPS)
 
-The installer detects the environment, asks where to place the source checkout, explains each change and asks for confirmation before cloning/updating the repository, installing npm dependencies, building the CLI and linking the `gulz` command. It does not run as root by default, edit shell startup files or install arbitrary system packages without asking. Download it first, inspect it if you wish, then run it:
+The installer detects the environment, asks where to place the source checkout, explains each change and asks for confirmation before cloning/updating the repository, installing npm dependencies, building the CLI and linking the `gulz` command. It runs as your normal user by default, asks before using a package manager to install missing prerequisites, and asks before adding its user-local command directory to your shell profile. Download it first, inspect it if you wish, then run it:
 
 ~~~sh
 curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
 ~~~
 
-On Termux, install `curl` first with `pkg install curl`. The installer can offer to install Git and Node.js LTS through Termux package manager if they are missing. On Linux/macOS/VPS, install Node.js 20.19+ first; the installer will not silently change the system Node.js installation. The script is public at `scripts/install.sh`; review it before running. Its prompts read from `/dev/tty`, so the `curl | bash` form remains interactive. Do not use `sudo bash` or run it as root.
+On Termux, install `curl` first with `pkg install curl`. The installer can offer to install Git and Node.js LTS through Termux package manager if they are missing. On Linux/macOS/VPS, install Node.js 20.19+ first; the installer will not silently change the system Node.js installation. The script is public at `scripts/install.sh`; review it before running. Its prompts read from `/dev/tty`, so the `curl | bash` form remains interactive. Do not use `sudo bash` or run it as root. For a one-line install, use `curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash`.
 
 Use Node.js **20.19 or newer** and Git for the source-build route. Install Node.js from the official [Node.js downloads page](https://nodejs.org/en/download).
 
