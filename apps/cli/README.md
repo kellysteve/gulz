@@ -2,6 +2,12 @@
 
 The GULZ command-line interface.
 
+## Local storage safety
+
+Goal creation and initialization use an exclusive lock so concurrent GULZ processes cannot overwrite one another's updates. If a process is forcibly terminated while holding the lock, later writes fail closed after a short wait; inspect running GULZ processes before removing the stale `goals.lock` file from the configured data directory. Do not remove the lock while another GULZ process is active.
+
+The goals file is written atomically, and the data directory and goals file are restricted to the current user's permissions where the platform supports POSIX permissions.
+
 ## Current capabilities
 
 - Initialize local GULZ data storage.
