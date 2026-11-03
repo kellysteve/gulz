@@ -44,8 +44,8 @@ test("rejects symlink targets", async () => withRoot(async (root) => {
 }));
 
 test("rejects unsupported operation kinds", async () => withRoot(async (root) => {
-  const unsupported = createPlannedOperation({ id: "shell", kind: "run_command", description: "Run shell", risk: "high", command: "sh", args: ["-c", "echo unsafe"] });
-  await assert.rejects(executeLocalOperation(unsupported, { rootDirectory: root, approved: true }), /supports inspect, read_file, write_file and allowlisted run_command/);
+  const unsupported = createPlannedOperation({ id: "shell", kind: "run_command", description: "Run shell", risk: "moderate", command: "sh", args: ["-c", "echo unsafe"] });
+  await assert.rejects(executeLocalOperation(unsupported, { rootDirectory: root, approved: true }), /not allowlisted/);
 }));
 
 test("rejects inconsistent approval metadata and high-risk filesystem operations", async () => withRoot(async (root) => {
@@ -204,4 +204,30 @@ test("rejects command execution in a file instead of a directory", async () => w
     target: "file.txt",
   });
   await assert.rejects(executeLocalOperation(command, { rootDirectory: root, approved: true }), /working directory must be an existing directory/);
+}));
+
+test("does not pass NODE_OPTIONS preload hooks to diagnostic subprocesses", async () => withRoot(async (root) => {
+  const marker = join(root, "preload-ran.txt");
+  const preload = join(root, "preload.cjs");
+  await writeFile(preload, `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "executed")`);
+  const previous = process.env.NODE_OPTIONS;
+  process.env.NODE_OPTIONS = `--require=${preload}`;
+  try {
+    const command = createPlannedOperation({
+      id: "safe-node-env",
+      kind: "run_command",
+      description: "Check Node version",
+      risk: "moderate",
+      command: "node",
+      args: ["--version"],
+      target: ".",
+    });
+    const result = await executeLocalOperation(command, { rootDirectory: root, approved: true });
+    assert.equal(result.output.exitCode, 0);
+  } finally {
+    if (previous === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previous;
+  }
+  const { access } = await import("node:fs/promises");
+  await assert.rejects(access(marker));
 }));
