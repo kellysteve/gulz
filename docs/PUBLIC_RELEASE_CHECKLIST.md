@@ -4,7 +4,7 @@ This checklist is the release gate. A public repository and a working source ins
 
 ## Before announcing the CLI preview
 
-- [ ] Run `npm ci` from a clean clone on supported Node.js LTS.
+- [ ] Generate and commit a root npm lockfile, then verify `npm ci` from a clean clone on supported Node.js LTS. The repository currently has no committed lockfile.
 - [ ] Run `npm test` and record the exact Node.js, npm and OS versions.
 - [ ] Run the Bash installer end-to-end on Termux, Ubuntu/Debian, macOS and a clean VPS.
 - [ ] Verify cancellation at every confirmation prompt leaves the system unchanged.
