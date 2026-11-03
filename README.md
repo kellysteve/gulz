@@ -22,7 +22,7 @@ sed -n '1,260p' gulz-install.sh
 bash gulz-install.sh
 ~~~
 
-The installer detects the platform, asks where to install the source checkout and requests confirmation before installing only the CLI workspace dependencies, building the CLI and linking the `gulz` command. It deliberately skips the website's Wrangler/Workerd dependency, which does not support Android's Termux environment. Run it as your normal user, not with `sudo`. Windows users should follow the PowerShell instructions in [docs/INSTALLATION.md](docs/INSTALLATION.md). This installs a developer preview, not a stable production release.
+The installer detects the platform, asks where to install the source checkout and requests confirmation before installing only the CLI workspace dependencies, building the CLI and linking the `gulz` command. It installs only the CLI workspaces and their development dependencies (including TypeScript), deliberately skipping the website's Wrangler/Workerd dependency, which does not support Android's Termux environment. Run it as your normal user, not with `sudo`. Windows users should follow the PowerShell instructions in [docs/INSTALLATION.md](docs/INSTALLATION.md). This installs a developer preview, not a stable production release.
 
 ## Product experience
 
