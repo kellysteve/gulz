@@ -12,7 +12,7 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
     id: "termux", name: "Android / Termux", detail: "Android phones and tablets", icon: Smartphone,
     methods: ["CLI source build (developer preview)", "Native Android app (planned)"],
     steps: ["Install Termux from F-Droid or the official GitHub releases.", "Update Termux and install Node.js LTS plus Git.", "Confirm Node.js is version 20.19 or newer.", "Clone GULZ, install dependencies and link the CLI."],
-    commands: ["pkg update && pkg upgrade -y", "pkg install nodejs-lts git", "node --version", "git clone https://github.com/kellysteve/gulz.git", "cd gulz", "npm install", "npm run install:local", "gulz --help"],
+    commands: ["pkg update && pkg upgrade -y", "pkg install nodejs-lts git", "node --version", "git clone https://github.com/kellysteve/gulz.git", "cd gulz", "npm install", "npm run install:local", "gulz", "gulz --help"],
     note: "Use a recent Termux release. This installs the developer-preview CLI inside Termux, not a standalone Android app. Native Android packaging is planned.",
   },
   {
@@ -26,7 +26,7 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
     id: "macos", name: "macOS", detail: "Apple Silicon and Intel Macs", icon: Command,
     methods: ["CLI source build (developer preview)", "Signed .dmg desktop app (planned)", "Homebrew package (planned)"],
     steps: ["Install Homebrew if you use it, then install Node.js and Git.", "Confirm Node.js is version 20.19 or newer.", "Clone the GULZ repository in Terminal.", "Install dependencies and build/link the CLI."],
-    commands: ["brew install node git", "node --version", "git clone https://github.com/kellysteve/gulz.git", "cd gulz", "npm install", "npm run install:local", "gulz --help"],
+    commands: ["brew install node git", "node --version", "git clone https://github.com/kellysteve/gulz.git", "cd gulz", "npm install", "npm run install:local", "gulz", "gulz --help"],
     note: "The CLI source build is a developer preview. Signed desktop .dmg installers for Apple Silicon and Intel are planned, not available for download.",
   },
   {
@@ -129,8 +129,8 @@ function App() {
         </section>
 
         <section className="section cli-reference" id="commands">
-          <div className="section-kicker">CLI QUICK REFERENCE</div><h2>Commands available in the CLI developer preview.</h2>
-          <p className="section-lead">The current CLI manages local goals, inspects files, writes approved text changes with backups, restores backups and runs a small fixed set of read-only diagnostics. File changes and process execution require typed approval.</p>
+          <div className="section-kicker">CLI QUICK REFERENCE</div><h2>Open GULZ whenever you need it.</h2>
+          <p className="section-lead">Run `gulz` to open the interactive terminal session. Create and revisit locally saved goals, or use the commands below. Install once; to update this source preview later, enter the cloned repository and run `git pull --ff-only`, `npm install` and `npm run install:local`, then restart GULZ.</p>
           <div className="command-grid">
             <article><h3><Terminal size={17}/> Start and inspect</h3><pre><code>{"gulz --help\ngulz doctor\ngulz init\ngulz goals"}</code></pre></article>
             <article><h3><Code2 size={17}/> Goals and files</h3><pre><code>{'gulz goal create "Prepare my project"\ngulz inspect .\ngulz read README.md\ngulz write notes.txt'}</code></pre></article>
