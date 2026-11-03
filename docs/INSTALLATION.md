@@ -6,7 +6,7 @@ GULZ is in early development. The interactive Bash installer and repository sour
 
 ### Interactive Bash installer (Termux, Linux, macOS and VPS)
 
-The installer detects the environment, asks where to place the source checkout, explains each change and asks for confirmation before cloning/updating the repository, installing npm dependencies, building the CLI and linking the `gulz` command. It runs as your normal user by default, asks before using a package manager to install missing prerequisites, and asks before adding its user-local command directory to your shell profile. Download it first, inspect it if you wish, then run it:
+The installer detects the environment, asks where to place the source checkout, explains each change and asks for confirmation before cloning/updating the repository, installing only the CLI workspace dependencies, building the CLI and linking the `gulz` command. It intentionally excludes the website workspace and Wrangler/Workerd from CLI installation. It runs as your normal user by default, asks before using a package manager to install missing prerequisites, and asks before adding its user-local command directory to your shell profile. Download it first, inspect it if you wish, then run it:
 
 ~~~sh
 curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
@@ -14,13 +14,13 @@ sed -n '1,260p' gulz-install.sh
 bash gulz-install.sh
 ~~~
 
-On Termux, install `curl` first with `pkg install curl`. The installer can offer to install Git and Node.js LTS through Termux package manager if they are missing. On Linux/macOS/VPS, install Node.js 20.19+ first; the installer will not silently change the system Node.js installation. The script is public at `scripts/install.sh`; review it before running. Do not use `sudo bash` or run it as root.
+On Termux, install `curl` first with `pkg install curl`. The installer can offer to install Git and Node.js LTS through Termux package manager if they are missing. The CLI-only install avoids Wrangler's unsupported `workerd` binary. On Linux/macOS/VPS, install Node.js 20.19+ first; the installer will not silently change the system Node.js installation. The script is public at `scripts/install.sh`; review it before running. Do not use `sudo bash` or run it as root.
 
 Use Node.js **20.19 or newer** and Git for the source-build route. Install Node.js from the official [Node.js downloads page](https://nodejs.org/en/download).
 
 ## Android phones and tablets — Termux
 
-The current Android route is the CLI inside Termux. It is not a standalone Android app.
+The current Android route is the CLI inside Termux. It is not a standalone Android app. Do not run a full root `npm install` on Termux: the website's Wrangler dependency pulls in `workerd`, which currently does not support Android/Termux. Use `npm run install:cli` for the CLI-only build.
 
 1. Install Termux from [F-Droid](https://f-droid.org/packages/com.termux/) or the [official Termux GitHub releases](https://github.com/termux/termux-app/releases).
 2. Open Termux and run:
@@ -60,8 +60,7 @@ npm --version
 sudo apt update && sudo apt install -y git
 git clone https://github.com/kellysteve/gulz.git
 cd gulz
-npm install
-npm run install:local
+npm run install:cli
 gulz --version
 gulz doctor
 ~~~
@@ -85,7 +84,7 @@ node --version
 git clone https://github.com/kellysteve/gulz.git
 cd gulz
 npm install
-npm run install:local
+npm run install:cli
 gulz --help
 gulz doctor
 ~~~
