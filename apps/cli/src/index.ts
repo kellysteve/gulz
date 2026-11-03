@@ -243,9 +243,7 @@ async function main(): Promise<void> {
     try {
       const content = await rl.question("Text to write (single line): ");
       const bytes = Buffer.byteLength(content, "utf8");
-      console.log(`\
-Target: ${target}\
-Bytes:  ${bytes}`);
+      console.log("Target: " + target + "\nBytes:  " + bytes + "\nPreview: " + content);
       const confirmation = await rl.question(`Type WRITE ${target} to approve this change: `);
       if (confirmation !== `WRITE ${target}`) { console.log("Write cancelled."); return; }
       const operation = createPlannedOperation({ id: randomUUID(), kind: "write_file", description: "Write a local text file", risk: "moderate", target, content });
