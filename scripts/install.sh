@@ -12,14 +12,14 @@ fail() { printf '\nError: %s\n' "$*" >&2; exit 1; }
 ask_yes_no() {
   local prompt="$1" answer
   while true; do
-    read -r -p "$prompt [y/N] " answer || true
+    read -r -p "$prompt [y/N] " answer </dev/tty || true
     case "${answer,,}" in y|yes) return 0 ;; n|no|"") return 1 ;; *) printf 'Please answer y or n.\n' ;; esac
   done
 }
 command_exists() { command -v "$1" >/dev/null 2>&1; }
 
-[ -t 0 ] || fail "Run this installer in an interactive terminal; it asks before making system changes."
-[ -t 1 ] || fail "A terminal is required."
+[ -t 1 ] || fail "Run this installer in an interactive terminal; it asks before making changes."
+[ -r /dev/tty ] || fail "An interactive terminal is required. Download the script and run it from a terminal."
 
 case "$(uname -s 2>/dev/null || echo unknown)" in
   Linux*)
@@ -92,7 +92,7 @@ info "npm: $(npm --version)"
 
 bold "2/5 · Choose installation folder"
 printf 'Default: %s\n' "$GULZ_DEFAULT_DIR"
-read -r -p "Install folder [press Enter to accept]: " chosen_dir || true
+read -r -p "Install folder [press Enter to accept]: " chosen_dir </dev/tty || true
 INSTALL_DIR="${chosen_dir:-$GULZ_DEFAULT_DIR}"
 case "$INSTALL_DIR" in "~/"*) INSTALL_DIR="$HOME/${INSTALL_DIR#~/}" ;; esac
 INSTALL_DIR="$(mkdir -p "$(dirname "$INSTALL_DIR")" && cd "$(dirname "$INSTALL_DIR")" && pwd)/$(basename "$INSTALL_DIR")"
@@ -104,7 +104,7 @@ printf 'GULZ source will be stored at: %s\n' "$INSTALL_DIR"
 
 bold "3/5 · Review installation"
 printf 'The installer will clone or fast-forward the GULZ repository, install declared npm dependencies, build the CLI and create a user-level command link.\n'
-printf 'It will not use sudo for the GULZ install, change your shell startup files, or run GULZ operations on your files.\n'
+printf 'It may use sudo only if you explicitly approve installing a missing Git package. It will not run GULZ operations on your files or install a background service.\n'
 ask_yes_no "Continue with installation?" || { printf 'Installation cancelled.\n'; exit 0; }
 
 bold "4/5 · Download and build"
@@ -115,7 +115,7 @@ else
 fi
 cd "$INSTALL_DIR"
 npm install
-npm run build:cli
+npm run install:local
 
 bold "5/5 · Link the gulz command"
 mkdir -p "$GULZ_BIN_DIR"
@@ -144,7 +144,7 @@ fi
 
 bold "Installation finished"
 printf 'Run: gulz\n'
-printf 'Update later: gulz update (source-checkout preview only)\n'
+printf 'Update later: gulz update (source-checkout preview only; requires a clean Git checkout)\n'
 printf 'Install folder: %s\n' "$INSTALL_DIR"
 printf 'Your local GULZ data is stored separately in ~/.gulz.\n'
 printf 'This is an early developer preview; AI goal execution and remote SSH orchestration are not available yet.\n'
