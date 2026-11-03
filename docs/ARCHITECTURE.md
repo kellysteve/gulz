@@ -64,10 +64,14 @@ No installation command or download link should be shown as live until an artifa
 
 ## Delivery sequence
 
-1. Secure release infrastructure and Supabase integration.
-2. Local persistence and resumable goal/task orchestration.
-3. Permission-aware execution adapters and independent verification.
-4. AI provider adapters and supervised planning.
-5. SSH and remote environment support.
-6. Platform-specific installers, signed updates and rollback.
-7. End-to-end security and platform testing before public releases.
+The CLI and execution engine are the immediate product priority. Release infrastructure must not block the first useful local runtime.
+
+1. Verify the existing core, CLI and website builds/tests; fix foundational defects.
+2. Complete reliable local persistence and resumable goal/task orchestration.
+3. Build the permission-aware local execution engine: typed operations, approvals, bounded execution, cancellation, audit events and independent verification.
+4. Add provider-neutral AI planning and supervised execution; AI output remains untrusted.
+5. Add SSH and remote-environment adapters behind the same policy and approval boundary.
+6. Prepare signed platform packages, immutable release artifacts and verified updates.
+7. Complete end-to-end security and platform testing before public releases.
+
+The public website may describe the roadmap, but it must not present planned capabilities or installation methods as available. Supabase release storage and updater work should be implemented when release artifacts are ready to ship, not as a prerequisite for local CLI execution.
