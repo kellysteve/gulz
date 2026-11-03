@@ -45,7 +45,7 @@ test("rejects symlink targets", async () => withRoot(async (root) => {
 
 test("rejects unsupported operation kinds", async () => withRoot(async (root) => {
   const unsupported = createPlannedOperation({ id: "shell", kind: "run_command", description: "Run shell", risk: "high" });
-  await assert.rejects(executeLocalOperation(unsupported, { rootDirectory: root, approved: true }), /only supports inspect, read_file and write_file/);
+  await assert.rejects(executeLocalOperation(unsupported, { rootDirectory: root, approved: true }), /supports inspect, read_file, write_file and allowlisted run_command/);
 }));
 
 test("rejects inconsistent approval metadata and high-risk filesystem operations", async () => withRoot(async (root) => {
@@ -149,4 +149,59 @@ test("restores a backup through the same approved write policy", async () => wit
   if (process.platform !== "win32") {
     assert.equal((await stat(join(root, replaced.output.backupPath))).mode & 0o777, 0o600);
   }
+}));
+
+test("runs the explicitly approved Node version command without a shell", async () => withRoot(async (root) => {
+  const command = createPlannedOperation({
+    id: "node-version",
+    kind: "run_command",
+    description: "Check Node.js version",
+    risk: "moderate",
+    command: "node",
+    args: ["--version"],
+    target: ".",
+  });
+  await assert.rejects(executeLocalOperation(command, { rootDirectory: root }), /explicit user approval/);
+  const result = await executeLocalOperation(command, { rootDirectory: root, approved: true });
+  assert.equal(result.output.kind, "command_result");
+  assert.equal(result.output.exitCode, 0);
+  assert.match(result.output.stdout ?? "", /^v\\d+\\./);
+  assert.equal(result.audit.kind, "run_command");
+}));
+
+test("rejects arbitrary shell-like commands and unsafe arguments", async () => withRoot(async (root) => {
+  const unsafe = createPlannedOperation({
+    id: "unsafe-command",
+    kind: "run_command",
+    description: "Try arbitrary command",
+    risk: "moderate",
+    command: "node",
+    args: ["-e", "process.exit(0)"],
+    target: ".",
+  });
+  await assert.rejects(executeLocalOperation(unsafe, { rootDirectory: root, approved: true }), /not allowlisted/);
+  const shell = createPlannedOperation({
+    id: "shell-command",
+    kind: "run_command",
+    description: "Try shell",
+    risk: "moderate",
+    command: "sh",
+    args: ["-c", "echo unsafe"],
+    target: ".",
+  });
+  await assert.rejects(executeLocalOperation(shell, { rootDirectory: root, approved: true }), /not allowlisted/);
+}));
+
+test("rejects command execution in a file instead of a directory", async () => withRoot(async (root) => {
+  await writeFile(join(root, "file.txt"), "x");
+  const command = createPlannedOperation({
+    id: "bad-cwd",
+    kind: "run_command",
+    description: "Check version",
+    risk: "moderate",
+    command: "node",
+    args: ["--version"],
+    target: "file.txt",
+  });
+  await assert.rejects(executeLocalOperation(command, { rootDirectory: root, approved: true }), /working directory must be an existing directory/);
 }));
