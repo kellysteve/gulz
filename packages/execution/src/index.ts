@@ -54,7 +54,7 @@ function audit(operation: PlannedOperation, outcome: ExecutionAuditEvent["outcom
     id: randomUUID(),
     timestamp: new Date().toISOString(),
     operationId: operation.id,
-    kind: operation.kind as "inspect" | "read_file",
+    kind: operation.kind as "inspect" | "read_file" | "write_file",
     risk: operation.risk,
     outcome,
     target,
@@ -92,7 +92,8 @@ function verifyOperation(input: PlannedOperation): PlannedOperation {
       kind: input.kind,
       description: input.description,
       risk: input.risk,
-      ...(input.target === undefined ? {} : { target: input.target }),\n      ...(input.content === undefined ? {} : { content: input.content }),
+      ...(input.target === undefined ? {} : { target: input.target }),
+      ...(input.content === undefined ? {} : { content: input.content }),
       ...(input.commandPreview === undefined ? {} : { commandPreview: input.commandPreview }),
     });
     if (input.requiresApproval !== validated.requiresApproval) {
@@ -115,9 +116,9 @@ function verifyOperation(input: PlannedOperation): PlannedOperation {
 }
 
 /**
- * Executes only bounded, read-only local filesystem operations.
- * No shell, network, write, install, delete or permission-changing operation
- * is exposed by this initial adapter.
+ * Executes bounded local filesystem operations. Writes are moderate-risk,
+ * require explicit caller approval and preserve replaced files as backups.
+ * No shell, network, install, delete or permission-changing operation is exposed.
  */
 export async function executeLocalOperation(
   untrustedOperation: PlannedOperation,
@@ -150,14 +151,20 @@ export async function executeLocalOperation(
     if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
     const root = await realpath(options.rootDirectory);
     const target = resolveInsideRoot(root, requestedTarget);
-    await rejectSymlinkComponents(root, target);
-    const realTarget = await realpath(target);
+    const parent = await realpath(target === root ? root : dirname(target));
+    if (parent !== root && !parent.startsWith(root + sep)) throw new ExecutionError("Target parent escapes the authorized root directory.");
+    await rejectSymlinkComponents(root, parent);
+    let targetInfo;
+    try { targetInfo = await lstat(target); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    if (targetInfo?.isSymbolicLink()) throw new ExecutionError("Symbolic links are not allowed in execution targets.");
+    if (targetInfo && !targetInfo.isFile() && operation.kind !== "inspect") throw new ExecutionError("Target must be a regular file.");
+    const realTarget = targetInfo ? await realpath(target) : target;
     if (realTarget !== root && !realTarget.startsWith(root + sep)) {
       throw new ExecutionError("Resolved target escapes the authorized root directory.");
     }
     if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
 
-    const info = await lstat(realTarget);
+    const info = targetInfo ?? (operation.kind === "write_file" ? undefined : await lstat(realTarget));
     if (operation.kind === "inspect") {
       if (!info) throw new ExecutionError("Inspection target was not found.");
       const output = {
@@ -174,7 +181,28 @@ export async function executeLocalOperation(
       };
     }
 
-    if (operation.kind === "write_file") {\n      const content = operation.content;\n      if (typeof content !== "string") throw new ExecutionError("write_file requires UTF-8 text content.");\n      const bytes = Buffer.from(content, "utf8");\n      if (bytes.byteLength > maxReadBytes) throw new ExecutionError(`Content exceeds the configured write limit of ${maxReadBytes} bytes.`);\n      if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");\n      const backupPath = info ? resolve(parent, `.${target.split(sep).pop()}.gulz-backup-${randomUUID()}`) : undefined;\n      const temporary = resolve(parent, `.gulz-write-${randomUUID()}.tmp`);\n      try {\n        if (info && backupPath) await copyFile(realTarget, backupPath, constants.COPYFILE_EXCL);\n        await writeFile(temporary, bytes, { flag: "wx", mode: 0o600 });\n        if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");\n        await rename(temporary, target);\n      } catch (error) {\n        await rm(temporary, { force: true }).catch(() => undefined);\n        throw error;\n      }\n      const output = { kind: "file_written" as const, path: relative(root, target), sizeBytes: bytes.byteLength, sha256: createHash("sha256").update(bytes).digest("hex"), ...(backupPath ? { backupPath: relative(root, backupPath) } : {}) };\n      return { operationId: operation.id, verified: true, output, audit: audit(operation, "succeeded", output.path, backupPath ? "Atomic write completed; original file preserved as a backup." : "Atomic write completed for a new file.") };\n    }\n\n    if (!info || !info.isFile()) throw new ExecutionError("read_file can only read regular files.");
+    if (operation.kind === "write_file") {
+      const content = operation.content;
+      if (typeof content !== "string") throw new ExecutionError("write_file requires UTF-8 text content.");
+      const bytes = Buffer.from(content, "utf8");
+      if (bytes.byteLength > maxReadBytes) throw new ExecutionError(`Content exceeds the configured write limit of ${maxReadBytes} bytes.`);
+      if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
+      const backupPath = info ? resolve(parent, `.${target.split(sep).pop()}.gulz-backup-${randomUUID()}`) : undefined;
+      const temporary = resolve(parent, `.gulz-write-${randomUUID()}.tmp`);
+      try {
+        if (info && backupPath) await copyFile(realTarget, backupPath, constants.COPYFILE_EXCL);
+        await writeFile(temporary, bytes, { flag: "wx", mode: 0o600 });
+        if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
+        await rename(temporary, target);
+      } catch (error) {
+        await rm(temporary, { force: true }).catch(() => undefined);
+        throw error;
+      }
+      const output = { kind: "file_written" as const, path: relative(root, target), sizeBytes: bytes.byteLength, sha256: createHash("sha256").update(bytes).digest("hex"), ...(backupPath ? { backupPath: relative(root, backupPath) } : {}) };
+      return { operationId: operation.id, verified: true, output, audit: audit(operation, "succeeded", output.path, backupPath ? "Atomic write completed; original file preserved as a backup." : "Atomic write completed for a new file.") };
+    }
+
+    if (!info || !info.isFile()) throw new ExecutionError("read_file can only read regular files.");
     if (info.size > maxReadBytes) throw new ExecutionError(`File exceeds the configured read limit of ${maxReadBytes} bytes.`);
     const bytes = await readFile(realTarget, { signal: controller.signal });
     if (bytes.byteLength > maxReadBytes) throw new ExecutionError("File grew beyond the configured read limit during execution.");
