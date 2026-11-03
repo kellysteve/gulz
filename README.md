@@ -18,7 +18,7 @@ On Termux, Linux, macOS or a Linux VPS, install Node.js 20.19+ (Termux can insta
 
 ~~~sh
 curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
-less gulz-install.sh
+sed -n '1,260p' gulz-install.sh
 bash gulz-install.sh
 ~~~
 
