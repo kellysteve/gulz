@@ -45,7 +45,7 @@ test("rejects symlink targets", async () => withRoot(async (root) => {
 
 test("rejects unsupported operation kinds", async () => withRoot(async (root) => {
   const unsupported = createPlannedOperation({ id: "shell", kind: "run_command", description: "Run shell", risk: "high" });
-  await assert.rejects(executeLocalOperation(unsupported, { rootDirectory: root, approved: true }), /only supports inspect and read_file/);
+  await assert.rejects(executeLocalOperation(unsupported, { rootDirectory: root, approved: true }), /only supports inspect, read_file and write_file/);
 }));
 
 test("rejects inconsistent approval metadata and high-risk filesystem operations", async () => withRoot(async (root) => {
@@ -119,4 +119,18 @@ test("rejects symlinked parent directories even when they point inside the root"
 test("can inspect the authorized root itself", async () => withRoot(async (root) => {
   const result = await executeLocalOperation(operation("inspect", "."), { rootDirectory: root });
   assert.equal(result.output.isDirectory, true);
+}));
+
+test("rejects invalid UTF-8 instead of returning corrupted text", async () => withRoot(async (root) => {
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(join(root, "binary.dat"), Buffer.from([0xff, 0xfe, 0xfd]));
+  await assert.rejects(executeLocalOperation(operation("read_file", "binary.dat"), { rootDirectory: root }), /encoded data|encoded|decode/i);
+}));
+
+test("does not overwrite an existing file without explicit approval", async () => withRoot(async (root) => {
+  await writeFile(join(root, "existing.txt"), "keep me");
+  const write = createPlannedOperation({ id: "write-no-approval", kind: "write_file", description: "Write", risk: "moderate", target: "existing.txt", content: "replace me" });
+  await assert.rejects(executeLocalOperation(write, { rootDirectory: root }), /explicit user approval/);
+  const { readFile } = await import("node:fs/promises");
+  assert.equal(await readFile(join(root, "existing.txt"), "utf8"), "keep me");
 }));
