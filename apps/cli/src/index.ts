@@ -239,12 +239,12 @@ async function updateSourcePreview(): Promise<void> {
     [process.platform === "win32" ? "npm.cmd" : "npm", ["run", "install:local"]],
   ] as const;
   for (const [program, args] of steps) {
-    console.log("\\n$ " + program + " " + args.join(" "));
+    console.log("\n$ " + program + " " + args.join(" "));
     const result = spawnSync(program, [...args], { cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32" });
     if (result.error) throw result.error;
     if (result.status !== 0) throw new Error("Update stopped because " + program + " exited with status " + String(result.status) + ". Fix the reported issue and run `gulz update` again.");
   }
-  console.log("\\nGULZ update completed. Close this session and run `gulz` again to use the updated CLI.");
+  console.log("\nGULZ update completed. Close this session and run `gulz` again to use the updated CLI.");
 }
 async function interactiveSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) {
