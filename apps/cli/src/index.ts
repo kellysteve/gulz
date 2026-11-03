@@ -42,7 +42,8 @@ function isValidOperation(value: unknown): boolean {
   if (typeof value.kind !== "string" || !operationKinds.has(value.kind as OperationKind)) return false;
   if (typeof value.risk !== "string" || !risks.has(value.risk as RiskLevel)) return false;
   if (value.requiresApproval !== operationRequiresApproval(value.risk as RiskLevel)) return false;
-  return isOptionalString(value.target) && isOptionalString(value.content) && isOptionalString(value.commandPreview);
+  const validArgs = value.args === undefined || (Array.isArray(value.args) && value.args.every((arg) => typeof arg === "string"));
+  return isOptionalString(value.target) && isOptionalString(value.content) && isOptionalString(value.command) && validArgs && isOptionalString(value.commandPreview);
 }
 
 function isValidTask(value: unknown): boolean {
@@ -92,6 +93,7 @@ function help(): void {
     "  inspect <path>        Inspect a path inside the current directory",
     "  read <path>           Read a file inside the current directory (256 KiB max)",
     "  write <path>          Write one line of text after explicit confirmation",
+    "  run <command> [args]  Run a small allowlist of approved diagnostic commands",
     "  restore <backup> <target>  Restore a saved backup after confirmation",
     "  --help, -h            Show this help",
     "  --version, -v         Show the installed version",
@@ -99,7 +101,7 @@ function help(): void {
     "Data is stored locally in ~/.gulz (or GULZ_HOME if configured).",
     "Filesystem commands are confined to the current working directory.",
     "Writes require interactive approval and preserve replaced files as backups.",
-    "Shell commands, installs, deletes and network operations are not available yet.",
+    "Arbitrary shell commands, installs, deletes and network operations are not available.",
   ].join("\n"));
 }
 
@@ -252,6 +254,40 @@ async function main(): Promise<void> {
       const operation = createPlannedOperation({ id: randomUUID(), kind: "write_file", description: "Write a local text file", risk: "moderate", target, content });
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
       console.log(JSON.stringify(result, null, 2));
+    } finally { rl.close(); }
+    return;
+  }
+  if (command === "run") {
+    const [executable, ...commandArgs] = args;
+    if (!executable) {
+      console.error("Usage: gulz run <allowlisted-command> [args]");
+      process.exitCode = 2;
+      return;
+    }
+    const preview = [executable, ...commandArgs].join(" ");
+    if (!process.stdin.isTTY || !process.stdout.isTTY) {
+      throw new Error("Command execution requires an interactive terminal; non-interactive approval is disabled.");
+    }
+    const operation = createPlannedOperation({
+      id: randomUUID(),
+      kind: "run_command",
+      description: "Run an allowlisted local diagnostic command",
+      risk: "moderate",
+      command: executable,
+      args: commandArgs,
+      target: ".",
+      commandPreview: preview,
+    });
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      console.log("Command: " + preview);
+      console.log("Working directory: " + process.cwd());
+      console.log("Only fixed, read-only diagnostic commands are supported. No shell is used.");
+      const confirmation = await rl.question(`Type RUN ${preview} to approve this command: `);
+      if (confirmation !== `RUN ${preview}`) { console.log("Command cancelled."); return; }
+      const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
+      console.log(JSON.stringify(result, null, 2));
+      if (result.output.exitCode !== 0) process.exitCode = 1;
     } finally { rl.close(); }
     return;
   }
