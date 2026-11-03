@@ -9,7 +9,9 @@ GULZ is in early development. The interactive Bash installer and repository sour
 The installer detects the environment, asks where to place the source checkout, explains each change and asks for confirmation before cloning/updating the repository, installing npm dependencies, building the CLI and linking the `gulz` command. It runs as your normal user by default, asks before using a package manager to install missing prerequisites, and asks before adding its user-local command directory to your shell profile. Download it first, inspect it if you wish, then run it:
 
 ~~~sh
-curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
+less gulz-install.sh
+bash gulz-install.sh
 ~~~
 
 On Termux, install `curl` first with `pkg install curl`. The installer can offer to install Git and Node.js LTS through Termux package manager if they are missing. On Linux/macOS/VPS, install Node.js 20.19+ first; the installer will not silently change the system Node.js installation. The script is public at `scripts/install.sh`; review it before running. Its prompts read from `/dev/tty`, so the `curl | bash` form remains interactive. Do not use `sudo bash` or run it as root. For a one-line install, use `curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash`.
@@ -32,7 +34,9 @@ node --version
 3. Use the interactive installer (recommended):
 
 ~~~sh
-curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
+less gulz-install.sh
+bash gulz-install.sh
 ~~~
 
 The installer asks for the install folder and confirmation. You can still build manually from the source repository if preferred.
