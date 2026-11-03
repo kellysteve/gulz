@@ -97,8 +97,9 @@ function help(): void {
     "  --version, -v         Show the installed version",
     "",
     "Data is stored locally in ~/.gulz (or GULZ_HOME if configured).",
-    "Filesystem commands are read-only and confined to the current working directory.",
-    "Shell commands, writes, installs, deletes and network operations are not available yet.",
+    "Filesystem commands are confined to the current working directory.",
+    "Writes require interactive approval and preserve replaced files as backups.",
+    "Shell commands, installs, deletes and network operations are not available yet.",
   ].join("\n"));
 }
 
@@ -245,6 +246,7 @@ async function main(): Promise<void> {
       const content = await rl.question("Text to write (single line): ");
       const bytes = Buffer.byteLength(content, "utf8");
       console.log("Target: " + target + "\nBytes:  " + bytes + "\nPreview: " + content);
+      console.log("If this file already exists, GULZ will preserve the original as a private backup.");
       const confirmation = await rl.question(`Type WRITE ${target} to approve this change: `);
       if (confirmation !== `WRITE ${target}`) { console.log("Write cancelled."); return; }
       const operation = createPlannedOperation({ id: randomUUID(), kind: "write_file", description: "Write a local text file", risk: "moderate", target, content });
