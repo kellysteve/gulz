@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest a capability or improvement.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem should this solve?
+      description: Describe the user need, not just the proposed implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should GULZ do when this is implemented?
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Permission and safety considerations
+      description: Could this access files, credentials, networks, remote systems or perform destructive actions?
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
