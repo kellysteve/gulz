@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { copyFile, lstat, realpath, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, copyFile, lstat, realpath, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { createPlannedOperation, type PlannedOperation } from "@gulz/core";
@@ -191,7 +191,10 @@ export async function executeLocalOperation(
       const backupPath = info ? resolve(parent, `.${target.split(sep).pop()}.gulz-backup-${randomUUID()}`) : undefined;
       const temporary = resolve(parent, `.gulz-write-${randomUUID()}.tmp`);
       try {
-        if (info && backupPath) await copyFile(realTarget, backupPath, constants.COPYFILE_EXCL);
+        if (info && backupPath) {
+          await copyFile(realTarget, backupPath, constants.COPYFILE_EXCL);
+          await chmod(backupPath, 0o600);
+        }
         await writeFile(temporary, bytes, { flag: "wx", mode: 0o600 });
         if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
         await rename(temporary, target);
