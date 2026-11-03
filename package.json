@@ -19,7 +19,7 @@
     "test": "npm run test --workspace @gulz/core && npm run test --workspace @gulz/cli && npm run typecheck"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.19.0"
   },
   "devDependencies": {
     "wrangler": "^4.45.0"
