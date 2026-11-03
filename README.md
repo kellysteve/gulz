@@ -6,57 +6,67 @@ GULZ is an open-source, AI-assisted goal-execution and machine-operations platfo
 
 **A Gaxity product.**
 
-GULZ is licensed under the **Apache License 2.0**. You can use, study, modify and redistribute the software under the terms of that license. The GULZ name and branding are not granted for unrestricted use; see the trademark note below.
+GULZ is licensed under the **Apache License 2.0**. You can use, study, modify and redistribute the software under the terms of that license. The GULZ name and branding are not granted for unrestricted use; see [TRADEMARKS.md](TRADEMARKS.md).
 
 ## Project status
 
-GULZ is in early development. Native installation packages, release downloads, update services, AI integrations and the desktop application are not available until implemented and tested. A source-build developer preview of the CLI is being prepared; it is not a stable end-user installer. Documentation must never describe planned functionality as already working.
+GULZ is in early development. A source-build developer preview of the CLI is available in the repository. It is not a stable end-user installer. Native installers, desktop and Android apps, npm package releases, AI integrations, SSH orchestration and release downloads are not available until implemented and tested.
 
 ## Product experience
 
-GULZ uses a hybrid experience backed by one shared core:
+GULZ is being built around three connected interfaces backed by one shared core:
 
 - **Terminal:** direct commands and power-user control.
 - **AI assistant:** natural-language goals, planning and guided operations.
 - **Task workspace:** plans, approvals, activity, results and resumable work.
 
-All three interfaces share the same goal/task state and execution policy. No interface bypasses permission checks.
+All interfaces must use the same execution policy. No interface may bypass permission checks.
 
 ## Product principles
 
 - Supervised autonomy: low-risk work can proceed; sensitive or destructive actions require explicit approval.
 - Real execution and verification: never simulate tool results or claim an operation succeeded without checking.
 - Least privilege: operate only on resources the user has authorized.
-- Durable work: save goals, plans, task state, logs, and recoverable progress.
+- Durable work: save goals, plans, task state, logs and recoverable progress.
 - Provider flexibility: the core product remains useful when an AI provider is unavailable.
-- Platform-aware installation: publish separate, tested installation paths for Termux, Linux, macOS, Windows, VPS environments, and developers.
+- Platform-aware installation: separate, tested paths for Termux, Linux, macOS, Windows, VPS environments and developers.
 - Open development: source code, design discussions and contributions are intended to be public.
 
 ## Current implementation status
 
-- Shared core domain package: initial goal/task types, guarded lifecycle transitions, risk-derived approval decisions and automated domain tests added.
-- CLI: local goal management, bounded file inspection/reading, approved text writes with backups/restore, and a small approved diagnostic-command allowlist are implemented in source; runtime verification is still pending.
-- Package distribution: core and CLI metadata prepared for public npm publication; packages have not yet been published. The full test suite still needs to be run in a clean environment.
-- Public website: deployed; public-facing content is being prepared for launch.
-- AI orchestration, arbitrary shell execution, SSH execution, desktop app, native installers and release downloads: not yet implemented or published.
+- **Core:** goal/task types, guarded lifecycle transitions and risk-derived approval decisions.
+- **Execution:** bounded filesystem inspection and reading; explicitly approved text writes with backups/restore; a small fixed allowlist of read-only diagnostic commands. The command runner uses no shell, a sanitized environment, bounded output and interactive approval.
+- **CLI:** local goal management, diagnostics, file operations and supervised diagnostic commands are implemented in source. Runtime verification is still pending.
+- **Distribution:** npm package metadata and platform-specific source-build instructions are prepared. Packages have not been published and native installers are not available.
+- **Website:** installation centre and platform roadmap are in the source repository; deployment of the latest changes is still required.
+- **Not yet implemented:** interactive AI goal execution, arbitrary shell operations, SSH orchestration, desktop app, native installers, signed release downloads and automatic updates.
 
 ## Repository layout
 
-```text
+~~~text
 apps/
   cli/       GULZ terminal application
   website/   Public website and installation centre
 packages/
   core/      Goal and task orchestration
-  execution/ Permission-aware local execution engine (early implementation)
+  execution/ Permission-aware local execution engine
   providers/ AI provider adapters (planned)
   storage/   Local persistence and remote storage adapters (planned)
   updater/   Verified update client (planned)
-docs/        Product and contributor documentation
+docs/        Product, architecture and platform documentation
 supabase/    Database migrations for release infrastructure
-```
+~~~
 
-Only modules with implemented functionality should be presented as production-ready.
+## Platform direction
+
+- **Android:** CLI through Termux in the developer preview; native Android app planned.
+- **Linux:** CLI source build now; AppImage, .deb, .rpm and desktop app planned.
+- **macOS:** CLI source build now; signed .dmg and Homebrew route planned.
+- **Windows:** PowerShell source build now; signed desktop installer and WinGet route planned.
+- **VPS:** headless CLI source build; SSH-based remote orchestration planned.
+- **Desktop:** one task workspace using the same local execution policy as the CLI. No desktop binary is available yet.
+
+See [docs/INSTALLATION.md](docs/INSTALLATION.md) for commands and exact status.
 
 ## Architecture direction
 
@@ -64,11 +74,11 @@ Only modules with implemented functionality should be presented as production-re
 - Cloudflare Workers with Workers Static Assets for the public website and API.
 - Supabase for release artifact storage and database-backed services.
 - Public GitHub repository for source and community development.
-- Signed release metadata, checksums, and platform-specific artifacts.
+- Signed release metadata, checksums and platform-specific artifacts before public downloads.
 
 ## Security
 
-Never commit API keys, Supabase service-role keys, signing keys, SSH credentials, access tokens, or user data. Secrets belong in deployment secrets or the user's local secure configuration. AI-proposed operations must pass policy validation and approval checks before execution. See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+Never commit API keys, Supabase service-role keys, signing keys, SSH credentials, access tokens or user data. Secrets belong in deployment secrets or the user's local secure configuration. AI-proposed operations must pass policy validation and explicit approval checks before execution. See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 
 ## Contributing
 
