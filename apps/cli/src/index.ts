@@ -649,7 +649,7 @@ async function updateInstallation(): Promise<void> {
   if (dirty.stdout.trim()) throw new Error("The GULZ source checkout has uncommitted changes. Commit or safely stash them before running gulz update.");
   const npm = process.platform === "win32" ? "npm.cmd" : "npm";
   const updateEnv: NodeJS.ProcessEnv = { ...process.env };
-  updateEnv.NPM_CONFIG_PREFIX = process.env.PREFIX?.includes("com.termux") ? process.env.PREFIX : join(homedir(), ".local");
+  if (process.platform !== "win32") updateEnv.NPM_CONFIG_PREFIX = process.env.PREFIX?.includes("com.termux") ? process.env.PREFIX : join(homedir(), ".local");
   const steps = [
     ["git", ["pull", "--ff-only"]],
     [npm, ["run", "install:cli"]],
