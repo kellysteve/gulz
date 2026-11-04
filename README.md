@@ -45,7 +45,7 @@ All interfaces must use the same execution policy. No interface may bypass permi
 ## Current implementation status
 
 - **Core:** goal/task types, guarded lifecycle transitions and risk-derived approval decisions.
-- **Execution:** bounded filesystem inspection and reading; explicitly approved text writes with backups/restore; a small fixed allowlist of read-only diagnostic commands. The command runner uses no shell, a sanitized environment, bounded output and interactive approval.
+- **Execution:** bounded filesystem inspection and reading; explicitly approved text writes with backups/restore; a fixed allowlist of read-only diagnostics plus explicitly approved CLI-only build/test workflows. The command runner uses no shell, a sanitized environment, bounded output/time and interactive approval.
 - **CLI:** local goal/task management, private activity history, provider configuration, AI-assisted plan generation, diagnostics and supervised local file/command operations are implemented in source. Runtime verification is still pending.
 - **Distribution:** npm package metadata and platform-specific source-build instructions are prepared. Packages have not been published and native installers are not available.
 - **Website:** installation centre and platform roadmap are in the source repository; deployment of the latest changes is still required.
