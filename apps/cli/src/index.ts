@@ -3,7 +3,7 @@
 import { homedir, platform, arch, release } from "node:os";
 import { access, appendFile, chmod, lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { constants, existsSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -1025,6 +1025,9 @@ async function main(): Promise<void> {
     if (!stdin.isTTY || !stdout.isTTY) throw new Error("Uninstallation requires an interactive terminal and explicit confirmation.");
     const installDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
     const info = await lstat(installDirectory);
+    if (installDirectory === homedir() || installDirectory === "/" || dataHome === installDirectory || dataHome.startsWith(installDirectory + sep)) {
+      throw new Error("GULZ cannot uninstall from this location because it could remove your home directory or local data. Move GULZ_HOME outside the source checkout first.");
+    }
     if (!info.isDirectory() || info.isSymbolicLink() || !existsSync(join(installDirectory, ".git")) || !existsSync(join(installDirectory, "package.json"))) {
       throw new Error("GULZ cannot safely identify this source installation for removal.");
     }
