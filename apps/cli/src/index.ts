@@ -508,6 +508,7 @@ async function main(): Promise<void> {
       const confirmation = await rl.question(`Type RUN ${preview} to approve this command: `);
       if (confirmation !== `RUN ${preview}`) { console.log("Command cancelled."); return; }
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
+      await recordExecutionAudit(result);
       console.log(JSON.stringify(result, null, 2));
       if (result.output.exitCode !== 0) process.exitCode = 1;
     } finally { rl.close(); }
@@ -540,6 +541,7 @@ async function main(): Promise<void> {
         risk: "moderate", target, content,
       });
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
+      await recordExecutionAudit(result);
       console.log(JSON.stringify(result, null, 2));
     } finally { rl.close(); }
     return;
