@@ -86,3 +86,23 @@ test("supports local HTTP provider endpoints for local model servers", async () 
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("accepts bounded directory-listing operations in structured plans", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    choices: [{ message: { content: JSON.stringify({
+      summary: "Map the workspace",
+      tasks: [{ title: "List files", description: "Discover project entries", operations: [{ kind: "list_directory", description: "List the workspace root", target: "." }] }],
+    }) } }],
+  }), { status: 200 });
+  try {
+    const plan = await generateGoalPlan(
+      { baseUrl: "https://api.example.com/v1", apiKey: "test", model: "test" },
+      { title: "Understand the workspace", description: "" },
+    );
+    assert.equal(plan.tasks[0]?.operations[0]?.kind, "list_directory");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
