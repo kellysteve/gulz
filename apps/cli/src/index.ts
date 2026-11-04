@@ -289,6 +289,7 @@ function validatePlannedOperations(raw: Awaited<ReturnType<typeof generateGoalPl
     ["git", "status", "--short"], ["git", "status", "--short", "--branch"],
     ["git", "branch", "--show-current"], ["git", "log", "-1", "--oneline"],
     ["git", "diff", "--stat"], ["git", "rev-parse", "--show-toplevel"],
+    ["npm", "--version"], ["npm", "run", "build:cli"], ["npm", "run", "test:cli"],
   ];
   return raw.map((item) => {
     if (item.kind === "run_command" && !allowedCommands.some((allowed) => JSON.stringify(allowed) === JSON.stringify([item.command, ...(item.args ?? [])]))) {
