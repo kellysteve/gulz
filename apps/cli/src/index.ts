@@ -1526,7 +1526,41 @@ async function main(): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    console.log(JSON.stringify(goal, null, 2));
+    if (args.length > 2 || (args[2] !== undefined && args[2] !== "--json")) {
+      console.error("Usage: gulz goal show <id> [--json]"); process.exitCode = 2; return;
+    }
+    if (args[2] === "--json") {
+      console.log(JSON.stringify(goal, null, 2));
+      return;
+    }
+    title("GOAL · " + goal.title);
+    label("ID", goal.id);
+    label("Status", goal.status);
+    label("Created", goal.createdAt);
+    label("Updated", goal.updatedAt);
+    console.log("\n" + paint("DESCRIPTION", ansi.bold, ansi.cyan));
+    console.log(goal.description || "No description added.");
+    console.log("\n" + paint("TASKS", ansi.bold, ansi.cyan));
+    if (!goal.tasks.length) warning("No tasks have been added or generated yet.");
+    for (const [index, task] of goal.tasks.entries()) {
+      console.log("\n" + paint((index + 1) + ". " + task.title, ansi.bold));
+      label("Status", task.status);
+      if (task.description) label("Details", task.description);
+      if (task.error) warning("Last error: " + task.error);
+      if (task.result) success(task.result);
+      if (task.operations.length) {
+        label("Progress", (task.completedOperationIds ?? []).length + "/" + task.operations.length + " operations checkpointed");
+        for (const operation of task.operations) {
+          console.log("  " + operation.kind + " [" + operation.risk.toUpperCase() + "] " + operation.description);
+          if (operation.target) console.log("    Target: " + operation.target);
+          if (operation.commandPreview) console.log("    Command: " + operation.commandPreview);
+          if (operation.kind === "write_file" && operation.content !== undefined) {
+            console.log("    Proposed content: " + Buffer.byteLength(operation.content, "utf8") + " bytes");
+            console.log("    " + (operation.content.length > 240 ? operation.content.slice(0, 240) + "…" : operation.content));
+          }
+        }
+      }
+    }
     return;
   }
   console.error(`Unknown command: ${command}`);
