@@ -650,24 +650,26 @@ async function updateInstallation(): Promise<void> {
     const confirmation = await rl.question("Type UPDATE GULZ to continue: ");
     if (confirmation !== "UPDATE GULZ") { console.log("Update cancelled."); return; }
   } finally { rl.close(); }
-  const dirty = spawnSync("git", ["status", "--porcelain"], { cwd: installDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-  if (dirty.error) throw dirty.error;
-  if (dirty.status !== 0) throw new Error("Unable to inspect the source checkout before updating.");
-  if (dirty.stdout.trim()) throw new Error("The GULZ source checkout has uncommitted changes. Commit or safely stash them before running gulz update.");
-  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-  const updateEnv: NodeJS.ProcessEnv = { ...process.env };
-  if (process.platform !== "win32") updateEnv.NPM_CONFIG_PREFIX = process.env.PREFIX?.includes("com.termux") ? process.env.PREFIX : join(homedir(), ".local");
-  const steps = [
-    ["git", ["pull", "--ff-only"]],
-    [npm, ["run", "install:cli"]],
-  ] as const;
-  for (const [program, args] of steps) {
-    console.log("\n$ " + program + " " + args.join(" "));
-    const result = spawnSync(program, [...args], { cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: updateEnv });
-    if (result.error) throw result.error;
-    if (result.status !== 0) throw new Error("Update stopped because " + program + " exited with status " + String(result.status) + ". Fix the reported issue and run `gulz update` again.");
-  }
-  console.log("\nGULZ update completed. Close this session and run `gulz` again to use the updated CLI.");
+  await withExecutionLock(async () => {
+    const dirty = spawnSync("git", ["status", "--porcelain"], { cwd: installDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    if (dirty.error) throw dirty.error;
+    if (dirty.status !== 0) throw new Error("Unable to inspect the source checkout before updating.");
+    if (dirty.stdout.trim()) throw new Error("The GULZ source checkout has uncommitted changes. Commit or safely stash them before running gulz update.");
+    const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+    const updateEnv: NodeJS.ProcessEnv = { ...process.env };
+    if (process.platform !== "win32") updateEnv.NPM_CONFIG_PREFIX = process.env.PREFIX?.includes("com.termux") ? process.env.PREFIX : join(homedir(), ".local");
+    const steps = [
+      ["git", ["pull", "--ff-only"]],
+      [npm, ["run", "install:cli"]],
+    ] as const;
+    for (const [program, args] of steps) {
+      console.log("\n$ " + program + " " + args.join(" "));
+      const result = spawnSync(program, [...args], { cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: updateEnv });
+      if (result.error) throw result.error;
+      if (result.status !== 0) throw new Error("Update stopped because " + program + " exited with status " + String(result.status) + ". Fix the reported issue and run `gulz update` again.");
+    }
+    console.log("\nGULZ update completed. Close this session and run `gulz` again to use the updated CLI.");
+  });
 }
 async function interactiveSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) {
@@ -1007,11 +1009,14 @@ async function main(): Promise<void> {
     const npm = process.platform === "win32" ? "npm.cmd" : "npm";
     const repairEnv: NodeJS.ProcessEnv = { ...process.env };
     if (process.platform !== "win32") repairEnv.NPM_CONFIG_PREFIX = process.env.PREFIX?.includes("com.termux") ? process.env.PREFIX : join(homedir(), ".local");
-    const result = spawnSync(npm, ["run", "install:cli"], {
-      cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: repairEnv,
+    await withExecutionLock(async () => {
+      const result = spawnSync(npm, ["run", "install:cli"], {
+        cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: repairEnv,
+      });
+      if (result.error) throw result.error;
+      if (result.status !== 0) throw new Error("Repair did not complete. Fix the reported build issue and run gulz repair again.");
+  
     });
-    if (result.error) throw result.error;
-    if (result.status !== 0) throw new Error("Repair did not complete. Fix the reported build issue and run gulz repair again.");
     success("GULZ CLI repaired and relinked");
     return;
   }
