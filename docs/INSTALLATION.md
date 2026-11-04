@@ -111,8 +111,7 @@ Confirm Node.js is 20.19 or newer. A signed Windows desktop installer and WinGet
 Connect to a Linux VPS with your own SSH account. Install Node.js 20.19+ and curl, then run the interactive installer as your normal user:
 
 ~~~sh
-curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
-bash gulz-install.sh
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
 ~~~
 
 The installer detects Linux, asks for an install folder and confirmation, then builds and links the CLI. It does not set up SSH access or configure a service daemon.
