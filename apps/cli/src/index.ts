@@ -125,6 +125,7 @@ function help(): void {
     "  goal task add <id> <title>  Add a checklist task to a goal",
     "  goal task status <goal> <task> <status>  Change a task status",
     "  inspect <path>        Inspect a path inside the current directory",
+    "  list [path]           List directory entries without following symlinks",
     "  read <path>           Read a file inside the current directory (256 KiB max)",
     "  write <path>          Write one line of text after explicit confirmation",
     "  run <command> [args]  Run a small allowlist of approved diagnostic commands",
@@ -1111,6 +1112,25 @@ async function main(): Promise<void> {
       await recordExecutionAudit(result);
       console.log(JSON.stringify(result, null, 2));
     } finally { rl.close(); }
+    return;
+  }
+  if (command === "list") {
+    const target = args.join(" ").trim() || ".";
+    const operation = createPlannedOperation({
+      id: randomUUID(), kind: "list_directory", description: "List directory entry names and types",
+      risk: "low", target,
+    });
+    const result = await executeLocalOperation(operation, { rootDirectory: process.cwd() });
+    await recordExecutionAudit(result);
+    if (result.output.kind !== "directory_listing" || !result.output.entries) throw new Error("GULZ could not verify the directory listing.");
+    title("DIRECTORY · " + result.output.path);
+    for (const entry of result.output.entries) {
+      const marker = entry.type === "directory" ? "DIR " : entry.type === "symlink" ? "LINK" : entry.type === "file" ? "FILE" : "OTHER";
+      const style = entry.type === "directory" ? ansi.cyan : entry.type === "symlink" ? ansi.yellow : ansi.dim;
+      console.log("  " + paint(marker, style) + "  " + entry.name);
+    }
+    if (result.output.hasMore) warning("Only the first 200 entries are shown.");
+    success(result.output.entries.length + " entries listed");
     return;
   }
   if (command === "inspect" || command === "read") {
