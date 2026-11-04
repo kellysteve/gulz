@@ -214,10 +214,10 @@ test("enforces goal lifecycle rules and refuses to run an empty goal", async () 
     const created = invoke(home, "goal", "create", "A goal without tasks");
     const id = created.stdout.match(/ID:\\s+([a-f0-9-]+)/)?.[1];
     assert.ok(id);
+    const planned = invoke(home, "goal", "status", id, "planned");
+    assert.equal(planned.status, 0, planned.stderr);
     const premature = invoke(home, "goal", "status", id, "running");
     assert.equal(premature.status, 1);
     assert.match(premature.stderr, /at least one task/);
-    const planned = invoke(home, "goal", "status", id, "planned");
-    assert.equal(planned.status, 0, planned.stderr);
   });
 });
