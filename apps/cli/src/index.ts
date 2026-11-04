@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { homedir, platform, arch, release } from "node:os";
-import { access, chmod, lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { access, appendFile, chmod, lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { constants, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +16,7 @@ const VERSION = "0.1.0";
 const dataHome = resolve(process.env.GULZ_HOME || join(homedir(), ".gulz"));
 const goalsFile = join(dataHome, "goals.json");
 const goalsLockFile = join(dataHome, "goals.lock");
+const auditFile = join(dataHome, "audit.jsonl");
 
 const isInteractive = Boolean(stdout.isTTY && process.env.NO_COLOR === undefined && process.env.TERM !== "dumb");
 const ansi = { reset: "\u001b[0m", bold: "\u001b[1m", dim: "\u001b[2m", cyan: "\u001b[36m", blue: "\u001b[34m", green: "\u001b[32m", yellow: "\u001b[33m", red: "\u001b[31m", magenta: "\u001b[35m" };
@@ -99,6 +100,7 @@ function help(): void {
     "Commands:",
     "  init                  Create the local GULZ data directory",
     "  doctor                Check the local runtime and data directory",
+    "  audit [--limit N]     View recent local action history",
     "  update                Safely update GULZ from its source installation",
     "  goal create <title>   Save a new goal locally",
     "  goals                 List saved goals",
@@ -175,6 +177,21 @@ async function saveGoals(goals: GoalRecord[]): Promise<void> {
   } finally {
     await rm(temporary, { force: true }).catch(() => undefined);
   }
+}
+
+
+async function recordAudit(action: string, details: Record<string, string | number | boolean | undefined> = {}): Promise<void> {
+  await ensureDataHome();
+  try {
+    const info = await lstat(auditFile);
+    if (!info.isFile() || info.isSymbolicLink()) throw new Error("GULZ audit storage must be a regular file, not a symbolic link.");
+    await chmod(auditFile, 0o600);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  const entry = { id: randomUUID(), timestamp: new Date().toISOString(), action, ...details };
+  await appendFile(auditFile, JSON.stringify(entry) + "\\n", { encoding: "utf8", mode: 0o600 });
+  await chmod(auditFile, 0o600);
 }
 
 async function withGoalsLock<T>(run: () => Promise<T>): Promise<T> {
@@ -298,6 +315,7 @@ async function interactiveSession(): Promise<void> {
           const goals = await readGoals();
           const created = createGoal({ id: randomUUID(), title });
           await saveGoals([...goals, created]);
+          await recordAudit("goal.created", { goalId: created.id, title: created.title });
           return created;
         });
         console.log("\nGoal saved successfully.");
@@ -382,6 +400,41 @@ async function main(): Promise<void> {
   }
   if (command === "update") {
     await updateInstallation();
+    return;
+  }
+  if (command === "audit") {
+    let limit = 30;
+    if (args.length) {
+      if (args.length !== 2 || args[0] !== "--limit" || !/^\\d+$/.test(args[1]!) || Number(args[1]) < 1 || Number(args[1]) > 500) {
+        console.error("Usage: gulz audit [--limit 1..500]"); process.exitCode = 2; return;
+      }
+      limit = Number(args[1]);
+    }
+    await ensureDataHome();
+    let raw = "";
+    try {
+      const info = await lstat(auditFile);
+      if (!info.isFile() || info.isSymbolicLink()) throw new Error("GULZ audit storage must be a regular file, not a symbolic link.");
+      await chmod(auditFile, 0o600);
+      raw = await readFile(auditFile, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    const lines = raw.split("\\n").filter(Boolean);
+    const entries = lines.map((line) => {
+      const parsed: unknown = JSON.parse(line);
+      if (!isRecord(parsed) || !isNonEmptyString(parsed.timestamp) || !isNonEmptyString(parsed.action)) throw new Error("Audit history contains an invalid entry; the file was left untouched.");
+      return parsed;
+    });
+    title("RECENT ACTIVITY");
+    if (!entries.length) { console.log("No recorded actions yet."); return; }
+    for (const entry of entries.slice(-limit).reverse()) {
+      console.log(paint(entry.timestamp as string, ansi.dim) + "  " + paint(entry.action as string, ansi.cyan));
+      for (const [key, value] of Object.entries(entry)) {
+        if (["id", "timestamp", "action"].includes(key) || value === undefined) continue;
+        console.log("  " + key + ": " + String(value));
+      }
+    }
     return;
   }
   if (command === "doctor") {
@@ -511,6 +564,7 @@ async function main(): Promise<void> {
       const goals = await readGoals();
       const created = createGoal({ id: randomUUID(), title });
       await saveGoals([...goals, created]);
+      await recordAudit("goal.created", { goalId: created.id, title: created.title });
       return created;
     });
     console.log("Goal saved.");
@@ -537,6 +591,7 @@ async function main(): Promise<void> {
         if (!next.title.trim()) throw new Error("A goal title cannot be empty.");
         goals[index] = next;
         await saveGoals(goals);
+        await recordAudit("goal.updated", { goalId: id });
         return next;
       });
       success("Goal updated");
@@ -559,6 +614,7 @@ async function main(): Promise<void> {
         const goals = await readGoals();
         if (!goals.some((item) => item.id === id)) throw new Error("Goal no longer exists.");
         await saveGoals(goals.filter((item) => item.id !== id));
+        await recordAudit("goal.deleted", { goalId: id });
       });
       success("Goal deleted");
     } finally { rl.close(); }
@@ -576,6 +632,7 @@ async function main(): Promise<void> {
       const updated = addGoalTask(goals[index]!, { id: randomUUID(), title: taskTitle, description: "", operations: [] }, now);
       goals[index] = updated;
       await saveGoals(goals);
+      await recordAudit("task.created", { goalId: id, taskId: updated.tasks[updated.tasks.length - 1]!.id, title: taskTitle });
       return updated.tasks[updated.tasks.length - 1]!;
     });
     success("Task added to goal");
@@ -595,6 +652,7 @@ async function main(): Promise<void> {
       if (index < 0) throw new Error("Goal not found.");
       goals[index] = transitionTask(goals[index]!, taskId, next as TaskStatus);
       await saveGoals(goals);
+      await recordAudit("task.status_changed", { goalId: id, taskId, status: next });
     });
     success("Task status updated to " + next);
     return;
@@ -611,6 +669,7 @@ async function main(): Promise<void> {
       if (index < 0) throw new Error("Goal not found.");
       goals[index] = transitionGoal(goals[index]!, next as GoalStatus);
       await saveGoals(goals);
+      await recordAudit("goal.status_changed", { goalId: id, status: next });
     });
     success("Goal status updated to " + next);
     return;
