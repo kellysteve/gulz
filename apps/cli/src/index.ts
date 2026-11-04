@@ -1088,6 +1088,9 @@ async function main(): Promise<void> {
     if (!info.isDirectory() || info.isSymbolicLink() || !existsSync(join(installDirectory, ".git")) || !existsSync(join(installDirectory, "package.json"))) {
       throw new Error("GULZ cannot safely identify this source installation for removal.");
     }
+    const dirty = spawnSync("git", ["status", "--porcelain"], { cwd: installDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    if (dirty.error) throw dirty.error;
+    if (dirty.status !== 0 || dirty.stdout.trim()) throw new Error("The source checkout contains uncommitted changes. Back up or commit your work before uninstalling; GULZ will not delete a modified checkout.");
     const rl = createInterface({ input: stdin, output: stdout });
     try {
       title("UNINSTALL GULZ");
