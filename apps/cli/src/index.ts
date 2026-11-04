@@ -117,6 +117,7 @@ function help(): void {
     "  resume <goal-id>      Resume paused or interrupted goal execution",
     "  cancel <goal-id>      Cancel a goal after confirmation",
     "  update                Safely update GULZ from its source installation",
+    "  uninstall             Remove the CLI and source checkout; preserve local data",
     "  goal create <title>   Save a new goal locally (--description <text> optional)",
     "  goals                 List saved goals",
     "  goal show <id>        Show a saved goal",
@@ -985,6 +986,39 @@ async function main(): Promise<void> {
       }
     }
     console.log("\nReview the plan with gulz goal show " + id + ". No operations have been executed.");
+    return;
+  }
+  if (command === "uninstall") {
+    if (args.length !== 0) { console.error("Usage: gulz uninstall"); process.exitCode = 2; return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("Uninstallation requires an interactive terminal and explicit confirmation.");
+    const installDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+    const info = await lstat(installDirectory);
+    if (!info.isDirectory() || info.isSymbolicLink() || !existsSync(join(installDirectory, ".git")) || !existsSync(join(installDirectory, "package.json"))) {
+      throw new Error("GULZ cannot safely identify this source installation for removal.");
+    }
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      title("UNINSTALL GULZ");
+      console.log("Source checkout: " + installDirectory);
+      console.log("Local goals, provider settings and activity history in " + dataHome + " will be preserved.");
+      warning("This removes the global CLI link and deletes the GULZ source checkout.");
+      const confirmation = await rl.question("Type UNINSTALL GULZ to continue: ");
+      if (confirmation !== "UNINSTALL GULZ") { console.log("Uninstallation cancelled."); return; }
+    } finally { rl.close(); }
+    await withExecutionLock(async () => {
+      const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+      const unlinkEnv: NodeJS.ProcessEnv = { ...process.env };
+      if (process.platform !== "win32") unlinkEnv.NPM_CONFIG_PREFIX = process.env.PREFIX?.includes("com.termux") ? process.env.PREFIX : join(homedir(), ".local");
+      const result = spawnSync(npm, ["unlink", "--global", "@gulz/cli"], {
+        cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: unlinkEnv,
+      });
+      if (result.error) throw result.error;
+      if (result.status !== 0) throw new Error("The global CLI link could not be removed. The source checkout and local data were left in place.");
+      await rm(installDirectory, { recursive: true, force: true });
+      await recordAudit("installation.uninstalled", { sourceRemoved: true, dataPreserved: true });
+    });
+    success("GULZ CLI and source checkout removed");
+    console.log("Your local data remains at " + dataHome + ".");
     return;
   }
   if (command === "update") {
