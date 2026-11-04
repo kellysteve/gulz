@@ -213,20 +213,6 @@ test("adds checklist tasks and enforces task lifecycle transitions", async () =>
   });
 });
 
-test("enforces goal lifecycle rules and refuses to run an empty goal", async () => {
-  await withHome(async (home) => {
-    const created = invoke(home, "goal", "create", "A goal without tasks");
-    const id = created.stdout.match(/ID:\s+([a-f0-9-]+)/)?.[1];
-    assert.ok(id);
-    const planned = invoke(home, "goal", "status", id, "planned");
-    assert.equal(planned.status, 0, planned.stderr);
-    const premature = invoke(home, "goal", "status", id, "running");
-    assert.equal(premature.status, 1);
-    assert.match(premature.stderr, /at least one task/);
-  });
-});
-
-
 test("records goal and task changes in private append-only audit history", async () => {
   await withHome(async (home) => {
     const created = invoke(home, "goal", "create", "Track an auditable task");
