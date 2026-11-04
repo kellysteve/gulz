@@ -396,3 +396,12 @@ test("requires an interactive terminal before uninstalling the CLI", async () =>
     assert.match(result.stderr, /interactive terminal/);
   });
 });
+
+
+test("requires an interactive terminal before repairing the CLI", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "repair");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /interactive terminal/);
+  });
+});
