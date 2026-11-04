@@ -30,6 +30,7 @@ export type RiskLevel = "low" | "moderate" | "high" | "critical";
 
 export type OperationKind =
   | "inspect"
+  | "list_directory"
   | "read_file"
   | "write_file"
   | "run_command"
@@ -116,7 +117,7 @@ const taskTransitions: Record<TaskStatus, readonly TaskStatus[]> = {
 
 const approvalRiskThreshold: RiskLevel = "moderate";
 const operationKinds = new Set<OperationKind>([
-  "inspect", "read_file", "write_file", "run_command", "network",
+  "inspect", "list_directory", "read_file", "write_file", "run_command", "network",
   "install", "delete", "permission_change", "remote_operation",
 ]);
 const riskOrder: Record<RiskLevel, number> = {
