@@ -9,12 +9,10 @@ GULZ is in early development. The interactive Bash installer and repository sour
 The installer detects the environment, asks where to place the source checkout, explains each change and asks for confirmation before cloning/updating the repository, installing only the CLI workspace dependencies, building the CLI and linking the `gulz` command. It intentionally excludes the website workspace and Wrangler/Workerd from CLI installation. It runs as your normal user by default, asks before using a package manager to install missing prerequisites, and asks before adding its user-local command directory to your shell profile. Download it first, inspect it if you wish, then run it:
 
 ~~~sh
-curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
-sed -n '1,260p' gulz-install.sh
-bash gulz-install.sh
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
 ~~~
 
-On Termux, install `curl` first with `pkg install curl`. The installer can offer to install Git and Node.js LTS through Termux package manager if they are missing. The CLI-only install explicitly includes workspace development dependencies such as TypeScript while excluding the website workspace and Wrangler's unsupported `workerd` binary. On Linux/macOS/VPS, install Node.js 20.19+ first; the installer will not silently change the system Node.js installation. The script is public at `scripts/install.sh`; review it before running. Do not use `sudo bash` or run it as root.
+On Termux, install `curl` first with `pkg install curl`. The installer can offer to install Git and Node.js LTS through Termux package manager if they are missing. The CLI-only install explicitly includes workspace development dependencies such as TypeScript while excluding the website workspace and Wrangler's unsupported `workerd` binary. On Linux/macOS/VPS, install Node.js 20.19+ first; the installer will not silently change the system Node.js installation. The script is public at `scripts/install.sh`; review it before running. The installer reads prompts from `/dev/tty`, so it remains interactive when piped from `curl`. Do not use `sudo bash` or run it as root.
 
 Use Node.js **20.19 or newer** and Git for the source-build route. Install Node.js from the official [Node.js downloads page](https://nodejs.org/en/download).
 
@@ -27,7 +25,7 @@ The current Android route is the CLI inside Termux. It is not a standalone Andro
 
 ~~~sh
 pkg update && pkg upgrade -y
-pkg install nodejs-lts git curl
+pkg install curl
 node --version
 ~~~
 
@@ -39,7 +37,7 @@ sed -n '1,260p' gulz-install.sh
 bash gulz-install.sh
 ~~~
 
-The installer asks for the install folder and confirmation. You can still build manually from the source repository if preferred.
+The installer asks for the install folder and confirmation. If Git or Node.js LTS is missing, it offers to install them through Termux. You can still build manually from the source repository if preferred.
 
 Termux uses Android's Bionic environment. Do not install generic Linux desktop binaries into Termux. A native Android app is planned separately.
 
@@ -49,8 +47,7 @@ Termux uses Android's Bionic environment. Do not install generic Linux desktop b
 2. Open a new terminal and run the interactive installer:
 
 ~~~sh
-curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
-bash gulz-install.sh
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
 ~~~
 
 Or use the manual source-build route. First confirm prerequisites:
