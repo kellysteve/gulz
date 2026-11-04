@@ -941,7 +941,20 @@ async function main(): Promise<void> {
     }
     if (action === "configure") {
       if (!stdin.isTTY || !stdout.isTTY) throw new Error("Provider configuration requires an interactive terminal.");
-      const existing = await readProviderConfig();
+      if (process.env.GULZ_AI_BASE_URL || process.env.GULZ_AI_MODEL || process.env.GULZ_AI_API_KEY) {
+        throw new Error("Provider settings are supplied by GULZ_AI_* environment variables. Update those variables instead of saving a second configuration.");
+      }
+      let existing: StoredProviderConfig | null = null;
+      try {
+        existing = await readProviderConfig();
+      } catch (error) {
+        const info = await lstat(providerFile).catch((fileError) => {
+          if ((fileError as NodeJS.ErrnoException).code === "ENOENT") return null;
+          throw fileError;
+        });
+        if (!info || !info.isFile() || info.isSymbolicLink()) throw error;
+        warning("Saved provider settings could not be read. The new configuration will replace the regular settings file.");
+      }
       const rl = createInterface({ input: stdin, output: stdout });
       let baseUrl: string;
       let model: string;
@@ -967,9 +980,16 @@ async function main(): Promise<void> {
       return;
     }
     if (action === "remove") {
-      const config = await readProviderConfig();
-      if (!config) { console.log("No saved provider settings were found."); return; }
-      if (process.env.GULZ_AI_API_KEY) throw new Error("Provider settings are supplied by environment variables; remove GULZ_AI_* from your environment instead.");
+      if (process.env.GULZ_AI_BASE_URL || process.env.GULZ_AI_MODEL || process.env.GULZ_AI_API_KEY) {
+        throw new Error("Provider settings are supplied by environment variables; remove GULZ_AI_* from your environment instead.");
+      }
+      let info;
+      try { info = await lstat(providerFile); }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") { console.log("No saved provider settings were found."); return; }
+        throw error;
+      }
+      if (!info.isFile() || info.isSymbolicLink()) throw new Error("Provider settings must be a regular file, not a symbolic link.");
       if (!stdin.isTTY || !stdout.isTTY) throw new Error("Removing provider settings requires an interactive terminal.");
       const rl = createInterface({ input: stdin, output: stdout });
       try {
