@@ -190,10 +190,12 @@ export async function generateGoalPlan(
       signal: controller.signal,
     });
     if (!response.ok) {
-      const body = (await response.text()).slice(0, 1000);
-      throw new ProviderError("AI provider request failed with HTTP " + response.status + (body ? ": " + body : ""));
+      throw new ProviderError("AI provider request failed with HTTP " + response.status + ". Check the endpoint, model and API key.");
     }
-    const payload: unknown = await response.json();
+    const responseText = await response.text();
+    if (responseText.length > 1_000_000) throw new ProviderError("AI provider response exceeded the 1 MB safety limit.");
+    let payload: unknown;
+    try { payload = JSON.parse(responseText); } catch { throw new ProviderError("AI provider returned invalid response JSON."); }
     if (!isRecord(payload) || !Array.isArray(payload.choices)) throw new ProviderError("AI provider returned an invalid chat-completions response.");
     const choice = payload.choices[0];
     if (!isRecord(choice) || !isRecord(choice.message)) throw new ProviderError("AI provider returned no assistant message.");
