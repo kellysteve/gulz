@@ -678,6 +678,8 @@ async function interactiveSession(): Promise<void> {
     console.log("  " + paint("4.", ansi.cyan) + " Command reference");
     console.log("  " + paint("5.", ansi.cyan) + " Update GULZ");
     console.log("  " + paint("6.", ansi.cyan) + " Recent activity");
+    console.log("  " + paint("7.", ansi.cyan) + " Configure AI provider");
+    console.log("  " + paint("8.", ansi.cyan) + " Plan a saved goal with AI");
     console.log("  " + paint("0.", ansi.dim) + " Exit");
   };
 
@@ -766,6 +768,27 @@ async function interactiveSession(): Promise<void> {
         await updateInstallation();
         return;
       }
+      if (choice === "7" || choice.toLowerCase() === "provider") {
+        rl.close();
+        const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "provider", "configure"], { stdio: "inherit", env: process.env });
+        if (result.error) throw result.error;
+        return await interactiveSession();
+      }
+      if (choice === "8" || choice.toLowerCase() === "plan") {
+        const drafts = (await readGoals()).filter((goal) => goal.status === "draft" && goal.tasks.length === 0);
+        if (!drafts.length) { warning("Create a new draft goal before requesting an AI plan."); continue; }
+        console.log("\nDraft goals available for planning:");
+        drafts.forEach((goal, index) => console.log("  " + (index + 1) + ". " + goal.title + "  (" + goal.id + ")"));
+        const selected = await ask("Choose a goal number or press Enter to return: ");
+        if (!selected) continue;
+        const index = Number(selected);
+        const goal = Number.isInteger(index) && index >= 1 && index <= drafts.length ? drafts[index - 1] : drafts.find((item) => item.id === selected);
+        if (!goal) { warning("That draft goal was not found."); continue; }
+        rl.close();
+        const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "plan", goal.id], { stdio: "inherit", env: process.env });
+        if (result.error) throw result.error;
+        return await interactiveSession();
+      }
       if (choice === "6" || choice.toLowerCase() === "audit" || choice.toLowerCase() === "activity") {
         const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "audit"], { stdio: "inherit", env: process.env });
         if (result.error) throw result.error;
@@ -776,7 +799,7 @@ async function interactiveSession(): Promise<void> {
         help();
         continue;
       }
-      console.log("I didn't recognise that option. Choose 1, 2, 3, 4, 5, 6 or 0.");
+      console.log("I didn't recognise that option. Choose 1, 2, 3, 4, 5, 6, 7, 8 or 0.");
     }
   } finally {
     rl.close();
