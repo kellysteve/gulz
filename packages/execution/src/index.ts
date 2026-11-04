@@ -255,7 +255,7 @@ export async function executeLocalOperation(
     let targetInfo;
     try { targetInfo = await lstat(target); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
     if (targetInfo?.isSymbolicLink()) throw new ExecutionError("Symbolic links are not allowed in execution targets.");
-    if (targetInfo && !targetInfo.isFile() && operation.kind !== "inspect" && operation.kind !== "run_command") throw new ExecutionError("Target must be a regular file.");
+    if (targetInfo && !targetInfo.isFile() && operation.kind !== "inspect" && operation.kind !== "list_directory" && operation.kind !== "run_command") throw new ExecutionError("Target must be a regular file.");
     const realTarget = targetInfo ? await realpath(target) : target;
     if (realTarget !== root && !realTarget.startsWith(root + sep)) {
       throw new ExecutionError("Resolved target escapes the authorized root directory.");
