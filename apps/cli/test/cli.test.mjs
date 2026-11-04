@@ -387,3 +387,12 @@ test("stores an optional goal description supplied for AI planning", async () =>
     assert.equal(goal.description, "Build and verify the CLI release.");
   });
 });
+
+
+test("requires an interactive terminal before uninstalling the CLI", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "uninstall");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /interactive terminal/);
+  });
+});
