@@ -1324,7 +1324,19 @@ async function main(): Promise<void> {
     });
     const result = await executeLocalOperation(operation, { rootDirectory: process.cwd() });
     await recordExecutionAudit(result);
-    console.log(JSON.stringify(result, null, 2));
+    if (command === "read" && result.output.kind === "file_content") {
+      title("FILE · " + result.output.path);
+      label("Size", result.output.sizeBytes + " bytes");
+      if (result.output.sha256) label("SHA-256", result.output.sha256);
+      console.log("\n" + (result.output.content ?? ""));
+    } else if (command === "inspect" && result.output.kind === "file_metadata") {
+      title("PATH INSPECTION");
+      label("Path", result.output.path);
+      label("Type", result.output.isDirectory ? "Directory" : "File");
+      label("Size", result.output.sizeBytes + " bytes");
+    } else {
+      console.log(JSON.stringify(result, null, 2));
+    }
     return;
   }
   if (command === "goals") {
