@@ -10,7 +10,7 @@ export interface LocalExecutionOptions {
   rootDirectory: string;
   /** Required for moderate, high and critical operations. */
   approved?: boolean;
-  /** Maximum time allowed for a single operation. Defaults to 5 seconds. */
+  /** Maximum time allowed for a single operation. Defaults to 5 seconds; approved npm workflows may use a longer bounded timeout. */
   timeoutMs?: number;
   /** Maximum bytes returned by read_file. Defaults to 256 KiB. */
   maxReadBytes?: number;
@@ -230,8 +230,8 @@ export async function executeLocalOperation(
   }
   const timeoutMs = options.timeoutMs ?? 5_000;
   const maxReadBytes = options.maxReadBytes ?? 256 * 1024;
-  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000) {
-    throw new ExecutionError("timeoutMs must be an integer between 1 and 30000.");
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 180_000) {
+    throw new ExecutionError("timeoutMs must be an integer between 1 and 180000.");
   }
   if (!Number.isInteger(maxReadBytes) || maxReadBytes < 1 || maxReadBytes > 1024 * 1024) {
     throw new ExecutionError("maxReadBytes must be an integer between 1 and 1048576.");
@@ -304,7 +304,7 @@ export async function executeLocalOperation(
 
     if (operation.kind === "run_command") {
       if (!isAllowedCommand(operation.command, operation.args ?? [])) {
-        throw new ExecutionError("Command is not allowlisted. Supported commands: node --version and selected read-only git status/branch/log/diff commands.");
+        throw new ExecutionError("Command is not allowlisted. Supported commands: Node.js version, selected read-only Git diagnostics, npm --version, npm run build:cli and npm run test:cli.");
       }
       if (!info?.isDirectory()) throw new ExecutionError("Command working directory must be an existing directory.");
       const command = operation.command!;
