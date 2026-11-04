@@ -405,3 +405,12 @@ test("requires an interactive terminal before repairing the CLI", async () => {
     assert.match(result.stderr, /interactive terminal/);
   });
 });
+
+
+test("requires an interactive high-risk approval before deleting a file", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "delete", "important.txt");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /high-risk approval/);
+  });
+});
