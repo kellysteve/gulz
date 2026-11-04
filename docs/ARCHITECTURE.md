@@ -1,78 +1,66 @@
 # GULZ architecture
 
-## Project direction: open source
+## Product direction
 
-GULZ is developed in the open and licensed under the Apache License 2.0. Source contributions and community discussion are welcome. The license covers copyright and patent permissions for the software; it does not grant unrestricted rights to the GULZ name, logos or other trademarks.
+GULZ is an open-source supervised goal-execution and machine-operations platform. Its three intended interfaces share one policy and state model:
 
-## Product experience: hybrid
+1. **Terminal:** direct commands and local machine control.
+2. **AI assistant:** natural-language goal capture and structured planning.
+3. **Task workspace:** goals, plans, approvals, execution activity, results and resumable work.
 
-GULZ has three first-class interfaces backed by one shared core:
+No interface may bypass the shared execution policy. AI output is untrusted input, never authorization.
 
-1. **Terminal** — direct commands, system information and explicit power-user control.
-2. **AI assistant** — natural-language goal capture, planning and guided operations.
-3. **Task workspace** — goals, plans, approvals, execution activity, results and resumable work.
+## Package boundaries
 
-These are not separate products or separate execution paths. Each interface reads and updates the same goal/task state through the core domain layer. No interface may bypass execution policy.
+- **CLI (`apps/cli`):** terminal UX, local goal storage, provider setup, plan review, approvals, execution orchestration, recovery, update/repair/uninstall.
+- **Core (`packages/core`):** goal/task records, typed operation contracts, lifecycle transitions and risk-derived approval requirements. No network or machine side effects.
+- **Execution (`packages/execution`):** the only current machine-operation adapter. It validates operations again, enforces authorized-root path rules, symlink protection, approvals, timeouts, output limits and verification.
+- **Providers (`packages/providers`):** OpenAI-compatible structured planning adapter. It returns proposals only; local policy validates every path, command, risk and operation before anything is saved or executed.
+- **Local state:** currently stored under `~/.gulz` (or `GULZ_HOME`) as validated JSON/JSONL files with owner-only permissions where supported. SQLite, encrypted secret storage and backup/restore policy remain future hardening work.
+- **Website/API:** Cloudflare Workers and static assets. The website is not yet the source of truth for local machine execution.
+- **Remote adapters:** SSH/VPS and connected-service adapters are not yet implemented.
 
-## System boundaries
+## Current CLI lifecycle
 
-- **CLI:** owns the terminal experience and routes user intent into the shared core.
-- **Core:** owns goal/task records, lifecycle transitions, planning contracts and orchestration. It contains no provider-specific or shell side effects.
-- **Execution:** typed tools, permission checks, approval gates, timeouts and audit events. It is the only layer allowed to perform machine operations.
-- **Provider adapters:** translate between GULZ's internal AI interface and external providers. Provider-specific credentials must never be exposed in client logs.
-- **Local storage:** persistent local state. SQLite is the initial direction; encryption and backup policy must be designed before storing sensitive material.
-- **Website/API:** Cloudflare Workers. Static website assets are deployed with the Worker; API routes execute in the Worker.
-- **Supabase:** release artifact storage and selected backend data. The browser must never receive the service-role key. Public release objects should be immutable and verified by signed metadata.
-- **Updater:** verifies signatures and checksums before installing. Failed updates must preserve user data and support recovery.
+Goal states are validated by core. Planning moves an untouched draft goal to planned. Execution moves it to running and persists task/operation checkpoints. Ctrl+C safely pauses work; `gulz resume` recovers interrupted runs from saved checkpoints; `gulz cancel` requires confirmation. Completed and cancelled goals are terminal.
 
-## Core lifecycle
+Task states are independent. Executable tasks cannot be manually marked completed. They become completed only after all planned operations return verified results. Manual checklist tasks without operations remain user-managed.
 
-Goal states:
+## Current local operation policy
 
-`draft -> planned -> awaiting_approval -> running -> paused -> running -> completed`
+| Operation | Risk | Policy |
+|---|---|---|
+| Inspect path | Low | Authorized root only; symlinks rejected |
+| List directory | Low | Maximum 200 entry names/types; child symlinks never followed |
+| Read file | Low | UTF-8, bounded size, SHA-256 verified |
+| Create directory | Moderate | Typed approval; recursive path-component checks |
+| Write file | Moderate | Typed approval; atomic write; replaced file backed up |
+| Delete file | High | Typed approval; regular files only, 256 KiB max, moved to private recoverable backup |
+| Run command | Moderate | Exact argument allowlist, no shell; npm build/test workflows require approval |
 
-Goals may also fail or be cancelled. Failed goals may be replanned; completed and cancelled goals are terminal. Transitions are validated by the core package and invalid transitions fail closed.
+Arbitrary shell, package installation, permanent deletion, permission changes, general network access and SSH are not available through the current execution adapter.
 
-Task states are independently tracked so a goal can resume from unfinished work. Completion is only allowed when every task is completed or explicitly skipped.
+## AI provider boundary
 
-## Execution lifecycle
+The current provider adapter uses OpenAI-compatible chat-completions APIs. Provider configuration is stored in `~/.gulz/provider.json` with owner-only permissions where supported, or supplied via `GULZ_AI_BASE_URL`, `GULZ_AI_MODEL` and `GULZ_AI_API_KEY`. The key is stored as plaintext protected by filesystem permissions, not encrypted.
 
-1. Capture the goal from the terminal or AI interface.
-2. Clarify missing details and inspect only resources the user authorized.
-3. Produce a structured plan with explicit operations and risk classifications.
-4. Validate every operation against policy.
-5. Request approval for moderate, high, critical, destructive or sensitive operations.
-6. Execute through a real adapter with bounded permissions and timeouts.
-7. Verify the resulting system state independently.
-8. Persist task state, output and audit events so the task workspace can resume work.
+Before a planning request, the user confirms that the goal title and description may be sent to the selected provider. Local workspace files and SSH credentials are not uploaded. The provider response is size-bounded and schema-validated. Risk levels are derived locally; the model cannot lower risk or authorize an operation.
 
-AI output is untrusted input. It is never itself authorization to execute a command. Terminal commands and AI-proposed operations use the same execution policy.
+## Execution and recovery
 
-## Initial core package
+1. Capture a goal and optional description.
+2. Ask the configured provider for a structured plan after explicit data-sharing confirmation.
+3. Validate task/operation count, paths, operation kinds and command allowlists.
+4. Save the plan for user review.
+5. On explicit execute, run low-risk reads/inspection and request typed approval for moderate/high-risk operations.
+6. Verify each result and persist its operation ID as a checkpoint.
+7. On restart, skip saved checkpoints; verify a write's expected content or a deterministic delete backup before recovering a checkpoint.
+8. Persist task/goal status and local audit events. A process-wide execution lock prevents concurrent runs.
 
-`packages/core` is the shared domain foundation. It currently defines goal/task types, guarded lifecycle transitions, approval-risk classification and approval summaries. It deliberately does not execute commands, call AI providers or persist data. Those responsibilities belong to later packages and must not be simulated in the core.
+No operation is reported as successful without a verified result. Local execution is not a hardened sandbox against a hostile process racing filesystem changes; do not run GULZ with elevated privileges.
 
-## Installation strategy
+## Distribution and updates
 
-Installation methods are platform-specific. Termux uses Android-compatible builds (Bionic environment), not assumed-compatible generic Linux binaries. Linux, macOS and Windows artifacts must be built and tested for their supported architectures. npm may be offered as a developer route, but end users should have proper package-manager or installable release options instead of being required to download and build the source repository.
+The supported current install route is a source checkout with an interactive installer. CLI installation excludes the website's Wrangler/Workerd dependency to support Android Termux. `gulz update` requires a clean fast-forwardable checkout; `gulz repair` rebuilds/relinks without pulling; `gulz uninstall` removes the source checkout and command link while preserving `~/.gulz`.
 
-## Release flow
-
-Build -> test -> generate SBOM -> sign artifacts -> calculate checksums -> upload immutable artifacts to Supabase Storage -> publish signed release manifest -> website and updater consume the manifest.
-
-No installation command or download link should be shown as live until an artifact has been published and tested.
-
-## Delivery sequence
-
-The CLI and execution engine are the immediate product priority. Release infrastructure must not block the first useful local runtime.
-
-1. Verify the existing core, CLI and website builds/tests; fix foundational defects.
-2. Complete reliable local persistence and resumable goal/task orchestration.
-3. Complete the local execution foundation: bounded inspect/read operations, explicitly approved text writes with backups/restore, and a tiny fixed allowlist of read-only diagnostic commands. Every command runs without a shell, with explicit approval, a sanitized environment, output/time limits and an audit result. Arbitrary shell execution, installs, deletes and SSH execution remain out of scope.
-4. Build the interactive CLI experience on top of the verified core and execution packages: session UX, command discovery, goal/task views, clear approval previews, cancellation and recoverable activity. Keep the non-interactive command interface available for scripts where safe.
-5. Add provider-neutral AI planning and supervised execution; AI output remains untrusted.
-6. Add SSH and remote-environment adapters behind the same policy and approval boundary.
-7. Prepare signed platform packages, immutable release artifacts and verified updates.
-8. Complete end-to-end security and platform testing before public releases.
-
-The public website may describe the roadmap, but it must not present planned capabilities or installation methods as available. Supabase release storage and updater work should be implemented when release artifacts are ready to ship, not as a prerequisite for local CLI execution.
+Stable signed binaries, checksums, published npm packages, rollback, remote execution and native desktop/mobile installers are release work, not current capabilities.
