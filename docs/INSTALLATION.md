@@ -6,7 +6,7 @@ GULZ is in early development. The interactive Bash installer and repository sour
 
 ### Interactive Bash installer (Termux, Linux, macOS and VPS)
 
-The installer detects the environment, asks where to place the source checkout, explains each change and asks for confirmation before cloning/updating the repository, installing only the CLI workspace dependencies, building the CLI and linking the `gulz` command. It intentionally excludes the website workspace and Wrangler/Workerd from CLI installation. It runs as your normal user by default, asks before using a package manager to install missing prerequisites, and asks before adding its user-local command directory to your shell profile. Download it first, inspect it if you wish, then run it:
+The installer detects the environment, asks where to place the source checkout, explains each change and asks for confirmation before cloning/updating the repository, installing only the CLI workspace dependencies, building the CLI and linking the `gulz` command. It intentionally excludes the website workspace and Wrangler/Workerd from CLI installation. It runs as your normal user by default, asks before using a package manager to install missing prerequisites, and asks before adding its user-local command directory to your shell profile. For a direct interactive install, run this command (or download and inspect `scripts/install.sh` first if you prefer):
 
 ~~~sh
 curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
@@ -32,9 +32,7 @@ node --version
 3. Use the interactive installer (recommended):
 
 ~~~sh
-curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
-sed -n '1,260p' gulz-install.sh
-bash gulz-install.sh
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
 ~~~
 
 The installer asks for the install folder and confirmation. If Git or Node.js LTS is missing, it offers to install them through Termux. You can still build manually from the source repository if preferred.
@@ -69,8 +67,7 @@ The apt command above is suitable for Debian/Ubuntu. On other distributions, use
 With Node.js 20.19+ and Git available, run the installer:
 
 ~~~sh
-curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh
-bash gulz-install.sh
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
 ~~~
 
 Or install prerequisites with Homebrew and follow the manual source steps:
