@@ -369,8 +369,15 @@ export async function executeLocalOperation(
       if (info.size > maxReadBytes) throw new ExecutionError("File exceeds the configured reversible-delete limit of " + maxReadBytes + " bytes.");
       const original = await readFile(realTarget, { signal: controller.signal });
       const digest = createHash("sha256").update(original).digest("hex");
-      const backupName = ".gulz-deleted-" + Date.now() + "-" + randomUUID();
+      const backupToken = createHash("sha256").update(operation.id).digest("hex").slice(0, 24);
+      const backupName = ".gulz-deleted-" + backupToken;
       const backupAbsolute = join(dirname(realTarget), backupName);
+      try {
+        await lstat(backupAbsolute);
+        throw new ExecutionError("A recoverable backup already exists for this operation. Inspect it before retrying; GULZ will not overwrite it.");
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
       const backupPath = relative(root, backupAbsolute);
       await rename(realTarget, backupAbsolute);
       try {
