@@ -18,9 +18,9 @@ const goalsFile = join(dataHome, "goals.json");
 const goalsLockFile = join(dataHome, "goals.lock");
 
 const isInteractive = Boolean(stdout.isTTY && process.env.NO_COLOR === undefined && process.env.TERM !== "dumb");
-const ansi = { reset: "\\u001b[0m", bold: "\\u001b[1m", dim: "\\u001b[2m", cyan: "\\u001b[36m", blue: "\\u001b[34m", green: "\\u001b[32m", yellow: "\\u001b[33m", red: "\\u001b[31m", magenta: "\\u001b[35m" };
+const ansi = { reset: "\u001b[0m", bold: "\u001b[1m", dim: "\u001b[2m", cyan: "\u001b[36m", blue: "\u001b[34m", green: "\u001b[32m", yellow: "\u001b[33m", red: "\u001b[31m", magenta: "\u001b[35m" };
 function paint(value: string, ...styles: string[]): string { return isInteractive ? styles.join("") + value + ansi.reset : value; }
-function title(value: string): void { console.log("\\n" + paint(value, ansi.bold, ansi.cyan)); }
+function title(value: string): void { console.log("\n" + paint(value, ansi.bold, ansi.cyan)); }
 function success(value: string): void { console.log(paint("✓ " + value, ansi.green, ansi.bold)); }
 function warning(value: string): void { console.log(paint("! " + value, ansi.yellow)); }
 function failure(value: string): void { console.error(paint("✗ " + value, ansi.red, ansi.bold)); }
@@ -103,6 +103,11 @@ function help(): void {
     "  goal create <title>   Save a new goal locally",
     "  goals                 List saved goals",
     "  goal show <id>        Show a saved goal",
+    "  goal edit <id>        Edit a goal title or description",
+    "  goal delete <id>      Delete a goal after confirmation",
+    "  goal task add <id> <title>  Add a checklist task to a goal",
+    "  goal task status <goal> <task> <status>  Change a task status",
+    "  goal status <id> <status>  Change a goal lifecycle status",
     "  inspect <path>        Inspect a path inside the current directory",
     "  read <path>           Read a file inside the current directory (256 KiB max)",
     "  write <path>          Write one line of text after explicit confirmation",
@@ -512,6 +517,102 @@ async function main(): Promise<void> {
     console.log(`ID:     ${goal.id}`);
     console.log(`Title:  ${goal.title}`);
     console.log("Status: draft");
+    return;
+  }
+  if (command === "goal" && args[0] === "edit") {
+    const id = args[1];
+    if (!id) { console.error("Usage: gulz goal edit <id>"); process.exitCode = 2; return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("Editing goals requires an interactive terminal.");
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      const updated = await withGoalsLock(async () => {
+        const goals = await readGoals();
+        const index = goals.findIndex((item) => item.id === id);
+        if (index < 0) throw new Error("Goal not found.");
+        const current = goals[index]!;
+        console.log("Leave a field blank to keep its current value.");
+        const titleInput = (await rl.question("Title [" + current.title + "]: ")).trim();
+        const descriptionInput = (await rl.question("Description [" + (current.description || "none") + "]: ")).trim();
+        const next = { ...current, title: titleInput || current.title, description: descriptionInput || current.description, updatedAt: new Date().toISOString() };
+        if (!next.title.trim()) throw new Error("A goal title cannot be empty.");
+        goals[index] = next;
+        await saveGoals(goals);
+        return next;
+      });
+      success("Goal updated");
+      label("Title", updated.title);
+    } finally { rl.close(); }
+    return;
+  }
+  if (command === "goal" && args[0] === "delete") {
+    const id = args[1];
+    if (!id) { console.error("Usage: gulz goal delete <id>"); process.exitCode = 2; return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("Deleting goals requires an interactive terminal and explicit confirmation.");
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      const goal = (await readGoals()).find((item) => item.id === id);
+      if (!goal) throw new Error("Goal not found.");
+      warning("This permanently removes the selected goal and its task list from local GULZ storage.");
+      const confirmation = await rl.question("Type DELETE " + id + " to confirm: ");
+      if (confirmation !== "DELETE " + id) { console.log("Deletion cancelled."); return; }
+      await withGoalsLock(async () => {
+        const goals = await readGoals();
+        if (!goals.some((item) => item.id === id)) throw new Error("Goal no longer exists.");
+        await saveGoals(goals.filter((item) => item.id !== id));
+      });
+      success("Goal deleted");
+    } finally { rl.close(); }
+    return;
+  }
+  if (command === "goal" && args[0] === "task" && args[1] === "add") {
+    const id = args[2];
+    const taskTitle = args.slice(3).join(" ").trim();
+    if (!id || !taskTitle) { console.error('Usage: gulz goal task add <goal-id> "<task title>"'); process.exitCode = 2; return; }
+    const task = await withGoalsLock(async () => {
+      const goals = await readGoals();
+      const index = goals.findIndex((item) => item.id === id);
+      if (index < 0) throw new Error("Goal not found.");
+      const now = new Date().toISOString();
+      const updated = addGoalTask(goals[index]!, { id: randomUUID(), title: taskTitle, description: "", operations: [] }, now);
+      goals[index] = updated;
+      await saveGoals(goals);
+      return updated.tasks[updated.tasks.length - 1]!;
+    });
+    success("Task added to goal");
+    label("Task ID", task.id);
+    label("Title", task.title);
+    return;
+  }
+  if (command === "goal" && args[0] === "task" && args[1] === "status") {
+    const [id, taskId, next] = args.slice(2);
+    if (!id || !taskId || !next || !taskStatuses.has(next as TaskStatus)) {
+      console.error("Usage: gulz goal task status <goal-id> <task-id> <pending|awaiting_approval|running|paused|completed|failed|skipped|cancelled>");
+      process.exitCode = 2; return;
+    }
+    await withGoalsLock(async () => {
+      const goals = await readGoals();
+      const index = goals.findIndex((item) => item.id === id);
+      if (index < 0) throw new Error("Goal not found.");
+      goals[index] = transitionTask(goals[index]!, taskId, next as TaskStatus);
+      await saveGoals(goals);
+    });
+    success("Task status updated to " + next);
+    return;
+  }
+  if (command === "goal" && args[0] === "status") {
+    const [id, next] = args.slice(1);
+    if (!id || !next || !goalStatuses.has(next as GoalStatus)) {
+      console.error("Usage: gulz goal status <goal-id> <draft|planned|awaiting_approval|running|paused|completed|failed|cancelled>");
+      process.exitCode = 2; return;
+    }
+    await withGoalsLock(async () => {
+      const goals = await readGoals();
+      const index = goals.findIndex((item) => item.id === id);
+      if (index < 0) throw new Error("Goal not found.");
+      goals[index] = transitionGoal(goals[index]!, next as GoalStatus);
+      await saveGoals(goals);
+    });
+    success("Goal status updated to " + next);
     return;
   }
   if (command === "goal" && args[0] === "show") {
