@@ -287,14 +287,15 @@ async function interactiveSession(): Promise<void> {
   const rl = createInterface({ input: stdin, output: stdout });
   const ask = async (question: string): Promise<string> => (await rl.question(question)).trim();
   const showMenu = (): void => {
-    console.log("\nGULZ — Goals. Executed.");
-    console.log("Your local supervised workspace");
-    console.log("\n  1. Create a goal");
-    console.log("  2. View saved goals and inspect a goal");
-    console.log("  3. System check");
-    console.log("  4. Command reference");
-    console.log("  5. Update GULZ");
-    console.log("  0. Exit");
+    console.log("\n" + paint("GULZ", ansi.bold, ansi.cyan) + paint("  GOALS. EXECUTED.", ansi.bold));
+    console.log(paint("Your local supervised workspace", ansi.dim));
+    console.log("\n  " + paint("1.", ansi.cyan) + " Create a goal");
+    console.log("  " + paint("2.", ansi.cyan) + " View saved goals and inspect a goal");
+    console.log("  " + paint("3.", ansi.cyan) + " System check");
+    console.log("  " + paint("4.", ansi.cyan) + " Command reference");
+    console.log("  " + paint("5.", ansi.cyan) + " Update GULZ");
+    console.log("  " + paint("6.", ansi.cyan) + " Recent activity");
+    console.log("  " + paint("0.", ansi.dim) + " Exit");
   };
 
   try {
@@ -365,11 +366,17 @@ async function interactiveSession(): Promise<void> {
         await updateInstallation();
         return;
       }
+      if (choice === "6" || choice.toLowerCase() === "audit" || choice.toLowerCase() === "activity") {
+        const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "audit"], { stdio: "inherit", env: process.env });
+        if (result.error) throw result.error;
+        if (result.status !== 0) warning("Could not display recent activity.");
+        continue;
+      }
       if (choice === "4" || choice.toLowerCase() === "help") {
         help();
         continue;
       }
-      console.log("I didn't recognise that option. Choose 1, 2, 3, 4, 5 or 0.");
+      console.log("I didn't recognise that option. Choose 1, 2, 3, 4, 5, 6 or 0.");
     }
   } finally {
     rl.close();
