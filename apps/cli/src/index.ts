@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import { createGoal, createPlannedOperation, operationRequiresApproval, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
+import { addGoalTask, createGoal, createPlannedOperation, operationRequiresApproval, transitionGoal, transitionTask, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
 import { executeLocalOperation } from "@gulz/execution";
 
 const VERSION = "0.1.0";
