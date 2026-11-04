@@ -1175,7 +1175,12 @@ async function main(): Promise<void> {
       const operation = createPlannedOperation({ id: randomUUID(), kind: "write_file", description: "Write a local text file", risk: "moderate", target, content });
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
       await recordExecutionAudit(result);
-      console.log(JSON.stringify(result, null, 2));
+      title("FILE WRITE VERIFIED");
+      label("Path", result.output.path);
+      label("Bytes", String(result.output.sizeBytes));
+      if (result.output.sha256) label("SHA-256", result.output.sha256);
+      if (result.output.backupPath) label("Backup", result.output.backupPath);
+      success("File write verified");
     } finally { rl.close(); }
     return;
   }
@@ -1209,8 +1214,13 @@ async function main(): Promise<void> {
       if (confirmation !== `RUN ${preview}`) { console.log("Command cancelled."); return; }
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true, timeoutMs: executable === "npm" ? 180_000 : 5_000 });
       await recordExecutionAudit(result);
-      console.log(JSON.stringify(result, null, 2));
-      if (result.output.exitCode !== 0) process.exitCode = 1;
+      title("COMMAND RESULT");
+      label("Command", result.output.command ?? preview);
+      label("Exit code", String(result.output.exitCode));
+      if (result.output.stdout) console.log(result.output.stdout);
+      if (result.output.stderr) console.error(result.output.stderr);
+      if (result.output.exitCode === 0) success("Command completed");
+      else { failure("Command failed"); process.exitCode = 1; }
     } finally { rl.close(); }
     return;
   }
