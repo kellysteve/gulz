@@ -549,6 +549,7 @@ async function runGoalExecution(goalId: string, resume: boolean): Promise<void> 
             return { ...current, tasks, updatedAt: new Date().toISOString() };
           });
           success("Verified · " + operation.description);
+          if (result.output.kind === "file_deleted" && result.output.backupPath) label("Recovery backup", result.output.backupPath);
         }
         await mutateGoalRecord(goalId, (current) => {
           const completed = transitionTask(current, initialTask.id, "completed");
@@ -594,6 +595,8 @@ async function recordExecutionAudit(result: LocalExecutionResult): Promise<void>
     outcome: result.audit.outcome,
     verified: result.verified,
     detail: result.audit.detail,
+    backupPath: result.output.backupPath,
+    sha256: result.output.sha256,
   });
 }
 
