@@ -164,6 +164,18 @@ test("inspects and reads files only inside the current working directory", async
   });
 });
 
+test("lists the current directory with readable entry types", async () => {
+  await withHome(async (home) => {
+    await mkdir(join(home, "project-folder"));
+    await writeFile(join(home, "project-file.txt"), "hello");
+    const result = invoke(home, "list", ".");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /DIRECTORY/);
+    assert.match(result.stdout, /DIR\\s+project-folder/);
+    assert.match(result.stdout, /FILE\\s+project-file\\.txt/);
+  });
+});
+
 test("requires a title when creating a goal", async () => {
   await withHome(async (home) => {
     const result = invoke(home, "goal", "create");
