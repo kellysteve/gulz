@@ -371,7 +371,7 @@ test("moves deleted files into private verified backups that can be restored", a
   assert.equal(removed.output.backupPath?.startsWith(".gulz-deleted-"), true);
   await assert.rejects(import("node:fs/promises").then(({ access }) => access(join(root, "important.txt"))));
   const { stat } = await import("node:fs/promises");
-  assert.equal((await stat(join(root, removed.output.backupPath))).mode & 0o777, 0o600);
+  if (process.platform !== "win32") assert.equal((await stat(join(root, removed.output.backupPath))).mode & 0o777, 0o600);
   const backup = await executeLocalOperation(operation("read_file", removed.output.backupPath), { rootDirectory: root });
   const restore = createPlannedOperation({
     id: "restore-reversible",
