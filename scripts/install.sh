@@ -115,12 +115,15 @@ else
   git clone --depth 1 "$GULZ_REPO" "$INSTALL_DIR"
 fi
 cd "$INSTALL_DIR"
-if [ "$PLATFORM" != "termux" ]; then
-  npm config set prefix "$HOME/.local"
+if [ "$PLATFORM" = "termux" ]; then
+  GULZ_BIN_DIR="$(npm config get prefix)/bin"
+  mkdir -p "$GULZ_BIN_DIR"
+  npm run install:cli
+else
+  GULZ_BIN_DIR="$HOME/.local/bin"
+  mkdir -p "$GULZ_BIN_DIR"
+  NPM_CONFIG_PREFIX="$HOME/.local" npm run install:cli
 fi
-GULZ_BIN_DIR="$(npm config get prefix)/bin"
-mkdir -p "$GULZ_BIN_DIR"
-npm run install:cli
 
 bold "5/5 · Verify the gulz command"
 case ":$PATH:" in
@@ -131,8 +134,8 @@ case ":$PATH:" in
     case "${SHELL:-/bin/bash}" in */zsh) PROFILE="$HOME/.zprofile" ;; */bash) PROFILE="$HOME/.bashrc" ;; esac
     if ask_yes_no "Add $GULZ_BIN_DIR to PATH in $PROFILE?"; then
       touch "$PROFILE"
-      if ! grep -Fq 'export PATH="$HOME/.local/bin:$PATH"' "$PROFILE"; then
-        printf '\n# GULZ command-line tools\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$PROFILE"
+      if ! grep -Fq "$GULZ_BIN_DIR" "$PROFILE"; then
+        printf '\n# GULZ command-line tools\nexport PATH="%s:$PATH"\n' "$GULZ_BIN_DIR" >> "$PROFILE"
       fi
       export PATH="$GULZ_BIN_DIR:$PATH"
       info "Updated $PROFILE. The PATH change is active in this installer session."
