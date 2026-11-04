@@ -190,7 +190,7 @@ async function recordAudit(action: string, details: Record<string, string | numb
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
   const entry = { id: randomUUID(), timestamp: new Date().toISOString(), action, ...details };
-  await appendFile(auditFile, JSON.stringify(entry) + "\\n", { encoding: "utf8", mode: 0o600 });
+  await appendFile(auditFile, JSON.stringify(entry) + "\n", { encoding: "utf8", mode: 0o600 });
   await chmod(auditFile, 0o600);
 }
 
@@ -405,7 +405,7 @@ async function main(): Promise<void> {
   if (command === "audit") {
     let limit = 30;
     if (args.length) {
-      if (args.length !== 2 || args[0] !== "--limit" || !/^\\d+$/.test(args[1]!) || Number(args[1]) < 1 || Number(args[1]) > 500) {
+      if (args.length !== 2 || args[0] !== "--limit" || !/^\d+$/.test(args[1]!) || Number(args[1]) < 1 || Number(args[1]) > 500) {
         console.error("Usage: gulz audit [--limit 1..500]"); process.exitCode = 2; return;
       }
       limit = Number(args[1]);
@@ -420,7 +420,7 @@ async function main(): Promise<void> {
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
-    const lines = raw.split("\\n").filter(Boolean);
+    const lines = raw.split("\n").filter(Boolean);
     const entries = lines.map((line) => {
       const parsed: unknown = JSON.parse(line);
       if (!isRecord(parsed) || !isNonEmptyString(parsed.timestamp) || !isNonEmptyString(parsed.action)) throw new Error("Audit history contains an invalid entry; the file was left untouched.");
