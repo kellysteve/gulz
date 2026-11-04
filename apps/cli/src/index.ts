@@ -366,14 +366,17 @@ async function withExecutionLock<T>(run: () => Promise<T>): Promise<T> {
 async function askForOperationApproval(operationId: string, signal: AbortSignal): Promise<boolean> {
   if (signal.aborted) return false;
   const rl = createInterface({ input: stdin, output: stdout });
+  let onAbort: (() => void) | undefined;
   try {
     const question = rl.question("Type APPROVE " + operationId + " to authorize this operation: ").catch(() => "");
     const aborted = new Promise<string>((resolveQuestion) => {
-      signal.addEventListener("abort", () => resolveQuestion(""), { once: true });
+      onAbort = () => resolveQuestion("");
+      signal.addEventListener("abort", onAbort, { once: true });
     });
     const answer = await Promise.race([question, aborted]);
     return answer === "APPROVE " + operationId;
   } finally {
+    if (onAbort) signal.removeEventListener("abort", onAbort);
     rl.close();
   }
 }
