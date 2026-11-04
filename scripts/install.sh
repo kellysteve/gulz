@@ -6,20 +6,20 @@ GULZ_DEFAULT_DIR="$HOME/.local/share/gulz"
 GULZ_BIN_DIR="$HOME/.local/bin"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-}" != "dumb" ]; then
-  BOLD=$'\\033[1m'
-  DIM=$'\\033[2m'
-  CYAN=$'\\033[36m'
-  GREEN=$'\\033[32m'
-  YELLOW=$'\\033[33m'
-  RED=$'\\033[31m'
-  RESET=$'\\033[0m'
+  BOLD=$'\033[1m'
+  DIM=$'\033[2m'
+  CYAN=$'\033[36m'
+  GREEN=$'\033[32m'
+  YELLOW=$'\033[33m'
+  RED=$'\033[31m'
+  RESET=$'\033[0m'
 else
   BOLD=""; DIM=""; CYAN=""; GREEN=""; YELLOW=""; RED=""; RESET=""
 fi
-bold() { printf '\\n%s%s%s\\n' "$BOLD" "$*" "$RESET"; }
-info() { printf '  %s✓%s %s\\n' "$GREEN" "$RESET" "$*"; }
-warn() { printf '\\n%s! %s%s\\n' "$YELLOW" "$*" "$RESET" >&2; }
-fail() { printf '\\n%s✗ %s%s\\n' "$RED" "$*" "$RESET" >&2; exit 1; }
+bold() { printf '\n%s%s%s\n' "$BOLD" "$*" "$RESET"; }
+info() { printf '  %s✓%s %s\n' "$GREEN" "$RESET" "$*"; }
+warn() { printf '\n%s! %s%s\n' "$YELLOW" "$*" "$RESET" >&2; }
+fail() { printf '\n%s✗ %s%s\n' "$RED" "$*" "$RESET" >&2; exit 1; }
 ask_yes_no() {
   local prompt="$1" answer="" answer_lc=""
   while true; do
