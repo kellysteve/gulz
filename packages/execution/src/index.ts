@@ -21,7 +21,7 @@ export interface ExecutionAuditEvent {
   id: string;
   timestamp: string;
   operationId: string;
-  kind: "inspect" | "list_directory" | "create_directory" | "read_file" | "write_file" | "run_command";
+  kind: "inspect" | "list_directory" | "create_directory" | "delete_file" | "read_file" | "write_file" | "run_command";
   risk: "low" | "moderate" | "high" | "critical";
   outcome: "succeeded" | "denied" | "failed";
   target: string;
@@ -32,7 +32,7 @@ export interface LocalExecutionResult {
   operationId: string;
   verified: boolean;
   output: {
-    kind: "file_metadata" | "directory_listing" | "directory_created" | "file_content" | "file_written" | "command_result";
+    kind: "file_metadata" | "directory_listing" | "directory_created" | "file_deleted" | "file_content" | "file_written" | "command_result";
     path: string;
     sizeBytes: number;
     sha256?: string;
@@ -196,13 +196,16 @@ function verifyOperation(input: PlannedOperation): PlannedOperation {
     if (input.requiresApproval !== validated.requiresApproval) {
       throw new ExecutionError("Operation approval metadata is inconsistent with its risk level.");
     }
-    if (validated.kind !== "inspect" && validated.kind !== "list_directory" && validated.kind !== "create_directory" && validated.kind !== "read_file" && validated.kind !== "write_file" && validated.kind !== "run_command") {
+    if (validated.kind !== "inspect" && validated.kind !== "list_directory" && validated.kind !== "create_directory" && validated.kind !== "delete_file" && validated.kind !== "read_file" && validated.kind !== "write_file" && validated.kind !== "run_command") {
       throw new ExecutionError("This execution engine supports inspect, list_directory, create_directory, read_file, write_file and allowlisted run_command operations.");
+    }
+    if (validated.kind === "delete_file" && validated.risk !== "high") {
+      throw new ExecutionError("delete_file operations must be high-risk and explicitly approved.");
     }
     if ((validated.kind === "write_file" || validated.kind === "create_directory" || validated.kind === "run_command") && validated.risk !== "moderate") {
       throw new ExecutionError("write_file, create_directory and run_command operations must be moderate-risk and explicitly approved.");
     }
-    if (validated.kind !== "write_file" && validated.kind !== "create_directory" && validated.kind !== "run_command" && validated.risk !== "low") {
+    if (validated.kind !== "write_file" && validated.kind !== "create_directory" && validated.kind !== "delete_file" && validated.kind !== "run_command" && validated.risk !== "low") {
       throw new ExecutionError("Filesystem inspection, directory listing and reading are restricted to low-risk operations.");
     }
     return validated;
@@ -358,6 +361,47 @@ export async function executeLocalOperation(
         verified: commandResult.exitCode === 0,
         output,
         audit: audit(operation, commandResult.exitCode === 0 ? "succeeded" : "failed", output.path, `Allowlisted command completed with exit code ${commandResult.exitCode}.`),
+      };
+    }
+
+    if (operation.kind === "delete_file") {
+      if (!info?.isFile()) throw new ExecutionError("delete_file can only move a regular file into a recoverable backup.");
+      if (info.size > maxReadBytes) throw new ExecutionError("File exceeds the configured reversible-delete limit of " + maxReadBytes + " bytes.");
+      const original = await readFile(realTarget, { signal: controller.signal });
+      const digest = createHash("sha256").update(original).digest("hex");
+      const backupName = ".gulz-deleted-" + Date.now() + "-" + randomUUID();
+      const backupAbsolute = join(dirname(realTarget), backupName);
+      const backupPath = relative(root, backupAbsolute);
+      await rename(realTarget, backupAbsolute);
+      try {
+        const backupInfo = await lstat(backupAbsolute);
+        const backupBytes = await readFile(backupAbsolute, { signal: controller.signal });
+        const backupDigest = createHash("sha256").update(backupBytes).digest("hex");
+        if (!backupInfo.isFile() || backupInfo.isSymbolicLink() || backupBytes.byteLength !== original.byteLength || backupDigest !== digest) {
+          throw new ExecutionError("Deleted-file backup verification failed.");
+        }
+        try {
+          await lstat(realTarget);
+          throw new ExecutionError("Original file still exists after reversible deletion.");
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        }
+      } catch (error) {
+        await rename(backupAbsolute, realTarget).catch(() => undefined);
+        throw error;
+      }
+      const output = {
+        kind: "file_deleted" as const,
+        path: relative(root, realTarget),
+        sizeBytes: original.byteLength,
+        sha256: digest,
+        backupPath,
+      };
+      return {
+        operationId: operation.id,
+        verified: true,
+        output,
+        audit: audit(operation, "succeeded", output.path, "File moved into a same-directory recoverable backup and verified by SHA-256."),
       };
     }
 
