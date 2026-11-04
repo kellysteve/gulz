@@ -258,3 +258,26 @@ test("refuses a symbolic link as the audit history file", async () => {
     assert.match(result.stderr, /regular file, not a symbolic link/);
   });
 });
+
+
+test("reports an unconfigured AI provider without exposing or inventing credentials", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "provider", "status");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /AI PROVIDER/);
+    assert.match(result.stdout, /No provider configured/);
+    assert.equal(await readFile(join(home, "goals.json"), "utf8").catch(() => ""), "");
+  });
+});
+
+test("refuses a symbolic link as saved provider settings", async () => {
+  if (process.platform === "win32") return;
+  await withHome(async (home) => {
+    const outside = join(home, "outside-provider.json");
+    await writeFile(outside, JSON.stringify({ baseUrl: "https://example.com/v1", model: "model", apiKey: "secret" }));
+    await symlink(outside, join(home, "provider.json"));
+    const result = invoke(home, "provider", "status");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /regular file, not a symbolic link/);
+  });
+});
