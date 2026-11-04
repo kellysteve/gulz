@@ -121,7 +121,7 @@ function help(): void {
     "  uninstall             Remove the CLI and source checkout; preserve local data",
     "  goal create <title>   Save a new goal locally (--description <text> optional)",
     "  goals                 List saved goals",
-    "  goal show <id>        Show a saved goal",
+    "  goal show <id> [--json]  Show a saved goal and its plan",
     "  goal edit <id>        Edit a goal title or description",
     "  goal delete <id>      Delete a goal after confirmation",
     "  goal task add <id> <title>  Add a checklist task to a goal",
