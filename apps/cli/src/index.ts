@@ -117,6 +117,7 @@ function help(): void {
     "  resume <goal-id>      Resume paused or interrupted goal execution",
     "  cancel <goal-id>      Cancel a goal after confirmation",
     "  update                Safely update GULZ from its source installation",
+    "  repair                Reinstall CLI dependencies, rebuild and relink",
     "  uninstall             Remove the CLI and source checkout; preserve local data",
     "  goal create <title>   Save a new goal locally (--description <text> optional)",
     "  goals                 List saved goals",
@@ -986,6 +987,32 @@ async function main(): Promise<void> {
       }
     }
     console.log("\nReview the plan with gulz goal show " + id + ". No operations have been executed.");
+    return;
+  }
+  if (command === "repair") {
+    if (args.length !== 0) { console.error("Usage: gulz repair"); process.exitCode = 2; return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("Repair requires an interactive terminal and explicit confirmation.");
+    const installDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+    if (!existsSync(join(installDirectory, ".git")) || !existsSync(join(installDirectory, "package.json"))) {
+      throw new Error("GULZ cannot identify its source checkout for repair.");
+    }
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      title("REPAIR GULZ");
+      console.log("Source checkout: " + installDirectory);
+      console.log("This reinstalls CLI workspace dependencies, rebuilds the CLI and refreshes the global link. Local data is not changed.");
+      const confirmation = await rl.question("Type REPAIR GULZ to continue: ");
+      if (confirmation !== "REPAIR GULZ") { console.log("Repair cancelled."); return; }
+    } finally { rl.close(); }
+    const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+    const repairEnv: NodeJS.ProcessEnv = { ...process.env };
+    if (process.platform !== "win32") repairEnv.NPM_CONFIG_PREFIX = process.env.PREFIX?.includes("com.termux") ? process.env.PREFIX : join(homedir(), ".local");
+    const result = spawnSync(npm, ["run", "install:cli"], {
+      cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: repairEnv,
+    });
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error("Repair did not complete. Fix the reported build issue and run gulz repair again.");
+    success("GULZ CLI repaired and relinked");
     return;
   }
   if (command === "uninstall") {
