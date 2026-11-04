@@ -154,7 +154,7 @@ test("inspects and reads files only inside the current working directory", async
     await writeFile(join(home, "hello.txt"), "Hello from GULZ");
     const inspected = invoke(home, "inspect", "hello.txt");
     assert.equal(inspected.status, 0, inspected.stderr);
-    assert.match(inspected.stdout, /file_metadata/);
+    assert.match(inspected.stdout, /PATH INSPECTION/);
     const read = invoke(home, "read", "hello.txt");
     assert.equal(read.status, 0, read.stderr);
     assert.match(read.stdout, /Hello from GULZ/);
