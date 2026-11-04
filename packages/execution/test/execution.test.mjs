@@ -321,3 +321,35 @@ test("runs an explicitly approved npm version check without a shell", async () =
   assert.match(result.output.stdout ?? "", /^\d+\./);
   assert.equal(result.verified, true);
 }));
+
+
+test("creates nested directories only after explicit approval", async () => withRoot(async (root) => {
+  const create = createPlannedOperation({
+    id: "mkdir-approved",
+    kind: "create_directory",
+    description: "Create nested workspace folder",
+    risk: "moderate",
+    target: "new/project/assets",
+  });
+  await assert.rejects(executeLocalOperation(create, { rootDirectory: root }), /explicit user approval/);
+  const result = await executeLocalOperation(create, { rootDirectory: root, approved: true });
+  assert.equal(result.output.kind, "directory_created");
+  assert.equal(result.output.isDirectory, true);
+  const { stat } = await import("node:fs/promises");
+  assert.equal((await stat(join(root, "new/project/assets"))).isDirectory(), true);
+}));
+
+test("rejects directory creation through symlinked parent components", async () => withRoot(async (root) => {
+  const outside = join(root, "outside");
+  await mkdir(outside);
+  await symlink(outside, join(root, "linked"));
+  const create = createPlannedOperation({
+    id: "mkdir-link",
+    kind: "create_directory",
+    description: "Try linked path",
+    risk: "moderate",
+    target: "linked/unsafe",
+  });
+  await assert.rejects(executeLocalOperation(create, { rootDirectory: root, approved: true }), /Symbolic links/);
+  await assert.rejects(import("node:fs/promises").then(({ access }) => access(join(outside, "unsafe"))));
+}));
