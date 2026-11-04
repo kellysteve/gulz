@@ -10,7 +10,7 @@ import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { addGoalTask, createGoal, createPlannedOperation, operationRequiresApproval, transitionGoal, transitionTask, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
-import { executeLocalOperation } from "@gulz/execution";
+import { executeLocalOperation, type LocalExecutionResult } from "@gulz/execution";
 
 const VERSION = "0.1.0";
 const dataHome = resolve(process.env.GULZ_HOME || join(homedir(), ".gulz"));
@@ -192,6 +192,17 @@ async function recordAudit(action: string, details: Record<string, string | numb
   const entry = { id: randomUUID(), timestamp: new Date().toISOString(), action, ...details };
   await appendFile(auditFile, JSON.stringify(entry) + "\n", { encoding: "utf8", mode: 0o600 });
   await chmod(auditFile, 0o600);
+}
+
+async function recordExecutionAudit(result: LocalExecutionResult): Promise<void> {
+  await recordAudit("operation." + result.audit.kind, {
+    operationId: result.operationId,
+    target: result.audit.target,
+    risk: result.audit.risk,
+    outcome: result.audit.outcome,
+    verified: result.verified,
+    detail: result.audit.detail,
+  });
 }
 
 async function withGoalsLock<T>(run: () => Promise<T>): Promise<T> {
@@ -463,6 +474,7 @@ async function main(): Promise<void> {
       if (confirmation !== `WRITE ${target}`) { console.log("Write cancelled."); return; }
       const operation = createPlannedOperation({ id: randomUUID(), kind: "write_file", description: "Write a local text file", risk: "moderate", target, content });
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
+      await recordExecutionAudit(result);
       console.log(JSON.stringify(result, null, 2));
     } finally { rl.close(); }
     return;
@@ -513,6 +525,7 @@ async function main(): Promise<void> {
       id: randomUUID(), kind: "read_file", description: "Read a local backup", risk: "low", target: backupPath,
     });
     const backup = await executeLocalOperation(backupOperation, { rootDirectory: process.cwd() });
+    await recordExecutionAudit(backup);
     if (backup.output.kind !== "file_content" || typeof backup.output.content !== "string") {
       throw new Error("The selected backup could not be read as a text file.");
     }
@@ -546,6 +559,7 @@ async function main(): Promise<void> {
       target,
     });
     const result = await executeLocalOperation(operation, { rootDirectory: process.cwd() });
+    await recordExecutionAudit(result);
     console.log(JSON.stringify(result, null, 2));
     return;
   }
