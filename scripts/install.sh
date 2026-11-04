@@ -121,6 +121,10 @@ ask_yes_no "Continue with installation?" || { printf 'Installation cancelled.\n'
 
 bold "4/5 · Download and build"
 if [ -d "$INSTALL_DIR/.git" ]; then
+  git -C "$INSTALL_DIR" rev-parse --is-inside-work-tree >/dev/null
+  if [ -n "$(git -C "$INSTALL_DIR" status --porcelain)" ]; then
+    fail "The selected GULZ checkout has uncommitted changes. Commit or safely stash them before updating."
+  fi
   git -C "$INSTALL_DIR" pull --ff-only
 else
   git clone --depth 1 "$GULZ_REPO" "$INSTALL_DIR"
@@ -170,7 +174,7 @@ printf 'Run: gulz\n'
 printf 'Update later: gulz update (requires a clean source checkout)\n'
 printf 'Install folder: %s\n' "$INSTALL_DIR"
 printf 'Your local GULZ data is stored separately in ~/.gulz.\n'
-printf 'GULZ currently provides local goal management and supervised workspace operations. AI planning and remote SSH execution are not included in this CLI installation.\n'
+printf 'GULZ provides local goal management, provider-based AI planning and supervised execution of a narrow set of local operations. Remote SSH orchestration is not included in this CLI installation.\n'
 \033[1m'; DIM=
 ask_yes_no() {
   local prompt="$1" answer="" answer_lc=""
