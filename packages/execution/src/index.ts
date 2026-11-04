@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { chmod, copyFile, lstat, realpath, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, copyFile, lstat, mkdir, realpath, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { spawn } from "node:child_process";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
@@ -21,7 +21,7 @@ export interface ExecutionAuditEvent {
   id: string;
   timestamp: string;
   operationId: string;
-  kind: "inspect" | "list_directory" | "read_file" | "write_file" | "run_command";
+  kind: "inspect" | "list_directory" | "create_directory" | "read_file" | "write_file" | "run_command";
   risk: "low" | "moderate" | "high" | "critical";
   outcome: "succeeded" | "denied" | "failed";
   target: string;
@@ -32,7 +32,7 @@ export interface LocalExecutionResult {
   operationId: string;
   verified: boolean;
   output: {
-    kind: "file_metadata" | "directory_listing" | "file_content" | "file_written" | "command_result";
+    kind: "file_metadata" | "directory_listing" | "directory_created" | "file_content" | "file_written" | "command_result";
     path: string;
     sizeBytes: number;
     sha256?: string;
@@ -196,13 +196,13 @@ function verifyOperation(input: PlannedOperation): PlannedOperation {
     if (input.requiresApproval !== validated.requiresApproval) {
       throw new ExecutionError("Operation approval metadata is inconsistent with its risk level.");
     }
-    if (validated.kind !== "inspect" && validated.kind !== "list_directory" && validated.kind !== "read_file" && validated.kind !== "write_file" && validated.kind !== "run_command") {
-      throw new ExecutionError("This execution engine supports inspect, list_directory, read_file, write_file and allowlisted run_command operations.");
+    if (validated.kind !== "inspect" && validated.kind !== "list_directory" && validated.kind !== "create_directory" && validated.kind !== "read_file" && validated.kind !== "write_file" && validated.kind !== "run_command") {
+      throw new ExecutionError("This execution engine supports inspect, list_directory, create_directory, read_file, write_file and allowlisted run_command operations.");
     }
-    if ((validated.kind === "write_file" || validated.kind === "run_command") && validated.risk !== "moderate") {
-      throw new ExecutionError("write_file and run_command operations must be moderate-risk and explicitly approved.");
+    if ((validated.kind === "write_file" || validated.kind === "create_directory" || validated.kind === "run_command") && validated.risk !== "moderate") {
+      throw new ExecutionError("write_file, create_directory and run_command operations must be moderate-risk and explicitly approved.");
     }
-    if (validated.kind !== "write_file" && validated.kind !== "run_command" && validated.risk !== "low") {
+    if (validated.kind !== "write_file" && validated.kind !== "create_directory" && validated.kind !== "run_command" && validated.risk !== "low") {
       throw new ExecutionError("Filesystem inspection, directory listing and reading are restricted to low-risk operations.");
     }
     return validated;
@@ -248,6 +248,36 @@ export async function executeLocalOperation(
     if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
     const root = await realpath(options.rootDirectory);
     const target = resolveInsideRoot(root, requestedTarget);
+    if (operation.kind === "create_directory") {
+      if (target === root) throw new ExecutionError("GULZ will not recreate or modify the authorized workspace root.");
+      const relativeTarget = relative(root, target);
+      let current = root;
+      for (const part of relativeTarget.split(sep).filter(Boolean)) {
+        if (controller.signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
+        current = resolve(current, part);
+        let info;
+        try { info = await lstat(current); }
+        catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+          await mkdir(current, { mode: 0o700 });
+          info = await lstat(current);
+        }
+        if (info.isSymbolicLink()) throw new ExecutionError("Symbolic links are not allowed in directory creation targets.");
+        if (!info.isDirectory()) throw new ExecutionError("A directory path component already exists as a non-directory file.");
+      }
+      const output = {
+        kind: "directory_created" as const,
+        path: relative(root, target),
+        sizeBytes: 0,
+        isDirectory: true,
+      };
+      return {
+        operationId: operation.id,
+        verified: true,
+        output,
+        audit: audit(operation, "succeeded", output.path, "Directory path created or already existed; every component was verified as a real directory."),
+      };
+    }
     const parentPath = target === root ? root : dirname(target);
     await rejectSymlinkComponents(root, parentPath);
     const parent = await realpath(parentPath);
