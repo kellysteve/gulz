@@ -182,7 +182,7 @@ esac
 
 bold "GULZ — Goals. Executed."
 printf 'Interactive source installer · %s\n' "$PLATFORM"
-printf 'This installs the current CLI developer preview from the public source repository.\n'
+printf 'This installs GULZ CLI from the official source repository.\n'
 printf 'It does not install a native Android or desktop app.\n'
 
 if [ "$PLATFORM" = "termux" ]; then
@@ -306,10 +306,10 @@ fi
 
 bold "Installation finished"
 printf 'Run: gulz\n'
-printf 'Update later: gulz update (source-checkout preview only; requires a clean Git checkout)\n'
+printf 'Update later: gulz update (requires a clean source checkout)\n'
 printf 'Install folder: %s\n' "$INSTALL_DIR"
 printf 'Your local GULZ data is stored separately in ~/.gulz.\n'
-printf 'This is an early developer preview; AI goal execution and remote SSH orchestration are not available yet.\n'
+printf 'GULZ currently provides local goal management and supervised workspace operations. AI planning and remote SSH execution are not included in this CLI installation.\n'
 \033[2m'; CYAN=
 ask_yes_no() {
   local prompt="$1" answer="" answer_lc=""
@@ -334,7 +334,7 @@ esac
 
 bold "GULZ — Goals. Executed."
 printf 'Interactive source installer · %s\n' "$PLATFORM"
-printf 'This installs the current CLI developer preview from the public source repository.\n'
+printf 'This installs GULZ CLI from the official source repository.\n'
 printf 'It does not install a native Android or desktop app.\n'
 
 if [ "$PLATFORM" = "termux" ]; then
@@ -458,10 +458,10 @@ fi
 
 bold "Installation finished"
 printf 'Run: gulz\n'
-printf 'Update later: gulz update (source-checkout preview only; requires a clean Git checkout)\n'
+printf 'Update later: gulz update (requires a clean source checkout)\n'
 printf 'Install folder: %s\n' "$INSTALL_DIR"
 printf 'Your local GULZ data is stored separately in ~/.gulz.\n'
-printf 'This is an early developer preview; AI goal execution and remote SSH orchestration are not available yet.\n'
+printf 'GULZ currently provides local goal management and supervised workspace operations. AI planning and remote SSH execution are not included in this CLI installation.\n'
 \033[36m'; GREEN=
 ask_yes_no() {
   local prompt="$1" answer="" answer_lc=""
@@ -486,7 +486,7 @@ esac
 
 bold "GULZ — Goals. Executed."
 printf 'Interactive source installer · %s\n' "$PLATFORM"
-printf 'This installs the current CLI developer preview from the public source repository.\n'
+printf 'This installs GULZ CLI from the official source repository.\n'
 printf 'It does not install a native Android or desktop app.\n'
 
 if [ "$PLATFORM" = "termux" ]; then
@@ -610,10 +610,10 @@ fi
 
 bold "Installation finished"
 printf 'Run: gulz\n'
-printf 'Update later: gulz update (source-checkout preview only; requires a clean Git checkout)\n'
+printf 'Update later: gulz update (requires a clean source checkout)\n'
 printf 'Install folder: %s\n' "$INSTALL_DIR"
 printf 'Your local GULZ data is stored separately in ~/.gulz.\n'
-printf 'This is an early developer preview; AI goal execution and remote SSH orchestration are not available yet.\n'
+printf 'GULZ currently provides local goal management and supervised workspace operations. AI planning and remote SSH execution are not included in this CLI installation.\n'
 \033[32m'; YELLOW=
 ask_yes_no() {
   local prompt="$1" answer="" answer_lc=""
@@ -638,7 +638,7 @@ esac
 
 bold "GULZ — Goals. Executed."
 printf 'Interactive source installer · %s\n' "$PLATFORM"
-printf 'This installs the current CLI developer preview from the public source repository.\n'
+printf 'This installs GULZ CLI from the official source repository.\n'
 printf 'It does not install a native Android or desktop app.\n'
 
 if [ "$PLATFORM" = "termux" ]; then
@@ -762,10 +762,10 @@ fi
 
 bold "Installation finished"
 printf 'Run: gulz\n'
-printf 'Update later: gulz update (source-checkout preview only; requires a clean Git checkout)\n'
+printf 'Update later: gulz update (requires a clean source checkout)\n'
 printf 'Install folder: %s\n' "$INSTALL_DIR"
 printf 'Your local GULZ data is stored separately in ~/.gulz.\n'
-printf 'This is an early developer preview; AI goal execution and remote SSH orchestration are not available yet.\n'
+printf 'GULZ currently provides local goal management and supervised workspace operations. AI planning and remote SSH execution are not included in this CLI installation.\n'
 \033[33m'; RED=
 ask_yes_no() {
   local prompt="$1" answer="" answer_lc=""
@@ -790,7 +790,7 @@ esac
 
 bold "GULZ — Goals. Executed."
 printf 'Interactive source installer · %s\n' "$PLATFORM"
-printf 'This installs the current CLI developer preview from the public source repository.\n'
+printf 'This installs GULZ CLI from the official source repository.\n'
 printf 'It does not install a native Android or desktop app.\n'
 
 if [ "$PLATFORM" = "termux" ]; then
@@ -914,10 +914,10 @@ fi
 
 bold "Installation finished"
 printf 'Run: gulz\n'
-printf 'Update later: gulz update (source-checkout preview only; requires a clean Git checkout)\n'
+printf 'Update later: gulz update (requires a clean source checkout)\n'
 printf 'Install folder: %s\n' "$INSTALL_DIR"
 printf 'Your local GULZ data is stored separately in ~/.gulz.\n'
-printf 'This is an early developer preview; AI goal execution and remote SSH orchestration are not available yet.\n'
+printf 'GULZ currently provides local goal management and supervised workspace operations. AI planning and remote SSH execution are not included in this CLI installation.\n'
 \033[31m'; RESET=
 ask_yes_no() {
   local prompt="$1" answer="" answer_lc=""
@@ -942,7 +942,7 @@ esac
 
 bold "GULZ — Goals. Executed."
 printf 'Interactive source installer · %s\n' "$PLATFORM"
-printf 'This installs the current CLI developer preview from the public source repository.\n'
+printf 'This installs GULZ CLI from the official source repository.\n'
 printf 'It does not install a native Android or desktop app.\n'
 
 if [ "$PLATFORM" = "termux" ]; then
@@ -1066,10 +1066,10 @@ fi
 
 bold "Installation finished"
 printf 'Run: gulz\n'
-printf 'Update later: gulz update (source-checkout preview only; requires a clean Git checkout)\n'
+printf 'Update later: gulz update (requires a clean source checkout)\n'
 printf 'Install folder: %s\n' "$INSTALL_DIR"
 printf 'Your local GULZ data is stored separately in ~/.gulz.\n'
-printf 'This is an early developer preview; AI goal execution and remote SSH orchestration are not available yet.\n'
+printf 'GULZ currently provides local goal management and supervised workspace operations. AI planning and remote SSH execution are not included in this CLI installation.\n'
 \033[0m'
 else
   BOLD=""; DIM=""; CYAN=""; GREEN=""; YELLOW=""; RED=""; RESET=""
@@ -1101,7 +1101,7 @@ esac
 
 bold "GULZ — Goals. Executed."
 printf 'Interactive source installer · %s\n' "$PLATFORM"
-printf 'This installs the current CLI developer preview from the public source repository.\n'
+printf 'This installs GULZ CLI from the official source repository.\n'
 printf 'It does not install a native Android or desktop app.\n'
 
 if [ "$PLATFORM" = "termux" ]; then
@@ -1225,7 +1225,7 @@ fi
 
 bold "Installation finished"
 printf 'Run: gulz\n'
-printf 'Update later: gulz update (source-checkout preview only; requires a clean Git checkout)\n'
+printf 'Update later: gulz update (requires a clean source checkout)\n'
 printf 'Install folder: %s\n' "$INSTALL_DIR"
 printf 'Your local GULZ data is stored separately in ~/.gulz.\n'
-printf 'This is an early developer preview; AI goal execution and remote SSH orchestration are not available yet.\n'
+printf 'GULZ currently provides local goal management and supervised workspace operations. AI planning and remote SSH execution are not included in this CLI installation.\n'
