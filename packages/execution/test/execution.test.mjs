@@ -278,3 +278,28 @@ test("rejects diagnostic command operations that are not moderate-risk", async (
   });
   await assert.rejects(executeLocalOperation(command, { rootDirectory: root }), /must be moderate-risk/);
 }));
+
+
+test("lists bounded directory entry names and reports symlinks without following them", async () => withRoot(async (root) => {
+  await mkdir(join(root, "folder"));
+  await writeFile(join(root, "note.txt"), "hello");
+  await symlink(join(root, "note.txt"), join(root, "linked.txt"));
+  const result = await executeLocalOperation(operation("list_directory", "."), { rootDirectory: root });
+  assert.equal(result.verified, true);
+  assert.equal(result.output.kind, "directory_listing");
+  assert.deepEqual(result.output.entries, [
+    { name: "folder", type: "directory" },
+    { name: "linked.txt", type: "symlink" },
+    { name: "note.txt", type: "file" },
+  ]);
+  assert.equal(result.output.hasMore, false);
+  assert.equal(result.audit.kind, "list_directory");
+}));
+
+test("rejects listing a file as a directory", async () => withRoot(async (root) => {
+  await writeFile(join(root, "note.txt"), "hello");
+  await assert.rejects(
+    executeLocalOperation(operation("list_directory", "note.txt"), { rootDirectory: root }),
+    /requires an existing directory/,
+  );
+}));
