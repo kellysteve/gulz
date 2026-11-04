@@ -296,7 +296,7 @@ function validatePlannedOperations(raw: Awaited<ReturnType<typeof generateGoalPl
     ["npm", "--version"], ["npm", "run", "build:cli"], ["npm", "run", "test:cli"],
   ];
   return raw.map((item) => {
-    if (item.target !== undefined && (isAbsolute(item.target) || /^[A-Za-z]:[\\/]/.test(item.target) || item.target.includes("\\0") || item.target.split(/[\\\\/]/).includes(".."))) {
+    if (item.target !== undefined && (isAbsolute(item.target) || /^[A-Za-z]:/.test(item.target) || item.target.includes("..") || item.target.includes(String.fromCharCode(0)))) {
       throw new Error("The AI proposed a path outside the authorized relative workspace. The plan was rejected.");
     }
     if (item.kind === "run_command" && item.command === "npm" && process.platform === "win32") throw new Error("AI proposed an npm workflow that is not supported by the shell-free Windows runner.");
