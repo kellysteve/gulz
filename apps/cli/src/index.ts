@@ -6,7 +6,7 @@ import { constants, existsSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { addGoalTask, createGoal, createPlannedOperation, operationRequiresApproval, transitionGoal, transitionTask, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
@@ -447,6 +447,42 @@ async function runGoalExecution(goalId: string, resume: boolean): Promise<void> 
           console.log("\n" + paint(operation.kind.toUpperCase(), ansi.bold, ansi.cyan) + " · " + operation.description);
           if (operation.target) label("Target", operation.target);
           if (operation.commandPreview) label("Command", operation.commandPreview);
+          if (operation.kind === "delete_file" && operation.target) {
+            const backupToken = createHash("sha256").update(operation.id).digest("hex").slice(0, 24);
+            const backupPath = join(dirname(operation.target), ".gulz-deleted-" + backupToken);
+            try {
+              const backup = await executeLocalOperation(createPlannedOperation({
+                id: randomUUID(), kind: "read_file", description: "Verify a prior reversible deletion backup",
+                risk: "low", target: backupPath,
+              }), { rootDirectory: process.cwd(), signal: controller.signal });
+              let originalExists = false;
+              try {
+                await executeLocalOperation(createPlannedOperation({
+                  id: randomUUID(), kind: "inspect", description: "Check original file after interrupted deletion",
+                  risk: "low", target: operation.target,
+                }), { rootDirectory: process.cwd(), signal: controller.signal });
+                originalExists = true;
+              } catch (error) {
+                if (controller.signal.aborted) throw error;
+                if (!(error instanceof Error) || !/not found|ENOENT/i.test(error.message)) throw error;
+              }
+              if (!originalExists && backup.output.kind === "file_content") {
+                await mutateGoalRecord(goalId, (current) => {
+                  const index = current.tasks.findIndex((item) => item.id === task.id);
+                  const tasks = [...current.tasks];
+                  const currentTask = tasks[index]!;
+                  tasks[index] = { ...currentTask, completedOperationIds: [...new Set([...(currentTask.completedOperationIds ?? []), operation.id])], updatedAt: new Date().toISOString() };
+                  return { ...current, tasks, updatedAt: new Date().toISOString() };
+                });
+                await recordAudit("operation.recovered", { goalId, taskId: task.id, operationId: operation.id, backupPath, verified: true });
+                success("Previous deletion backup verified; operation checkpoint recovered.");
+                continue;
+              }
+            } catch (error) {
+              if (controller.signal.aborted) throw error;
+              // No verified prior backup was found; the approved delete operation below will validate its target.
+            }
+          }
           if (operation.kind === "write_file" && operation.content !== undefined) {
             label("Content", Buffer.byteLength(operation.content, "utf8") + " bytes");
             console.log(operation.content.length > 400 ? operation.content.slice(0, 400) + "\n[content preview truncated]" : operation.content);
