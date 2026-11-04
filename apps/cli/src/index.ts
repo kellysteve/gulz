@@ -240,7 +240,7 @@ async function saveProviderConfig(config: StoredProviderConfig): Promise<void> {
   }
   const temporary = join(dataHome, "provider." + randomUUID() + ".tmp");
   try {
-    await writeFile(temporary, JSON.stringify(config, null, 2) + "\\n", { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await writeFile(temporary, JSON.stringify(config, null, 2) + "\n", { encoding: "utf8", mode: 0o600, flag: "wx" });
     await rename(temporary, providerFile);
     await chmod(providerFile, 0o600);
   } finally {
@@ -259,15 +259,15 @@ async function askSecret(prompt: string): Promise<string> {
     const finish = (error?: Error) => {
       stdin.removeListener("data", onData);
       stdin.setRawMode(false);
-      stdout.write("\\n");
+      stdout.write("\n");
       if (error) rejectSecret(error); else resolveSecret(value);
     };
     const onData = (chunk: string | Buffer) => {
       for (const character of String(chunk)) {
-        if (character === "\\u0003") { finish(new Error("Secret entry cancelled.")); return; }
-        if (character === "\\r" || character === "\\n") { finish(); return; }
-        if (character === "\\u007f" || character === "\\b") value = value.slice(0, -1);
-        else if (character >= " " && character !== "\\u007f") value += character;
+        if (character === "\u0003") { finish(new Error("Secret entry cancelled.")); return; }
+        if (character === "\r" || character === "\n") { finish(); return; }
+        if (character === "\u007f" || character === "\b") value = value.slice(0, -1);
+        else if (character >= " " && character !== "\u007f") value += character;
       }
     };
     stdin.on("data", onData);
@@ -624,14 +624,14 @@ async function main(): Promise<void> {
     success("AI plan saved for review");
     console.log(generated.summary);
     for (const [index, task] of updated.tasks.entries()) {
-      console.log(paint("\\n" + (index + 1) + ". " + task.title, ansi.bold, ansi.cyan));
+      console.log(paint("\n" + (index + 1) + ". " + task.title, ansi.bold, ansi.cyan));
       console.log(task.description);
       for (const operation of task.operations) {
         const riskColor = operation.risk === "low" ? ansi.green : ansi.yellow;
         console.log("   • " + operation.kind + " [" + paint(operation.risk.toUpperCase(), riskColor) + "] " + operation.description);
       }
     }
-    console.log("\\nReview the plan with gulz goal show " + id + ". No operations have been executed.");
+    console.log("\nReview the plan with gulz goal show " + id + ". No operations have been executed.");
     return;
   }
   if (command === "update") {
