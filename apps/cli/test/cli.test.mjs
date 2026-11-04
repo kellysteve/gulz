@@ -190,12 +190,12 @@ test("adds checklist tasks and enforces task lifecycle transitions", async () =>
   await withHome(async (home) => {
     const created = invoke(home, "goal", "create", "Prepare a release");
     assert.equal(created.status, 0, created.stderr);
-    const goalId = created.stdout.match(/ID:\\s+([a-f0-9-]+)/)?.[1];
+    const goalId = created.stdout.match(/ID:\s+([a-f0-9-]+)/)?.[1];
     assert.ok(goalId);
     const added = invoke(home, "goal", "task", "add", goalId, "Review release checklist");
     assert.equal(added.status, 0, added.stderr);
     assert.match(added.stdout, /Task added/);
-    const taskId = added.stdout.match(/Task ID\\s+([a-f0-9-]+)/)?.[1];
+    const taskId = added.stdout.match(/Task ID\s+([a-f0-9-]+)/)?.[1];
     assert.ok(taskId);
     const running = invoke(home, "goal", "task", "status", goalId, taskId, "running");
     assert.equal(running.status, 0, running.stderr);
@@ -212,7 +212,7 @@ test("adds checklist tasks and enforces task lifecycle transitions", async () =>
 test("enforces goal lifecycle rules and refuses to run an empty goal", async () => {
   await withHome(async (home) => {
     const created = invoke(home, "goal", "create", "A goal without tasks");
-    const id = created.stdout.match(/ID:\\s+([a-f0-9-]+)/)?.[1];
+    const id = created.stdout.match(/ID:\s+([a-f0-9-]+)/)?.[1];
     assert.ok(id);
     const planned = invoke(home, "goal", "status", id, "planned");
     assert.equal(planned.status, 0, planned.stderr);
@@ -227,16 +227,16 @@ test("records goal and task changes in private append-only audit history", async
   await withHome(async (home) => {
     const created = invoke(home, "goal", "create", "Track an auditable task");
     assert.equal(created.status, 0, created.stderr);
-    const goalId = created.stdout.match(/ID:\\s+([a-f0-9-]+)/)?.[1];
+    const goalId = created.stdout.match(/ID:\s+([a-f0-9-]+)/)?.[1];
     assert.ok(goalId);
     const added = invoke(home, "goal", "task", "add", goalId, "Check audit trail");
     assert.equal(added.status, 0, added.stderr);
-    const taskId = added.stdout.match(/Task ID\\s+([a-f0-9-]+)/)?.[1];
+    const taskId = added.stdout.match(/Task ID\s+([a-f0-9-]+)/)?.[1];
     assert.ok(taskId);
     const status = invoke(home, "goal", "task", "status", goalId, taskId, "running");
     assert.equal(status.status, 0, status.stderr);
     const auditPath = join(home, "audit.jsonl");
-    const entries = (await readFile(auditPath, "utf8")).trim().split("\\n").map((line) => JSON.parse(line));
+    const entries = (await readFile(auditPath, "utf8")).trim().split("\n").map((line) => JSON.parse(line));
     assert.deepEqual(entries.map((entry) => entry.action), ["goal.created", "task.created", "task.status_changed"]);
     const shown = invoke(home, "audit", "--limit", "2");
     assert.equal(shown.status, 0, shown.stderr);
