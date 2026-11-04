@@ -372,6 +372,7 @@ async function askForOperationApproval(operationId: string, signal: AbortSignal)
     const aborted = new Promise<string>((resolveQuestion) => {
       onAbort = () => resolveQuestion("");
       signal.addEventListener("abort", onAbort, { once: true });
+      if (signal.aborted) onAbort();
     });
     const answer = await Promise.race([question, aborted]);
     return answer === "APPROVE " + operationId;
