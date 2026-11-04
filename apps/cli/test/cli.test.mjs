@@ -171,8 +171,8 @@ test("lists the current directory with readable entry types", async () => {
     const result = invoke(home, "list", ".");
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /DIRECTORY/);
-    assert.match(result.stdout, /DIR\\s+project-folder/);
-    assert.match(result.stdout, /FILE\\s+project-file\\.txt/);
+    assert.match(result.stdout, /DIR\s+project-folder/);
+    assert.match(result.stdout, /FILE\s+project-file\.txt/);
   });
 });
 
