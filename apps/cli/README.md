@@ -40,6 +40,7 @@ Run `gulz repair` to reinstall dependencies, rebuild and relink without changing
 gulz goal create "Prepare a release"
 gulz goals
 gulz goal show <goal-id>
+gulz goal show <goal-id> --json
 gulz goal edit <goal-id>
 gulz goal task add <goal-id> "Review the release checklist"
 gulz goal task edit <goal-id> <task-id>
