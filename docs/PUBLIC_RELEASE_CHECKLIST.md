@@ -5,7 +5,9 @@ This checklist is the release gate. A public repository and a working source ins
 ## CLI release readiness
 
 - [ ] Generate and commit a root npm lockfile, then verify `npm ci` from a clean clone on supported Node.js LTS. The repository currently has no committed lockfile.
-- [ ] Run `npm test` and record the exact Node.js, npm and OS versions.
+- [ ] Run `npm run test:cli` and record the exact Node.js, npm and OS versions.
+- [ ] Run provider adapter tests against mocked endpoints and manually validate at least one supported hosted or local provider.
+- [ ] Exercise plan review, per-operation approval, Ctrl+C pause, resume, cancel, stale execution-lock recovery and duplicate-write checkpoint recovery.
 - [ ] Run the Bash installer end-to-end on Termux, Ubuntu/Debian, macOS and a clean VPS.
 - [ ] Verify cancellation at every confirmation prompt leaves the system unchanged.
 - [ ] Verify an existing GULZ checkout updates only with a fast-forward pull.
@@ -43,11 +45,11 @@ Publish in dependency order: `@gulz/core`, `@gulz/execution`, then `@gulz/cli`.
 - [ ] Complete threat modelling and independent security review.
 - [ ] Test approval bypass resistance across CLI, AI and workspace interfaces.
 - [ ] Test path traversal, symlinks, race conditions, process isolation and credential leakage.
-- [ ] Implement durable task state, cancellation, recovery and audit logs.
+- [ ] Complete crash-recovery testing for every operation boundary and independently review audit-log tamper resistance.
 - [ ] Test least-privilege SSH credentials and host-key verification before remote execution.
 - [ ] Verify every claimed result against the real target system.
 - [ ] Document supported operations, risk levels, data handling and incident response.
 
 ## Current honest status
 
-The repository contains a source-build CLI and an interactive Bash installer for Termux, Linux, macOS and VPS environments. AI goal execution, remote SSH orchestration, native desktop/mobile packages and published npm packages are not available. Automated checks and the installer still require real clean-platform validation. Do not market this preview as production-ready machine administration software.
+The CLI includes local goal/task management, an OpenAI-compatible AI planning adapter, supervised execution of a narrow local operation allowlist, per-operation approval, durable operation checkpoints, pause/resume/cancel and local audit history. Arbitrary shell execution, destructive operations, remote SSH orchestration, native desktop/mobile packages and published npm packages are not available. Automated checks have not yet been run in a clean environment, and the installer still requires real Termux/Linux/macOS/VPS validation. Do not claim production readiness until these gates pass.
