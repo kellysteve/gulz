@@ -115,6 +115,7 @@ function help(): void {
     "  plan <goal-id>        Generate a task plan with your configured AI provider",
     "  execute <goal-id>     Execute a reviewed plan with per-operation approval",
     "  resume <goal-id>      Resume paused or interrupted goal execution",
+    "  cancel <goal-id>      Cancel a goal after confirmation",
     "  update                Safely update GULZ from its source installation",
     "  goal create <title>   Save a new goal locally",
     "  goals                 List saved goals",
@@ -775,6 +776,31 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "cancel") {
+    const id = args[0];
+    if (!id || args.length !== 1) { console.error("Usage: gulz cancel <goal-id>"); process.exitCode = 2; return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("Cancelling a goal requires an interactive terminal and explicit confirmation.");
+    const goal = (await readGoals()).find((item) => item.id === id);
+    if (!goal) throw new Error("Goal not found.");
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      warning("This cancels the goal and all unfinished tasks. Completed work and its audit history are preserved.");
+      const confirmation = await rl.question("Type CANCEL " + id + " to confirm: ");
+      if (confirmation !== "CANCEL " + id) { console.log("Cancellation aborted."); return; }
+    } finally { rl.close(); }
+    await withExecutionLock(async () => {
+      await mutateGoalRecord(id, (current) => {
+        let next = current;
+        for (const task of current.tasks) {
+          if (!["completed", "skipped", "cancelled"].includes(task.status)) next = transitionTask(next, task.id, "cancelled");
+        }
+        return transitionGoal(next, "cancelled");
+      });
+      await recordAudit("goal.cancelled", { goalId: id });
+    });
+    success("Goal cancelled. Completed work and saved data were preserved.");
+    return;
+  }
   if (command === "execute" || command === "resume") {
     const id = args[0];
     if (!id || args.length !== 1) { console.error("Usage: gulz " + command + " <goal-id>"); process.exitCode = 2; return; }
