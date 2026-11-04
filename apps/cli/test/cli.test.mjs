@@ -382,7 +382,7 @@ test("stores an optional goal description supplied for AI planning", async () =>
     assert.equal(created.status, 0, created.stderr);
     const id = created.stdout.match(/ID:\s+([a-f0-9-]+)/)?.[1];
     assert.ok(id);
-    const goal = JSON.parse(invoke(home, "goal", "show", id).stdout);
+    const goal = JSON.parse(invoke(home, "goal", "show", id, "--json").stdout);
     assert.equal(goal.title, "Prepare a release");
     assert.equal(goal.description, "Build and verify the CLI release.");
   });
