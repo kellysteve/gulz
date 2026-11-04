@@ -10,9 +10,9 @@ GULZ is licensed under the **Apache License 2.0**. You can use, study, modify an
 
 ## Project status
 
-GULZ is in early development. An interactive Bash source installer is available for Termux, Linux, macOS and VPS hosts, alongside a PowerShell source-build guide for Windows. These install the developer-preview CLI; they are not stable binary releases. Native installers, desktop and Android apps, npm package releases, AI integrations, SSH orchestration and release downloads are not available until implemented and tested.
+GULZ is in early development. An interactive Bash source installer is available for Termux, Linux, macOS and VPS hosts, alongside a PowerShell source-build guide for Windows. These install the GULZ CLI from source; they are not packaged binary releases. Native installers, desktop and Android apps, npm package releases, AI integrations, SSH orchestration and release downloads are not available until implemented and tested.
 
-## Try the CLI preview
+## Install the GULZ CLI
 
 On Termux, Linux, macOS or a Linux VPS, install Node.js 20.19+ (Termux can install Node.js LTS through its package manager), then run the interactive installer:
 
