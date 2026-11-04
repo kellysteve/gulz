@@ -292,6 +292,7 @@ function validatePlannedOperations(raw: Awaited<ReturnType<typeof generateGoalPl
     ["npm", "--version"], ["npm", "run", "build:cli"], ["npm", "run", "test:cli"],
   ];
   return raw.map((item) => {
+    if (item.kind === "run_command" && item.command === "npm" && process.platform === "win32") throw new Error("AI proposed an npm workflow that is not supported by the shell-free Windows runner.");
     if (item.kind === "run_command" && !allowedCommands.some((allowed) => JSON.stringify(allowed) === JSON.stringify([item.command, ...(item.args ?? [])]))) {
       throw new Error("The AI proposed a command outside GULZ's fixed read-only allowlist. The plan was rejected.");
     }
