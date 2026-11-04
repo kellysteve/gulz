@@ -1052,6 +1052,9 @@ async function main(): Promise<void> {
     } finally { rl.close(); }
     const npm = process.platform === "win32" ? "npm.cmd" : "npm";
     const repairEnv: NodeJS.ProcessEnv = { ...process.env };
+    delete repairEnv.GULZ_AI_API_KEY;
+    delete repairEnv.GULZ_AI_BASE_URL;
+    delete repairEnv.GULZ_AI_MODEL;
     if (process.platform !== "win32") repairEnv.NPM_CONFIG_PREFIX = process.env.PREFIX?.includes("com.termux") ? process.env.PREFIX : join(homedir(), ".local");
     await withExecutionLock(async () => {
       const result = spawnSync(npm, ["run", "install:cli"], {
@@ -1087,6 +1090,9 @@ async function main(): Promise<void> {
     await withExecutionLock(async () => {
       const npm = process.platform === "win32" ? "npm.cmd" : "npm";
       const unlinkEnv: NodeJS.ProcessEnv = { ...process.env };
+      delete unlinkEnv.GULZ_AI_API_KEY;
+      delete unlinkEnv.GULZ_AI_BASE_URL;
+      delete unlinkEnv.GULZ_AI_MODEL;
       if (process.platform !== "win32") unlinkEnv.NPM_CONFIG_PREFIX = process.env.PREFIX?.includes("com.termux") ? process.env.PREFIX : join(homedir(), ".local");
       const result = spawnSync(npm, ["unlink", "--global", "@gulz/cli"], {
         cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: unlinkEnv,
