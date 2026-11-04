@@ -29,6 +29,7 @@ gulz provider status
 gulz plan <goal-id>
 gulz execute <goal-id>
 gulz resume <goal-id>
+gulz cancel <goal-id>
 ~~~
 
 Run `gulz update` from an interactive terminal to fast-forward the source checkout, rebuild the CLI and refresh its command link. It requires a clean fast-forwardable checkout and the exact confirmation `UPDATE GULZ`. Your local data in `~/.gulz` is separate from the source installation.
@@ -61,7 +62,7 @@ gulz plan <goal-id>
 
 The API key is entered without echo and stored in `~/.gulz/provider.json` with owner-only permissions where supported. It is stored as plaintext protected by filesystem permissions, not encrypted. Alternatively set `GULZ_AI_BASE_URL`, `GULZ_AI_MODEL` and `GULZ_AI_API_KEY` in the process environment. Remote providers must use HTTPS; HTTP is accepted only for localhost model servers. Before a plan request, GULZ asks for confirmation and sends only the goal title and description; it does not upload workspace files. The provider adapter accepts only bounded JSON plans containing inspect, read, write and a fixed read-only command allowlist. Every operation is revalidated locally and risk is derived by GULZ, not trusted from the model.
 
-AI planning saves a plan for review. Run `gulz goal show <goal-id>` to inspect the proposed operations, then `gulz execute <goal-id>` to begin. Moderate-risk operations require typing their exact operation ID. Low-risk inspection and reads run only after you explicitly start execution. Press Ctrl+C to pause safely; `gulz resume <goal-id>` continues from saved operation checkpoints. A local execution lock prevents simultaneous GULZ runs, and a write whose expected content already exists is checkpointed rather than written a second time after recovery.
+AI planning saves a plan for review. Run `gulz goal show <goal-id>` to inspect the proposed operations, then `gulz execute <goal-id>` to begin. Moderate-risk operations require typing their exact operation ID. Low-risk inspection and reads run only after you explicitly start execution. Press Ctrl+C to pause safely; `gulz resume <goal-id>` continues from saved operation checkpoints. Use `gulz cancel <goal-id>` to cancel a goal after confirmation. A local execution lock prevents simultaneous GULZ runs, and a write whose expected content already exists is checkpointed rather than written a second time after recovery.
 
 ## Activity history
 
