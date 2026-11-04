@@ -10,7 +10,7 @@ GULZ is licensed under the **Apache License 2.0**. You can use, study, modify an
 
 ## Project status
 
-GULZ is in early development. An interactive Bash source installer is available for Termux, Linux, macOS and VPS hosts, alongside a PowerShell source-build guide for Windows. These install the GULZ CLI from source; they are not packaged binary releases. Native installers, desktop and Android apps, npm package releases, AI integrations, SSH orchestration and release downloads are not available until implemented and tested.
+GULZ is in active development. The CLI currently supports local goal/task management, OpenAI-compatible AI planning, supervised local execution, recovery and source updates. An interactive Bash source installer is available for Termux, Linux, macOS and VPS hosts, alongside a PowerShell source-build guide for Windows. These install the CLI from source; they are not packaged binary releases. Remote SSH orchestration, connected services, native installers, desktop/Android apps, published npm packages and signed release downloads remain outstanding.
 
 ## Install the GULZ CLI
 
@@ -45,11 +45,11 @@ All interfaces must use the same execution policy. No interface may bypass permi
 ## Current implementation status
 
 - **Core:** goal/task types, guarded lifecycle transitions and risk-derived approval decisions.
-- **Execution:** bounded filesystem inspection and reading; explicitly approved text writes with backups/restore; a fixed allowlist of read-only diagnostics plus explicitly approved CLI-only build/test workflows. The command runner uses no shell, a sanitized environment, bounded output/time and interactive approval.
-- **CLI:** local goal/task management, private activity history, provider configuration, AI-assisted plan generation, diagnostics and supervised local file/command operations are implemented in source. Runtime verification is still pending.
+- **Execution:** bounded path inspection, directory listing/creation, UTF-8 reads/writes, high-risk reversible file deletion with private backups/restore, and a fixed allowlist of diagnostics plus approved CLI build/test workflows. The command runner uses no shell, a sanitized environment, bounded output/time and interactive approval.
+- **CLI:** local goal/task management, private activity history, provider configuration, AI-assisted planning, supervised execution, per-operation approval, durable checkpoints, pause/resume/cancel, repair, update and uninstall are implemented in source. Runtime verification is still pending.
 - **Distribution:** npm package metadata and platform-specific source-build instructions are prepared. Packages have not been published and native installers are not available.
 - **Website:** installation centre and platform roadmap are in the source repository; deployment of the latest changes is still required.
-- **Not yet implemented:** remote SSH orchestration, desktop app, native installers, signed release downloads and automatic updates. AI-assisted planning and checkpointed supervised execution are implemented for the narrow local operation allowlist; arbitrary shell and destructive operations remain unavailable.
+- **Not yet implemented:** remote SSH orchestration, connected-service adapters, arbitrary shell/package installation, desktop app, native installers, signed release downloads and signed automatic updates. Permanent/recursive deletion remains unavailable; the only delete operation moves a small regular file into a recoverable backup.
 
 ## Repository layout
 
@@ -60,7 +60,7 @@ apps/
 packages/
   core/      Goal and task orchestration
   execution/ Permission-aware local execution engine
-  providers/ Provider-neutral OpenAI-compatible AI planning adapter
+  providers/  OpenAI-compatible structured planning adapter
   storage/   Local persistence and remote storage adapters (planned)
   updater/   Verified update client (planned)
 docs/        Product, architecture and platform documentation
