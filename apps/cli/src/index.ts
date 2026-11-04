@@ -586,13 +586,37 @@ async function doctor(): Promise<boolean> {
   label("OS release", release());
   label("Node.js", process.version);
   label("Data folder", dataHome);
+  const [major, minor] = process.versions.node.split(".").map(Number);
+  let ok = true;
+  if (major! < 20 || (major === 20 && minor! < 19)) {
+    failure("Node.js 20.19 or newer is required");
+    ok = false;
+  } else success("Node.js version is supported");
+  const git = spawnSync("git", ["--version"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  if (git.status === 0) success("Git is available · " + git.stdout.trim());
+  else { failure("Git is unavailable or could not be started"); ok = false; }
   try {
     await ensureDataHome();
     await access(dataHome, constants.R_OK | constants.W_OK);
     success("Local storage is ready");
     const goals = await readGoals();
     label("Saved goals", String(goals.length));
-    return true;
+    try {
+      const auditInfo = await lstat(auditFile);
+      if (!auditInfo.isFile() || auditInfo.isSymbolicLink()) throw new Error("Audit history is not a regular file.");
+      await chmod(auditFile, 0o600);
+      success("Activity history is available");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") success("Activity history will be created when needed");
+      else throw error;
+    }
+    try {
+      await lstat(executionLockFile);
+      warning("An execution lock exists. Check that no other GULZ execution is active before continuing.");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    return ok;
   } catch (error) {
     failure("Local storage is unavailable");
     console.error(error instanceof Error ? error.message : String(error));
@@ -616,6 +640,10 @@ async function updateInstallation(): Promise<void> {
     const confirmation = await rl.question("Type UPDATE GULZ to continue: ");
     if (confirmation !== "UPDATE GULZ") { console.log("Update cancelled."); return; }
   } finally { rl.close(); }
+  const dirty = spawnSync("git", ["status", "--porcelain"], { cwd: installDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  if (dirty.error) throw dirty.error;
+  if (dirty.status !== 0) throw new Error("Unable to inspect the source checkout before updating.");
+  if (dirty.stdout.trim()) throw new Error("The GULZ source checkout has uncommitted changes. Commit or safely stash them before running gulz update.");
   const npm = process.platform === "win32" ? "npm.cmd" : "npm";
   const steps = [
     ["git", ["pull", "--ff-only"]],
