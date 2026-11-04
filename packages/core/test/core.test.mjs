@@ -109,3 +109,10 @@ test("requires structured command arguments and prevents misleading previews", (
   assert.equal(command.requiresApproval, true);
   assert.equal(command.commandPreview, "node --version");
 });
+
+test("initializes durable operation checkpoints for every new task", () => {
+  const goal = createGoal({ id: "g-checkpoint", title: "Recover work", now: at });
+  const operation = createPlannedOperation({ id: "op-checkpoint", kind: "inspect", description: "Inspect workspace", risk: "low", target: "." });
+  const updated = addGoalTask(goal, { id: "t-checkpoint", title: "Inspect", description: "Inspect workspace", operations: [operation] }, at);
+  assert.deepEqual(updated.tasks[0]?.completedOperationIds, []);
+});
