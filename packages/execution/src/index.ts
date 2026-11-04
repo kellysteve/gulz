@@ -259,7 +259,10 @@ export async function executeLocalOperation(
         try { info = await lstat(current); }
         catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-          await mkdir(current, { mode: 0o700 });
+          try { await mkdir(current, { mode: 0o700 }); }
+          catch (createError) {
+            if ((createError as NodeJS.ErrnoException).code !== "EEXIST") throw createError;
+          }
           info = await lstat(current);
         }
         if (info.isSymbolicLink()) throw new ExecutionError("Symbolic links are not allowed in directory creation targets.");
