@@ -324,3 +324,12 @@ test("requires an interactive terminal before starting goal execution or resume"
     assert.match(resume.stderr, /interactive terminal/);
   });
 });
+
+
+test("requires explicit interactive confirmation before goal cancellation", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "cancel", "goal-id");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /interactive terminal/);
+  });
+});
