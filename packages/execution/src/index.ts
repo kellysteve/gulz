@@ -97,6 +97,10 @@ const MAX_COMMAND_OUTPUT_BYTES = 64 * 1024;
 function isAllowedCommand(command: unknown, args: unknown): args is string[] {
   if (typeof command !== "string" || !Array.isArray(args) || !args.every((arg) => typeof arg === "string")) return false;
   if (command === "node") return args.length === 1 && ["--version", "-v"].includes(args[0]!);
+  if (command === "npm") {
+    const allowed = [["--version"], ["run", "build:cli"], ["run", "test:cli"]];
+    return allowed.some((entry) => JSON.stringify(entry) === JSON.stringify(args));
+  }
   if (command === "git") {
     const allowed = [
       ["status", "--short"],
@@ -113,7 +117,7 @@ function isAllowedCommand(command: unknown, args: unknown): args is string[] {
 
 async function runAllowlistedCommand(command: string, args: string[], cwd: string, signal: AbortSignal): Promise<{ exitCode: number | null; stdout: string; stderr: string }> {
   if (!isAllowedCommand(command, args)) {
-    throw new ExecutionError("Command is not allowlisted. Supported commands: node --version and selected read-only git status/branch/log/diff commands.");
+    throw new ExecutionError("Command is not allowlisted. Supported commands: Node.js version, selected read-only Git diagnostics, npm --version, npm run build:cli and npm run test:cli.");
   }
   if (signal.aborted) throw new ExecutionError("Execution was cancelled or timed out.");
   return await new Promise((resolveResult, rejectResult) => {
