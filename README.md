@@ -60,7 +60,7 @@ apps/
 packages/
   core/      Goal and task orchestration
   execution/ Permission-aware local execution engine
-  providers/ AI provider adapters (planned)
+  providers/ Provider-neutral OpenAI-compatible AI planning adapter
   storage/   Local persistence and remote storage adapters (planned)
   updater/   Verified update client (planned)
 docs/        Product, architecture and platform documentation
