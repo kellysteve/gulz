@@ -656,6 +656,14 @@ async function doctor(): Promise<boolean> {
     const goals = await readGoals();
     label("Saved goals", String(goals.length));
     try {
+      const provider = await readProviderConfig();
+      if (provider) success("AI provider configured · " + new URL(provider.baseUrl).host + " / " + provider.model);
+      else warning("No AI provider configured; local CLI features remain available.");
+    } catch (error) {
+      failure("AI provider settings are invalid · " + (error instanceof Error ? error.message : String(error)));
+      ok = false;
+    }
+    try {
       const auditInfo = await lstat(auditFile);
       if (!auditInfo.isFile() || auditInfo.isSymbolicLink()) throw new Error("Audit history is not a regular file.");
       await chmod(auditFile, 0o600);
