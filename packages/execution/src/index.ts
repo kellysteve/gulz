@@ -97,7 +97,7 @@ const MAX_COMMAND_OUTPUT_BYTES = 64 * 1024;
 function isAllowedCommand(command: unknown, args: unknown): args is string[] {
   if (typeof command !== "string" || !Array.isArray(args) || !args.every((arg) => typeof arg === "string")) return false;
   if (command === "node") return args.length === 1 && ["--version", "-v"].includes(args[0]!);
-  if (command === "npm") {
+  if (command === "npm" && process.platform !== "win32") {
     const allowed = [["--version"], ["run", "build:cli"], ["run", "test:cli"]];
     return allowed.some((entry) => JSON.stringify(entry) === JSON.stringify(args));
   }
