@@ -353,3 +353,45 @@ test("rejects directory creation through symlinked parent components", async () 
   await assert.rejects(executeLocalOperation(create, { rootDirectory: root, approved: true }), /Symbolic links/);
   await assert.rejects(import("node:fs/promises").then(({ access }) => access(join(outside, "unsafe"))));
 }));
+
+
+test("moves deleted files into private verified backups that can be restored", async () => withRoot(async (root) => {
+  await writeFile(join(root, "important.txt"), "keep this recoverable");
+  const deletion = createPlannedOperation({
+    id: "delete-reversible",
+    kind: "delete_file",
+    description: "Move a file into backup storage",
+    risk: "high",
+    target: "important.txt",
+  });
+  await assert.rejects(executeLocalOperation(deletion, { rootDirectory: root, approved: false }), /explicit user approval/);
+  const removed = await executeLocalOperation(deletion, { rootDirectory: root, approved: true });
+  assert.equal(removed.output.kind, "file_deleted");
+  assert.equal(removed.verified, true);
+  assert.equal(removed.output.backupPath?.startsWith(".gulz-deleted-"), true);
+  await assert.rejects(import("node:fs/promises").then(({ access }) => access(join(root, "important.txt"))));
+  const { stat } = await import("node:fs/promises");
+  assert.equal((await stat(join(root, removed.output.backupPath))).mode & 0o777, 0o600);
+  const backup = await executeLocalOperation(operation("read_file", removed.output.backupPath), { rootDirectory: root });
+  const restore = createPlannedOperation({
+    id: "restore-reversible",
+    kind: "write_file",
+    description: "Restore the deleted file",
+    risk: "moderate",
+    target: "important.txt",
+    content: backup.output.content,
+  });
+  await executeLocalOperation(restore, { rootDirectory: root, approved: true });
+  const restored = await executeLocalOperation(operation("read_file", "important.txt"), { rootDirectory: root });
+  assert.equal(restored.output.content, "keep this recoverable");
+}));
+
+test("refuses to delete directories or symbolic links", async () => withRoot(async (root) => {
+  await mkdir(join(root, "folder"));
+  await writeFile(join(root, "note.txt"), "hello");
+  await symlink(join(root, "note.txt"), join(root, "linked.txt"));
+  const removeDirectory = createPlannedOperation({ id: "delete-dir", kind: "delete_file", description: "Delete directory", risk: "high", target: "folder" });
+  const removeLink = createPlannedOperation({ id: "delete-link", kind: "delete_file", description: "Delete symlink", risk: "high", target: "linked.txt" });
+  await assert.rejects(executeLocalOperation(removeDirectory, { rootDirectory: root, approved: true }), /regular file/);
+  await assert.rejects(executeLocalOperation(removeLink, { rootDirectory: root, approved: true }), /Symbolic links/);
+}));
