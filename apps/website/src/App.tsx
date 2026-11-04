@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  ArrowRight, ArrowUpRight, Bot, Check, Command,
+  ArrowRight, ArrowUpRight, Bot, Check, Command, Copy,
   Download, Laptop, Menu, Monitor, Server, ShieldCheck, Smartphone, Terminal, Code2, AppWindow,
   X, Zap,
 } from "lucide-react";
@@ -11,22 +11,22 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
   {
     id: "termux", name: "Android / Termux", detail: "Android phones and tablets", icon: Smartphone,
     methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "Native Android app (planned)"],
-    steps: ["Install Termux from F-Droid or the official GitHub releases.", "Update Termux and install curl. The installer can offer to install Git and Node.js LTS if missing.", "Download and review the installer script.", "Run bash gulz-install.sh, answer its prompts, then launch gulz."],
-    commands: ["pkg update && pkg upgrade -y", "pkg install curl", "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "sed -n '1,260p' gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz doctor"],
+    steps: ["Install Termux from F-Droid or the official GitHub releases.","Run pkg update && pkg upgrade -y.","Install curl with pkg install curl.","Copy the Bash command above into Termux and answer the installer's questions.","After installation, run gulz."],
+    commands: ["pkg update && pkg upgrade -y","pkg install curl","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz","gulz doctor"],
     note: "The installer asks for the install folder and confirmation. It installs only the CLI workspaces and deliberately skips Wrangler/Workerd, which is unsupported on Android/Termux. It can offer to install missing Termux Git and Node.js LTS packages. This is a developer-preview CLI inside Termux, not a standalone Android app.",
   },
   {
     id: "linux", name: "Linux", detail: "Ubuntu, Debian and other distributions", icon: Terminal,
     methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "AppImage / .deb / .rpm packages (planned)", "Desktop app (planned)"],
-    steps: ["Install Node.js 20.19+ and curl.", "Download the public installer and review the script if desired.", "Run bash gulz-install.sh and answer the install-folder and confirmation prompts.", "Open a new terminal and run gulz."],
-    commands: ["# Install Node.js 20.19+ and curl first", "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "sed -n '1,260p' gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz doctor"],
+    steps: ["Install Node.js 20.19+ and curl.","Optionally review scripts/install.sh in the public GitHub repository.","Run the Bash command above and answer the installer's questions.","Open a new terminal and run gulz."],
+    commands: ["# Install Node.js 20.19+ and curl first","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz","gulz doctor"],
     note: "The installer asks for the install folder and confirmation, installs only CLI workspace dependencies, then builds and links the CLI. It skips the website tooling. Review scripts/install.sh before running it. Signed .deb, .rpm and AppImage packages are not published.",
   },
   {
     id: "macos", name: "macOS", detail: "Apple Silicon and Intel Macs", icon: Command,
     methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "Signed .dmg desktop app (planned)", "Homebrew package (planned)"],
-    steps: ["Install Node.js 20.19+ and curl.", "Download the public installer and review the script if desired.", "Run bash gulz-install.sh and answer the install-folder and confirmation prompts.", "Open a new terminal and run gulz."],
-    commands: ["brew install node git curl", "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "sed -n '1,260p' gulz-install.sh", "bash gulz-install.sh", "gulz", "gulz doctor"],
+    steps: ["Install Node.js 20.19+ and Git.","Optionally review scripts/install.sh in the public GitHub repository.","Run the Bash command above and answer the installer's questions.","Open a new terminal and run gulz."],
+    commands: ["brew install node git curl","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz","gulz doctor"],
     note: "Install Node.js 20.19+ and Git first. The interactive installer asks where to install GULZ and requests confirmation. Signed desktop .dmg installers for Apple Silicon and Intel are planned, not available for download.",
   },
   {
@@ -39,8 +39,8 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
   {
     id: "vps", name: "VPS / Remote servers", detail: "Ubuntu, Debian and SSH-connected hosts", icon: Server,
     methods: ["SSH + interactive Bash installer (developer preview)", "Headless server package (planned)"],
-    steps: ["Connect to your server using your own SSH account.", "Install Node.js 20.19+ and curl on the VPS.", "Download and run the Bash installer as your normal user, not root.", "Run gulz on the server itself. SSH-based remote orchestration is not available yet."],
-    commands: ["# Install Node.js 20.19+ and curl first", "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh -o gulz-install.sh", "sed -n '1,260p' gulz-install.sh", "bash gulz-install.sh", "gulz doctor"],
+    steps: ["Connect to your server using your own SSH account.","Install Node.js 20.19+ and curl on the VPS.","Run the Bash command above as your normal user, not root, and answer the installer's questions.","Run gulz on the VPS itself. Remote SSH orchestration is not available yet."],
+    commands: ["# Install Node.js 20.19+ and curl first","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz doctor"],
     note: "Install Node.js 20.19+ and curl first, then run the interactive installer as your normal non-root SSH user. The CLI runs on this VPS; it does not yet connect to or administer other machines automatically.",
   },
 ];
@@ -48,6 +48,12 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
 function App() {
   const [selected, setSelected] = useState<Platform>("termux");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [copiedInstall, setCopiedInstall] = useState(false);
+  const installCommand = "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash";
+  const copyInstallCommand = async () => {
+    try { await navigator.clipboard.writeText(installCommand); setCopiedInstall(true); window.setTimeout(() => setCopiedInstall(false), 2200); }
+    catch { setCopiedInstall(false); }
+  };
   const active = platforms.find((item) => item.id === selected)!;
 
   return (
@@ -120,8 +126,10 @@ function App() {
             <div className="install-detail" role="tabpanel">
               <div className="install-detail-top"><div><span className="available-label">INSTALLATION GUIDE</span><h3>{active.name}</h3><p>{active.detail}</p></div><Download size={23}/></div>
               <h4>Distribution status</h4><div className="method-list">{active.methods.map((method) => <span key={method}><ArrowRight size={14}/>{method}</span>)}</div>
-              <h4>Developer preview commands</h4><pre className="install-code"><code>{active.commands.join("\n")}</code></pre><p className="install-note">{active.note} {active.id !== "termux" && <><a href="https://nodejs.org/en/download" target="_blank" rel="noreferrer">Get Node.js</a>. </>} {active.id === "termux" && <>Get Termux from <a href="https://f-droid.org/packages/com.termux/" target="_blank" rel="noreferrer">F-Droid</a> or the <a href="https://github.com/termux/termux-app/releases" target="_blank" rel="noreferrer">official releases</a>.</>}</p>
-              <p className="install-note"><b>Using and updating:</b> The Bash installer is interactive; download and review the public script, then run it with <code>bash gulz-install.sh</code>. After setup, open a terminal and run <code>gulz</code> whenever you want to use GULZ; it does not need to stay open in the background. To update this developer preview later, run <code>gulz update</code> in a terminal, review the repository path and type <code>UPDATE GULZ</code> to approve. GULZ will fast-forward the source, install dependencies and rebuild itself. Close the session and run <code>gulz</code> again. Published package updates are not available yet.</p><h4>Step-by-step setup</h4><ol className="steps-list">{active.steps.map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}</ol>
+              <h4>One-command installer</h4>
+              {active.id !== "windows" && <div className="install-one-click"><pre className="install-code"><code>{installCommand}</code></pre><button className="button button-primary" type="button" onClick={copyInstallCommand}><Copy size={15}/>{copiedInstall ? "Copied" : "Copy install command"}</button><p>Run this in your platform's terminal. The installer asks questions and requests confirmation before making changes.</p></div>}
+              <h4>Platform commands</h4><pre className="install-code"><code>{active.commands.join("\n")}</code></pre><p className="install-note">{active.note} {active.id !== "termux" && <><a href="https://nodejs.org/en/download" target="_blank" rel="noreferrer">Get Node.js</a>. </>} {active.id === "termux" && <>Get Termux from <a href="https://f-droid.org/packages/com.termux/" target="_blank" rel="noreferrer">F-Droid</a> or the <a href="https://github.com/termux/termux-app/releases" target="_blank" rel="noreferrer">official releases</a>.</>}</p>
+              <p className="install-note"><b>Using and updating:</b> After setup, run <code>gulz</code> whenever you want to use GULZ; it does not need to stay open in the background. To update this developer preview later, run <code>gulz update</code>, review the repository path and type <code>UPDATE GULZ</code> to approve. It fast-forwards the source, installs only CLI dependencies and rebuilds itself. Close the session and run <code>gulz</code> again. Published package updates are not available yet.</p><h4>Step-by-step setup</h4><ol className="steps-list">{active.steps.map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}</ol>
               <div className="release-notice"><ShieldCheck size={17}/><p><b>This is an interactive source installer, not a stable release installer.</b><br/>The CLI is in early development. Native packages and signed downloads will only be listed after platform builds and security checks pass.</p></div>
               <p className="install-note"><a href="https://github.com/kellysteve/gulz/blob/main/docs/INSTALLATION.md" target="_blank" rel="noreferrer">Open the complete installation guide <ArrowUpRight size={13}/></a></p>
             </div>
