@@ -33,7 +33,7 @@ function label(name: string, value: string): void { console.log(paint(name.padEn
 const goalStatuses = new Set<GoalStatus>(["draft", "planned", "awaiting_approval", "running", "paused", "completed", "failed", "cancelled"]);
 const taskStatuses = new Set<TaskStatus>(["pending", "awaiting_approval", "running", "paused", "completed", "failed", "skipped", "cancelled"]);
 const risks = new Set<RiskLevel>(["low", "moderate", "high", "critical"]);
-const operationKinds = new Set<OperationKind>(["inspect", "list_directory", "read_file", "write_file", "run_command", "network", "install", "delete", "permission_change", "remote_operation"]);
+const operationKinds = new Set<OperationKind>(["inspect", "list_directory", "create_directory", "read_file", "write_file", "run_command", "network", "install", "delete", "permission_change", "remote_operation"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -128,6 +128,7 @@ function help(): void {
     "  goal task status <goal> <task> <status>  Change a task status",
     "  inspect <path>        Inspect a path inside the current directory",
     "  list [path]           List directory entries without following symlinks",
+    "  mkdir <path>          Create directories after explicit approval",
     "  read <path>           Read a file inside the current directory (256 KiB max)",
     "  write <path>          Write one line of text after explicit confirmation",
     "  run <command> [args]  Run approved diagnostics or CLI build/test workflows",
@@ -1183,6 +1184,26 @@ async function main(): Promise<void> {
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
       await recordExecutionAudit(result);
       console.log(JSON.stringify(result, null, 2));
+    } finally { rl.close(); }
+    return;
+  }
+  if (command === "mkdir") {
+    const target = args.join(" ").trim();
+    if (!target) { console.error("Usage: gulz mkdir <relative-path>"); process.exitCode = 2; return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("Directory creation requires an interactive terminal and explicit approval.");
+    const operation = createPlannedOperation({
+      id: randomUUID(), kind: "create_directory", description: "Create a directory inside the current workspace",
+      risk: "moderate", target,
+    });
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      console.log("Directory: " + target);
+      warning("GULZ will create missing parent directories if necessary. Existing directories are left unchanged.");
+      const confirmation = await rl.question("Type CREATE DIRECTORY " + target + " to approve: ");
+      if (confirmation !== "CREATE DIRECTORY " + target) { console.log("Directory creation cancelled."); return; }
+      const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
+      await recordExecutionAudit(result);
+      success("Directory created or already present · " + target);
     } finally { rl.close(); }
     return;
   }
