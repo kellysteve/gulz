@@ -86,7 +86,7 @@ gulz run git status --short
 
 Filesystem operations are confined to the current working directory. Absolute paths, traversal and symbolic links are rejected. Directory listings show at most 200 entry names/types and never follow child symlinks. Reads and writes are limited to 256 KiB by default; reads accept UTF-8 text only. Writes and restores require interactive, path-specific confirmation and preserve replaced files as owner-only backups.
 
-The command runner uses no shell and accepts only a small fixed allowlist of read-only diagnostics: Node.js version and selected Git status/branch/log/diff commands. It sanitizes inherited environment variables, bounds execution time and caps combined output at 64 KiB. Arbitrary shell commands, scripts, package installation, deletion, permission changes and remote execution are not exposed.
+The command runner uses no shell and accepts only a fixed allowlist: Node.js version, selected read-only Git status/branch/log/diff commands, npm version, and the CLI-only npm build/test workflows. The npm workflows execute repository scripts and therefore require typed approval; they have a bounded three-minute timeout. It sanitizes inherited environment variables, bounds execution time and caps combined output at 64 KiB. Arbitrary shell commands, scripts, package installation, deletion, permission changes and remote execution are not exposed.
 
 ## Important capability boundaries
 
