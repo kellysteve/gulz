@@ -2,7 +2,7 @@
 
 This checklist is the release gate. A public repository and a working source installer do not mean GULZ is production-ready.
 
-## Before announcing the CLI preview
+## CLI release readiness
 
 - [ ] Generate and commit a root npm lockfile, then verify `npm ci` from a clean clone on supported Node.js LTS. The repository currently has no committed lockfile.
 - [ ] Run `npm test` and record the exact Node.js, npm and OS versions.
@@ -15,7 +15,7 @@ This checklist is the release gate. A public repository and a working source ins
 - [ ] Check shell script syntax with `bash -n scripts/install.sh`.
 - [ ] Check website installation instructions against the tested installer.
 - [ ] Deploy the website to Cloudflare and verify all platform tabs and links.
-- [ ] Publish a dated preview changelog and known-limitations list.
+- [ ] Publish a dated changelog and known-limitations list.
 
 ## Before publishing npm packages
 
@@ -50,4 +50,4 @@ Publish in dependency order: `@gulz/core`, `@gulz/execution`, then `@gulz/cli`.
 
 ## Current honest status
 
-The repository contains a source-build CLI preview and an interactive Bash installer for Termux, Linux, macOS and VPS environments. AI goal execution, remote SSH orchestration, native desktop/mobile packages and published npm packages are not available. Automated checks and the installer still require real clean-platform validation. Do not market this preview as production-ready machine administration software.
+The repository contains a source-build CLI and an interactive Bash installer for Termux, Linux, macOS and VPS environments. AI goal execution, remote SSH orchestration, native desktop/mobile packages and published npm packages are not available. Automated checks and the installer still require real clean-platform validation. Do not market this preview as production-ready machine administration software.
