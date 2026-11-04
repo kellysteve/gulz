@@ -106,3 +106,23 @@ test("accepts bounded directory-listing operations in structured plans", async (
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("accepts explicit directory creation proposals in structured plans", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    choices: [{ message: { content: JSON.stringify({
+      summary: "Prepare the workspace",
+      tasks: [{ title: "Create assets folder", description: "Prepare a project directory", operations: [{ kind: "create_directory", description: "Create the assets folder", target: "assets" }] }],
+    }) } }],
+  }), { status: 200 });
+  try {
+    const plan = await generateGoalPlan(
+      { baseUrl: "https://api.example.com/v1", apiKey: "test", model: "test" },
+      { title: "Prepare a project", description: "" },
+    );
+    assert.equal(plan.tasks[0]?.operations[0]?.kind, "create_directory");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
