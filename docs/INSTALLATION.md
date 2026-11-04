@@ -2,7 +2,7 @@
 
 ## Release status
 
-GULZ is in early development. The interactive Bash installer and repository source-build route install the same developer-preview CLI; neither is a stable end-user release. No official binary downloads, desktop application, Android APK, npm package release, Homebrew formula or WinGet package is published yet.
+GULZ is in early development. The interactive Bash installer and repository source-build route install the same GULZ CLI source build. Packaged binary releases are not available. No official binary downloads, desktop application, Android APK, npm package release, Homebrew formula or WinGet package is published yet.
 
 ### Interactive Bash installer (Termux, Linux, macOS and VPS)
 
