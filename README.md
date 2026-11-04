@@ -20,7 +20,7 @@ On Termux, Linux, macOS or a Linux VPS, install Node.js 20.19+ (Termux can insta
 curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
 ~~~
 
-The installer detects the platform, asks where to install the source checkout and requests confirmation before installing only the CLI workspace dependencies, building the CLI and linking the `gulz` command. It installs only the CLI workspaces and their development dependencies (including TypeScript), deliberately skipping the website's Wrangler/Workerd dependency, which does not support Android's Termux environment. Run it as your normal user, not with `sudo`. Windows users should follow the PowerShell instructions in [docs/INSTALLATION.md](docs/INSTALLATION.md). This installs a developer preview, not a stable production release.
+The installer detects the platform, asks where to install the source checkout and requests confirmation before installing only the CLI workspace dependencies, building the CLI and linking the `gulz` command. It installs only the CLI workspaces and their development dependencies (including TypeScript), deliberately skipping the website's Wrangler/Workerd dependency, which does not support Android's Termux environment. Run it as your normal user, not with `sudo`. Windows users should follow the PowerShell instructions in [docs/INSTALLATION.md](docs/INSTALLATION.md). This installs the GULZ command-line application from its source repository.
 
 ## Product experience
 
@@ -69,7 +69,7 @@ supabase/    Database migrations for release infrastructure
 
 ## Platform direction
 
-- **Android:** CLI through Termux in the developer preview; native Android app planned.
+- **Android:** CLI through Termux; native Android app planned.
 - **Linux:** CLI source build now; AppImage, .deb, .rpm and desktop app planned.
 - **macOS:** CLI source build now; signed .dmg and Homebrew route planned.
 - **Windows:** PowerShell source build now; signed desktop installer and WinGet route planned.
