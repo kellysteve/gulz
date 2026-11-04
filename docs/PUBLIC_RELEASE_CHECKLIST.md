@@ -14,6 +14,9 @@ This checklist is the release gate. A public repository and a working source ins
 - [ ] Verify a failed dependency install/build leaves the user's `~/.gulz` data untouched.
 - [ ] Verify the CLI command is available in a fresh terminal after install and update.
 - [ ] Verify `gulz update` from a clean source checkout and document recovery from a dirty checkout.
+- [ ] Verify `gulz repair` restores a broken dependency/build/link without changing local data.
+- [ ] Verify `gulz uninstall` removes only the source checkout and global link while preserving `~/.gulz`.
+- [ ] Verify ANSI color output, `NO_COLOR`, and redirected/non-TTY output on each supported terminal.
 - [ ] Check shell script syntax with `bash -n scripts/install.sh`.
 - [ ] Check website installation instructions against the tested installer.
 - [ ] Deploy the website to Cloudflare and verify all platform tabs and links.
