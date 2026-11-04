@@ -17,10 +17,14 @@ async function withHome(run) {
 }
 
 function invoke(home, ...args) {
+  const env = { ...process.env, GULZ_HOME: home };
+  delete env.GULZ_AI_BASE_URL;
+  delete env.GULZ_AI_MODEL;
+  delete env.GULZ_AI_API_KEY;
   return spawnSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
     cwd: home,
-    env: { ...process.env, GULZ_HOME: home },
+    env,
   });
 }
 
