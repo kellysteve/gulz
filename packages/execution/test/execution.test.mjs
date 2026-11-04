@@ -318,6 +318,6 @@ test("runs an explicitly approved npm version check without a shell", async () =
   });
   const result = await executeLocalOperation(command, { rootDirectory: root, approved: true });
   assert.equal(result.output.exitCode, 0);
-  assert.match(result.output.stdout ?? "", /^\\d+\\./);
+  assert.match(result.output.stdout ?? "", /^\d+\./);
   assert.equal(result.verified, true);
 }));
