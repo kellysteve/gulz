@@ -362,3 +362,16 @@ test("prevents manually completing a task that contains executable operations", 
     assert.deepEqual(saved[0].tasks[0].completedOperationIds, []);
   });
 });
+
+
+test("stores an optional goal description supplied for AI planning", async () => {
+  await withHome(async (home) => {
+    const created = invoke(home, "goal", "create", "Prepare a release", "--description", "Build and verify the CLI release.");
+    assert.equal(created.status, 0, created.stderr);
+    const id = created.stdout.match(/ID:\s+([a-f0-9-]+)/)?.[1];
+    assert.ok(id);
+    const goal = JSON.parse(invoke(home, "goal", "show", id).stdout);
+    assert.equal(goal.title, "Prepare a release");
+    assert.equal(goal.description, "Build and verify the CLI release.");
+  });
+});
