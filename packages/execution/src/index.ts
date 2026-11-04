@@ -197,7 +197,7 @@ function verifyOperation(input: PlannedOperation): PlannedOperation {
       throw new ExecutionError("Operation approval metadata is inconsistent with its risk level.");
     }
     if (validated.kind !== "inspect" && validated.kind !== "list_directory" && validated.kind !== "create_directory" && validated.kind !== "delete_file" && validated.kind !== "read_file" && validated.kind !== "write_file" && validated.kind !== "run_command") {
-      throw new ExecutionError("This execution engine supports inspect, list_directory, create_directory, read_file, write_file and allowlisted run_command operations.");
+      throw new ExecutionError("This execution engine supports inspect, list_directory, create_directory, reversible delete_file, read_file, write_file and allowlisted run_command operations.");
     }
     if (validated.kind === "delete_file" && validated.risk !== "high") {
       throw new ExecutionError("delete_file operations must be high-risk and explicitly approved.");
