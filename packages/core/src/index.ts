@@ -58,6 +58,8 @@ export interface GoalTask {
   description: string;
   status: TaskStatus;
   operations: PlannedOperation[];
+  /** Operation IDs whose verified effects were durably recorded. */
+  completedOperationIds?: string[];
   createdAt: string;
   updatedAt: string;
   result?: string;
@@ -232,7 +234,7 @@ export function addGoalTask(
 
   return {
     ...goal,
-    tasks: [...goal.tasks, { ...task, status: "pending", createdAt: now, updatedAt: now }],
+    tasks: [...goal.tasks, { ...task, completedOperationIds: [], status: "pending", createdAt: now, updatedAt: now }],
     updatedAt: now,
   };
 }
