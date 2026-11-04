@@ -17,6 +17,15 @@ const dataHome = resolve(process.env.GULZ_HOME || join(homedir(), ".gulz"));
 const goalsFile = join(dataHome, "goals.json");
 const goalsLockFile = join(dataHome, "goals.lock");
 
+const isInteractive = Boolean(stdout.isTTY && process.env.NO_COLOR === undefined && process.env.TERM !== "dumb");
+const ansi = { reset: "\\u001b[0m", bold: "\\u001b[1m", dim: "\\u001b[2m", cyan: "\\u001b[36m", blue: "\\u001b[34m", green: "\\u001b[32m", yellow: "\\u001b[33m", red: "\\u001b[31m", magenta: "\\u001b[35m" };
+function paint(value: string, ...styles: string[]): string { return isInteractive ? styles.join("") + value + ansi.reset : value; }
+function title(value: string): void { console.log("\\n" + paint(value, ansi.bold, ansi.cyan)); }
+function success(value: string): void { console.log(paint("✓ " + value, ansi.green, ansi.bold)); }
+function warning(value: string): void { console.log(paint("! " + value, ansi.yellow)); }
+function failure(value: string): void { console.error(paint("✗ " + value, ansi.red, ansi.bold)); }
+function label(name: string, value: string): void { console.log(paint(name.padEnd(14), ansi.dim) + value); }
+
 const goalStatuses = new Set<GoalStatus>(["draft", "planned", "awaiting_approval", "running", "paused", "completed", "failed", "cancelled"]);
 const taskStatuses = new Set<TaskStatus>(["pending", "awaiting_approval", "running", "paused", "completed", "failed", "skipped", "cancelled"]);
 const risks = new Set<RiskLevel>(["low", "moderate", "high", "critical"]);
@@ -90,7 +99,7 @@ function help(): void {
     "Commands:",
     "  init                  Create the local GULZ data directory",
     "  doctor                Check the local runtime and data directory",
-    "  update                Update this source-preview installation",
+    "  update                Safely update GULZ from its source installation",
     "  goal create <title>   Save a new goal locally",
     "  goals                 List saved goals",
     "  goal show <id>        Show a saved goal",
@@ -197,28 +206,28 @@ async function withGoalsLock<T>(run: () => Promise<T>): Promise<T> {
 }
 
 async function doctor(): Promise<boolean> {
-  console.log("GULZ system check");
-  console.log(`Version:       ${VERSION}`);
-  console.log(`Platform:      ${platform()} (${arch()})`);
-  console.log(`OS release:    ${release()}`);
-  console.log(`Node.js:       ${process.version}`);
-  console.log(`Data folder:   ${dataHome}`);
+  title("GULZ SYSTEM CHECK");
+  label("Version", VERSION);
+  label("Platform", `${platform()} (${arch()})`);
+  label("OS release", release());
+  label("Node.js", process.version);
+  label("Data folder", dataHome);
   try {
     await ensureDataHome();
     await access(dataHome, constants.R_OK | constants.W_OK);
-    console.log("Local storage: ready");
+    success("Local storage is ready");
     const goals = await readGoals();
-    console.log(`Saved goals:   ${goals.length}`);
+    label("Saved goals", String(goals.length));
     return true;
   } catch (error) {
-    console.error("Local storage: unavailable");
+    failure("Local storage is unavailable");
     console.error(error instanceof Error ? error.message : String(error));
     return false;
   }
 }
 
 
-async function updateSourcePreview(): Promise<void> {
+async function updateInstallation(): Promise<void> {
   const installDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
   if (!existsSync(join(installDirectory, ".git")) || !existsSync(join(installDirectory, "package.json"))) {
     throw new Error("This GULZ installation is not linked from a source checkout. Published package updates are not available yet. Follow the platform update instructions at gulz.gaxity.com.ng.");
@@ -267,14 +276,14 @@ async function interactiveSession(): Promise<void> {
   };
 
   try {
-    console.log("Welcome to GULZ.");
-    console.log("Goals are saved on this device in " + dataHome);
-    console.log("AI planning and autonomous task execution are not connected in this preview yet.");
+    title("WELCOME TO GULZ");
+    console.log("Goals are saved on this device in " + paint(dataHome, ansi.cyan));
+    warning("This CLI currently supports local goal management and supervised workspace operations. AI planning and remote execution are not configured in this installation.");
     while (true) {
       showMenu();
       const choice = await ask("\nChoose an option: ");
       if (choice === "0" || choice.toLowerCase() === "exit" || choice.toLowerCase() === "quit" || choice.toLowerCase() === "q") {
-        console.log("GULZ session closed. Your saved goals remain on this device.");
+        success("Session closed. Your saved goals remain on this device.");
         break;
       }
       if (choice === "1" || choice.toLowerCase() === "create") {
@@ -290,7 +299,7 @@ async function interactiveSession(): Promise<void> {
         console.log("Title:  " + goal.title);
         console.log("ID:     " + goal.id);
         console.log("Status: draft");
-        console.log("Next: planning and task execution will become available in a later CLI update.");
+        warning("This goal is saved. No task plan has been generated or executed.");
         continue;
       }
       if (choice === "2" || choice.toLowerCase() === "goals" || choice.toLowerCase() === "view") {
@@ -321,7 +330,7 @@ async function interactiveSession(): Promise<void> {
         console.log("Updated:     " + goal.updatedAt);
         console.log("Tasks:       " + goal.tasks.length);
         for (const task of goal.tasks) console.log("  - [" + task.status + "] " + task.title);
-        console.log("This preview stores goals; AI planning and task execution are not available yet.");
+        warning("No task plan has been generated or executed for this goal.");
         continue;
       }
       if (choice === "3" || choice.toLowerCase() === "doctor") {
@@ -330,7 +339,7 @@ async function interactiveSession(): Promise<void> {
       }
       if (choice === "5" || choice.toLowerCase() === "update") {
         rl.close();
-        await updateSourcePreview();
+        await updateInstallation();
         return;
       }
       if (choice === "4" || choice.toLowerCase() === "help") {
@@ -362,7 +371,7 @@ async function main(): Promise<void> {
         await saveGoals(goals);
       }
     });
-    console.log("GULZ is initialized.");
+    success("GULZ is initialized");
     console.log(`Local data: ${dataHome}`);
     return;
   }
