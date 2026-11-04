@@ -33,7 +33,7 @@ function label(name: string, value: string): void { console.log(paint(name.padEn
 const goalStatuses = new Set<GoalStatus>(["draft", "planned", "awaiting_approval", "running", "paused", "completed", "failed", "cancelled"]);
 const taskStatuses = new Set<TaskStatus>(["pending", "awaiting_approval", "running", "paused", "completed", "failed", "skipped", "cancelled"]);
 const risks = new Set<RiskLevel>(["low", "moderate", "high", "critical"]);
-const operationKinds = new Set<OperationKind>(["inspect", "read_file", "write_file", "run_command", "network", "install", "delete", "permission_change", "remote_operation"]);
+const operationKinds = new Set<OperationKind>(["inspect", "list_directory", "read_file", "write_file", "run_command", "network", "install", "delete", "permission_change", "remote_operation"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -293,7 +293,7 @@ function validatePlannedOperations(raw: Awaited<ReturnType<typeof generateGoalPl
     if (item.kind === "run_command" && !allowedCommands.some((allowed) => JSON.stringify(allowed) === JSON.stringify([item.command, ...(item.args ?? [])]))) {
       throw new Error("The AI proposed a command outside GULZ's fixed read-only allowlist. The plan was rejected.");
     }
-    const risk: RiskLevel = item.kind === "inspect" || item.kind === "read_file" ? "low" : "moderate";
+    const risk: RiskLevel = item.kind === "inspect" || item.kind === "list_directory" || item.kind === "read_file" ? "low" : "moderate";
     return createPlannedOperation({
       id: randomUUID(),
       kind: item.kind,
