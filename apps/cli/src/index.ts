@@ -2,7 +2,7 @@
 
 import { homedir, platform, arch, release } from "node:os";
 import { access, appendFile, chmod, lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { constants, existsSync } from "node:fs";
+import { constants, existsSync, type Stats } from "node:fs";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -983,7 +983,7 @@ async function main(): Promise<void> {
       if (process.env.GULZ_AI_BASE_URL || process.env.GULZ_AI_MODEL || process.env.GULZ_AI_API_KEY) {
         throw new Error("Provider settings are supplied by environment variables; remove GULZ_AI_* from your environment instead.");
       }
-      let info;
+      let info: Stats;
       try { info = await lstat(providerFile); }
       catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") { console.log("No saved provider settings were found."); return; }
