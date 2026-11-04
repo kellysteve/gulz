@@ -1077,7 +1077,7 @@ async function main(): Promise<void> {
       console.log("Only fixed diagnostics and CLI build/test workflows are supported. No shell is used; npm workflows execute repository scripts and require explicit approval.");
       const confirmation = await rl.question(`Type RUN ${preview} to approve this command: `);
       if (confirmation !== `RUN ${preview}`) { console.log("Command cancelled."); return; }
-      const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
+      const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true, timeoutMs: executable === "npm" ? 180_000 : 5_000 });
       await recordExecutionAudit(result);
       console.log(JSON.stringify(result, null, 2));
       if (result.output.exitCode !== 0) process.exitCode = 1;
