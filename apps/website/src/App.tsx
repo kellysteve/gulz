@@ -52,7 +52,7 @@ function App() {
   const installCommand = "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash";
   const copyInstallCommand = async () => {
     try { await navigator.clipboard.writeText(installCommand); setCopiedInstall(true); window.setTimeout(() => setCopiedInstall(false), 2200); }
-    catch { setCopiedInstall(false); }
+    catch { window.prompt("Copy the GULZ installation command:", installCommand); setCopiedInstall(false); }
   };
   const active = platforms.find((item) => item.id === selected)!;
 
