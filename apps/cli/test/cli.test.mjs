@@ -319,3 +319,46 @@ test("requires explicit interactive confirmation before goal cancellation", asyn
     assert.match(result.stderr, /interactive terminal/);
   });
 });
+
+
+test("prevents manually completing a task that contains executable operations", async () => {
+  await withHome(async (home) => {
+    const goalId = "goal-executable-task";
+    const taskId = "task-executable-task";
+    const operationId = "operation-executable-task";
+    const now = "2026-11-02T12:00:00.000Z";
+    const operation = {
+      id: operationId,
+      kind: "inspect",
+      description: "Inspect workspace",
+      risk: "low",
+      target: ".",
+      requiresApproval: false,
+    };
+    const goal = {
+      id: goalId,
+      title: "Executable goal",
+      description: "",
+      status: "planned",
+      tasks: [{
+        id: taskId,
+        title: "Inspect",
+        description: "Inspect workspace",
+        status: "pending",
+        operations: [operation],
+        completedOperationIds: [],
+        createdAt: now,
+        updatedAt: now,
+      }],
+      createdAt: now,
+      updatedAt: now,
+    };
+    await writeFile(join(home, "goals.json"), JSON.stringify([goal]));
+    const result = invoke(home, "goal", "task", "status", goalId, taskId, "completed");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /controlled by GULZ/);
+    const saved = JSON.parse(await readFile(join(home, "goals.json"), "utf8"));
+    assert.equal(saved[0].tasks[0].status, "pending");
+    assert.deepEqual(saved[0].tasks[0].completedOperationIds, []);
+  });
+});
