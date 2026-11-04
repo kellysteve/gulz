@@ -117,7 +117,7 @@ function help(): void {
     "  resume <goal-id>      Resume paused or interrupted goal execution",
     "  cancel <goal-id>      Cancel a goal after confirmation",
     "  update                Safely update GULZ from its source installation",
-    "  goal create <title>   Save a new goal locally",
+    "  goal create <title>   Save a new goal locally (--description <text> optional)",
     "  goals                 List saved goals",
     "  goal show <id>        Show a saved goal",
     "  goal edit <id>        Edit a goal title or description",
@@ -697,9 +697,10 @@ async function interactiveSession(): Promise<void> {
       if (choice === "1" || choice.toLowerCase() === "create") {
         const title = await ask("What goal do you want to save? ");
         if (!title) { console.log("No goal entered; nothing was saved."); continue; }
+        const description = await ask("Describe the goal (optional): ");
         const goal = await withGoalsLock(async () => {
           const goals = await readGoals();
-          const created = createGoal({ id: randomUUID(), title });
+          const created = createGoal({ id: randomUUID(), title, description });
           await saveGoals([...goals, created]);
           await recordAudit("goal.created", { goalId: created.id, title: created.title });
           return created;
@@ -1140,15 +1141,17 @@ async function main(): Promise<void> {
     return;
   }
   if (command === "goal" && args[0] === "create") {
-    const title = args.slice(1).join(" ").trim();
-    if (!title) {
-      console.error("Usage: gulz goal create <title>");
+    const descriptionIndex = args.indexOf("--description");
+    const title = (descriptionIndex < 0 ? args.slice(1) : args.slice(1, descriptionIndex)).join(" ").trim();
+    const description = descriptionIndex < 0 ? "" : args.slice(descriptionIndex + 1).join(" ").trim();
+    if (!title || (descriptionIndex >= 0 && !description)) {
+      console.error('Usage: gulz goal create "<title>" [--description "<details>"]');
       process.exitCode = 2;
       return;
     }
     const goal = await withGoalsLock(async () => {
       const goals = await readGoals();
-      const created = createGoal({ id: randomUUID(), title });
+      const created = createGoal({ id: randomUUID(), title, description });
       await saveGoals([...goals, created]);
       await recordAudit("goal.created", { goalId: created.id, title: created.title });
       return created;
