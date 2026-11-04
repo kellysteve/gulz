@@ -1,89 +1,87 @@
-# @gulz/cli
+# GULZ CLI
 
-The GULZ command-line interface.
-
-## Local storage safety
-
-Goal creation and initialization use an exclusive lock so concurrent GULZ processes cannot overwrite one another's updates. If a process is forcibly terminated while holding the lock, later writes fail closed after a short wait; inspect running GULZ processes before removing the stale goals.lock file from the configured data directory. Do not remove the lock while another GULZ process is active.
-
-The goals file is written atomically, and the data directory and goals file are restricted to the current user's permissions where the platform supports POSIX permissions.
-
-## Interactive session
-
-After the developer-preview installation is linked, run `gulz` with no arguments to open the interactive terminal session. You can create a goal, browse saved goals, open a goal's details, run the local system check, and view command help. Choose `0` (or type `q`) to exit. Saved goals remain on this device between sessions.
-
-This preview is a local goal workspace, not yet an AI agent: AI planning, task execution, pause/resume, and background recovery are not connected. The interface does not pretend those features are running.
-
-Install/link the CLI once. To update this source preview later, run `gulz update` from an interactive terminal. Review the displayed repository path and type `UPDATE GULZ` to approve. It fast-forwards the checkout, installs only the CLI workspace dependencies (including TypeScript), rebuilds and refreshes the global link. Close the current session and run `gulz` again. Published package updates are not available yet.
-
-## Current capabilities
-
-- Initialize local GULZ data storage and run a local environment diagnostic.
-- Create, list and inspect saved goals.
-- Validate saved data before using it, refusing malformed or inconsistent records without overwriting them.
-- Inspect and read bounded local files through the shared execution policy.
-- Write UTF-8 text only after interactive, path-specific approval; preserve overwritten files as owner-only backups.
-- Restore a backup after a separate interactive confirmation.
-- Run a fixed allowlist of read-only diagnostic commands after explicit interactive approval.
-
-The CLI does **not** execute arbitrary shell commands, connect to remote hosts, synchronize cloud data, or call AI providers.
+**GULZ — Goals. Executed.**  
+A local command-line workspace for goals, tasks, supervised file operations and activity history.
 
 ## Install
 
-The npm packages have not yet been published. For now, use the repository's developer-preview instructions in [the installation guide](../../docs/INSTALLATION.md). Once @gulz/core and @gulz/cli are published, the intended global install is:
+Use the interactive installer on Termux, Linux, macOS or a Linux VPS:
 
 ~~~sh
-npm install --global @gulz/cli
-gulz --help
+curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
 ~~~
 
-Requires Node.js 20.19 or newer. Run CLI-only checks with `npm run test:cli` from the repository root. This avoids requiring the website's Wrangler/Workerd dependency on Termux.
+It installs only the CLI workspaces and their build dependencies, avoiding the website's Wrangler/Workerd dependency on Termux. Run it as your normal user. Windows users should follow the PowerShell source-build instructions in [the installation guide](../../docs/INSTALLATION.md).
 
-## Command reference
+Requires Node.js 20.19+ and Git. The npm packages are not published yet; this source installation is the supported installation route.
+
+## First commands
 
 ~~~sh
+gulz
 gulz --help
-gulz --version
 gulz doctor
 gulz init
 gulz goal create "Prepare my project"
 gulz goals
+gulz audit
+~~~
+
+Run `gulz update` from an interactive terminal to fast-forward the source checkout, rebuild the CLI and refresh its command link. It requires a clean fast-forwardable checkout and the exact confirmation `UPDATE GULZ`. Your local data in `~/.gulz` is separate from the source installation.
+
+## Goal and task management
+
+~~~sh
+gulz goal create "Prepare a release"
+gulz goals
 gulz goal show <goal-id>
+gulz goal edit <goal-id>
+gulz goal task add <goal-id> "Review the release checklist"
+gulz goal task status <goal-id> <task-id> running
+gulz goal task status <goal-id> <task-id> completed
+gulz goal status <goal-id> planned
+gulz goal delete <goal-id>
+~~~
+
+Editing is interactive. Deletion requires typing the exact goal ID. Goal and task lifecycle transitions are checked by the shared core; invalid transitions are rejected. Task status changes are user-managed checklist state, not proof that GULZ executed the task.
+
+## Activity history
+
+~~~sh
+gulz audit
+gulz audit --limit 10
+~~~
+
+Goal and task changes are recorded in a local JSONL audit file under `~/.gulz`. The audit file is restricted to the current user's permissions where supported. It stores action metadata, not file contents or credentials.
+
+## Supervised local operations
+
+~~~sh
 gulz inspect .
 gulz read README.md
 gulz write notes.txt
 gulz restore <backup-path> <target-path>
 gulz run node --version
 gulz run git status --short
-gulz run git status --short --branch
-gulz run git branch --show-current
-gulz run git log -1 --oneline
-gulz run git diff --stat
-gulz run git rev-parse --show-toplevel
 ~~~
 
-## Filesystem boundaries
+Filesystem operations are confined to the current working directory. Absolute paths, traversal and symbolic links are rejected. Reads and writes are limited to 256 KiB by default; reads accept UTF-8 text only. Writes and restores require interactive, path-specific confirmation and preserve replaced files as owner-only backups.
 
-Filesystem operations are confined to the current working directory. Absolute paths, traversal outside that directory and symbolic links are rejected. Reads and writes are capped at 256 KiB by default. Reads accept UTF-8 text only; binary files are rejected.
+The command runner uses no shell and accepts only a small fixed allowlist of read-only diagnostics: Node.js version and selected Git status/branch/log/diff commands. It sanitizes inherited environment variables, bounds execution time and caps combined output at 64 KiB. Arbitrary shell commands, scripts, package installation, deletion, permission changes and remote execution are not exposed.
 
-The write command asks for one line of text, displays a preview and byte count, and requires the user to type WRITE followed by the exact path at an interactive terminal. Non-interactive writes fail closed. Replaced files are retained as uniquely named .gulz-backup-* files beside the target.
+## Important capability boundaries
 
-The restore command restores a backup after the user types RESTORE followed by the exact target path. If the target exists, its current contents are preserved as another backup.
+This CLI currently provides local goal/task management and supervised local workspace operations. It does not yet generate AI plans, autonomously execute task lists, connect to AI providers, orchestrate remote SSH hosts, or run background services. A task marked completed in the checklist is a user-entered status, not a verified execution result. These boundaries are intentional; the CLI never pretends a feature ran when it did not.
 
-## Command execution boundaries
+## Development checks
 
-The run command supports only these exact argument sequences:
+From the repository root:
 
-- node --version and node -v
-- git status --short
-- git status --short --branch
-- git branch --show-current
-- git log -1 --oneline
-- git diff --stat
-- git rev-parse --show-toplevel
+~~~sh
+npm run test:cli
+npm run build:cli
+~~~
 
-Commands require an interactive terminal and the user must type RUN followed by the command and arguments. Processes are started with shell disabled, a sanitized environment, a bounded execution deadline and a combined 64 KiB stdout/stderr limit. The working directory is the current authorized directory. Arbitrary commands, shell syntax, scripts, package installation, deletion, permission changes and remote execution are rejected.
-
-This allowlist is deliberately narrow. It is a supervised diagnostic facility, not a general-purpose shell and not an AI execution agent.
+The CLI-only commands avoid requiring the website's Wrangler/Workerd dependency on Termux. Automated checks and real Termux/Linux/macOS/VPS installation testing must pass before a stable public release.
 
 Licensed under Apache-2.0. See LICENSE.
