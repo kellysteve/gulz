@@ -116,6 +116,8 @@ function parsePlanContent(content: unknown): GeneratedGoalPlan {
         }
         operation.args = rawOperation.args as string[];
       }
+      if (operation.kind !== "write_file" && operation.content !== undefined) throw new ProviderError("Only write_file operations may contain proposed file content.");
+      if (operation.kind !== "run_command" && (operation.command !== undefined || operation.args !== undefined)) throw new ProviderError("Only run_command operations may contain command fields.");
       if ((operation.kind === "inspect" || operation.kind === "list_directory" || operation.kind === "create_directory" || operation.kind === "delete_file" || operation.kind === "read_file") && !operation.target) {
         throw new ProviderError("AI file inspection and read operations require a relative target.");
       }
