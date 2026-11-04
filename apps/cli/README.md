@@ -25,6 +25,8 @@ gulz init
 gulz goal create "Prepare my project"
 gulz goals
 gulz audit
+gulz provider status
+gulz plan <goal-id>
 ~~~
 
 Run `gulz update` from an interactive terminal to fast-forward the source checkout, rebuild the CLI and refresh its command link. It requires a clean fast-forwardable checkout and the exact confirmation `UPDATE GULZ`. Your local data in `~/.gulz` is separate from the source installation.
@@ -44,6 +46,20 @@ gulz goal delete <goal-id>
 ~~~
 
 Editing is interactive. Deletion requires typing the exact goal ID. Goal and task lifecycle transitions are checked by the shared core; invalid transitions are rejected. Task status changes are user-managed checklist state, not proof that GULZ executed the task.
+
+## AI provider and planning
+
+Configure any OpenAI-compatible chat-completions endpoint:
+
+~~~sh
+gulz provider configure
+gulz provider status
+gulz plan <goal-id>
+~~~
+
+The API key is entered without echo and stored in `~/.gulz/provider.json` with owner-only permissions where supported. It is stored as plaintext protected by filesystem permissions, not encrypted. Alternatively set `GULZ_AI_BASE_URL`, `GULZ_AI_MODEL` and `GULZ_AI_API_KEY` in the process environment. Remote providers must use HTTPS; HTTP is accepted only for localhost model servers. Before a plan request, GULZ asks for confirmation and sends only the goal title and description; it does not upload workspace files. The provider adapter accepts only bounded JSON plans containing inspect, read, write and a fixed read-only command allowlist. Every operation is revalidated locally and risk is derived by GULZ, not trusted from the model.
+
+AI planning saves a plan for review. It does not execute the plan yet.
 
 ## Activity history
 
@@ -71,7 +87,7 @@ The command runner uses no shell and accepts only a small fixed allowlist of rea
 
 ## Important capability boundaries
 
-This CLI currently provides local goal/task management and supervised local workspace operations. It does not yet generate AI plans, autonomously execute task lists, connect to AI providers, orchestrate remote SSH hosts, or run background services. A task marked completed in the checklist is a user-entered status, not a verified execution result. These boundaries are intentional; the CLI never pretends a feature ran when it did not.
+This CLI provides local goal/task management, OpenAI-compatible AI-assisted planning and supervised local workspace operations. It does not yet autonomously execute AI-generated task lists, orchestrate remote SSH hosts, or run background services. A task marked completed in the checklist is a user-entered status, not a verified execution result. These boundaries are intentional; the CLI never pretends a feature ran when it did not.
 
 ## Development checks
 
