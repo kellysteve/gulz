@@ -42,12 +42,14 @@ gulz goals
 gulz goal show <goal-id>
 gulz goal edit <goal-id>
 gulz goal task add <goal-id> "Review the release checklist"
+gulz goal task edit <goal-id> <task-id>
+gulz goal task delete <goal-id> <task-id>
 gulz goal task status <goal-id> <task-id> running
 gulz goal task status <goal-id> <task-id> completed
 gulz goal delete <goal-id>
 ~~~
 
-Editing is interactive. Deletion requires typing the exact goal ID. Goal and task lifecycle transitions are checked by the shared core; invalid transitions are rejected. Task status changes are user-managed checklist state only for tasks without executable operations. Tasks in an AI-generated plan cannot be manually marked completed; GULZ controls those statuses through verified execution.
+Goal and manual checklist task editing is interactive. Deleting a goal or checklist task requires typing its exact ID. Goal and task lifecycle transitions are checked by the shared core; invalid transitions are rejected. Task status changes are user-managed checklist state only for tasks without executable operations. Tasks in an AI-generated plan cannot be manually marked completed; GULZ controls those statuses through verified execution.
 
 ## AI provider and planning
 
