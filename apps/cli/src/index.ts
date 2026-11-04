@@ -241,7 +241,6 @@ async function saveProviderConfig(config: StoredProviderConfig): Promise<void> {
   const temporary = join(dataHome, "provider." + randomUUID() + ".tmp");
   try {
     await writeFile(temporary, JSON.stringify(config, null, 2) + "\\n", { encoding: "utf8", mode: 0o600, flag: "wx" });
-    await rm(providerFile, { force: true });
     await rename(temporary, providerFile);
     await chmod(providerFile, 0o600);
   } finally {
@@ -552,6 +551,7 @@ async function main(): Promise<void> {
       if (!finalKey) throw new Error("An API key is required.");
       const validated: OpenAICompatibleProviderConfig = { baseUrl, model, apiKey: finalKey };
       const parsed = new URL(baseUrl);
+      if (parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error("Provider URL must not contain credentials, query parameters or fragments.");
       if (!["https:", "http:"].includes(parsed.protocol) || (parsed.protocol === "http:" && !["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname))) {
         throw new Error("Provider URL must use HTTPS. HTTP is allowed only for localhost.");
       }
