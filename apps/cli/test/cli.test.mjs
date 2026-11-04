@@ -184,3 +184,40 @@ test("opens a helpful non-interactive fallback when no terminal is attached", as
     assert.match(result.stdout, /run `gulz` in a terminal to open the interactive session/);
   });
 });
+
+
+test("adds checklist tasks and enforces task lifecycle transitions", async () => {
+  await withHome(async (home) => {
+    const created = invoke(home, "goal", "create", "Prepare a release");
+    assert.equal(created.status, 0, created.stderr);
+    const goalId = created.stdout.match(/ID:\\s+([a-f0-9-]+)/)?.[1];
+    assert.ok(goalId);
+    const added = invoke(home, "goal", "task", "add", goalId, "Review release checklist");
+    assert.equal(added.status, 0, added.stderr);
+    assert.match(added.stdout, /Task added/);
+    const taskId = added.stdout.match(/Task ID\\s+([a-f0-9-]+)/)?.[1];
+    assert.ok(taskId);
+    const running = invoke(home, "goal", "task", "status", goalId, taskId, "running");
+    assert.equal(running.status, 0, running.stderr);
+    const completed = invoke(home, "goal", "task", "status", goalId, taskId, "completed");
+    assert.equal(completed.status, 0, completed.stderr);
+    const invalid = invoke(home, "goal", "task", "status", goalId, taskId, "pending");
+    assert.equal(invalid.status, 1);
+    assert.match(invalid.stderr, /Invalid task transition/);
+    const stored = JSON.parse(await readFile(join(home, "goals.json"), "utf8"));
+    assert.equal(stored[0].tasks[0].status, "completed");
+  });
+});
+
+test("enforces goal lifecycle rules and refuses to run an empty goal", async () => {
+  await withHome(async (home) => {
+    const created = invoke(home, "goal", "create", "A goal without tasks");
+    const id = created.stdout.match(/ID:\\s+([a-f0-9-]+)/)?.[1];
+    assert.ok(id);
+    const premature = invoke(home, "goal", "status", id, "running");
+    assert.equal(premature.status, 1);
+    assert.match(premature.stderr, /at least one task/);
+    const planned = invoke(home, "goal", "status", id, "planned");
+    assert.equal(planned.status, 0, planned.stderr);
+  });
+});
