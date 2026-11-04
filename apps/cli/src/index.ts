@@ -67,6 +67,11 @@ function isValidTask(value: unknown): boolean {
   if (typeof value.status !== "string" || !taskStatuses.has(value.status as TaskStatus)) return false;
   if (!isTimestamp(value.createdAt) || !isTimestamp(value.updatedAt)) return false;
   if (!Array.isArray(value.operations) || !value.operations.every(isValidOperation)) return false;
+  if (value.completedOperationIds !== undefined) {
+    if (!Array.isArray(value.completedOperationIds) || !value.completedOperationIds.every(isNonEmptyString)) return false;
+    const operationIds = new Set(value.operations.map((operation) => (operation as { id: string }).id));
+    if (new Set(value.completedOperationIds).size !== value.completedOperationIds.length || value.completedOperationIds.some((id) => !operationIds.has(id))) return false;
+  }
   return isOptionalString(value.result) && isOptionalString(value.error);
 }
 
