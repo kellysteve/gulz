@@ -286,7 +286,7 @@ export async function executeLocalOperation(
       const output = {
         kind: "directory_listing" as const,
         path: relative(root, realTarget) || ".",
-        sizeBytes: entries.length,
+        sizeBytes: Buffer.byteLength(JSON.stringify(entries), "utf8"),
         entries,
         hasMore: allEntries.length > entries.length,
       };
