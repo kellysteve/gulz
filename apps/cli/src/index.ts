@@ -33,7 +33,7 @@ function label(name: string, value: string): void { console.log(paint(name.padEn
 const goalStatuses = new Set<GoalStatus>(["draft", "planned", "awaiting_approval", "running", "paused", "completed", "failed", "cancelled"]);
 const taskStatuses = new Set<TaskStatus>(["pending", "awaiting_approval", "running", "paused", "completed", "failed", "skipped", "cancelled"]);
 const risks = new Set<RiskLevel>(["low", "moderate", "high", "critical"]);
-const operationKinds = new Set<OperationKind>(["inspect", "list_directory", "create_directory", "read_file", "write_file", "run_command", "network", "install", "delete", "permission_change", "remote_operation"]);
+const operationKinds = new Set<OperationKind>(["inspect", "list_directory", "create_directory", "delete_file", "read_file", "write_file", "run_command", "network", "install", "delete", "permission_change", "remote_operation"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -129,6 +129,7 @@ function help(): void {
     "  inspect <path>        Inspect a path inside the current directory",
     "  list [path]           List directory entries without following symlinks",
     "  mkdir <path>          Create directories after explicit approval",
+    "  delete <file>         Move a file to a private recoverable backup",
     "  read <path>           Read a file inside the current directory (256 KiB max)",
     "  write <path>          Write one line of text after explicit confirmation",
     "  run <command> [args]  Run approved diagnostics or CLI build/test workflows",
@@ -299,7 +300,7 @@ function validatePlannedOperations(raw: Awaited<ReturnType<typeof generateGoalPl
     if (item.kind === "run_command" && !allowedCommands.some((allowed) => JSON.stringify(allowed) === JSON.stringify([item.command, ...(item.args ?? [])]))) {
       throw new Error("The AI proposed a command outside GULZ's fixed read-only allowlist. The plan was rejected.");
     }
-    const risk: RiskLevel = item.kind === "inspect" || item.kind === "list_directory" || item.kind === "read_file" ? "low" : "moderate";
+    const risk: RiskLevel = item.kind === "inspect" || item.kind === "list_directory" || item.kind === "read_file" ? "low" : item.kind === "delete_file" ? "high" : "moderate";
     return createPlannedOperation({
       id: randomUUID(),
       kind: item.kind,
@@ -1184,6 +1185,29 @@ async function main(): Promise<void> {
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
       await recordExecutionAudit(result);
       console.log(JSON.stringify(result, null, 2));
+    } finally { rl.close(); }
+    return;
+  }
+  if (command === "delete") {
+    const target = args.join(" ").trim();
+    if (!target) { console.error("Usage: gulz delete <relative-file-path>"); process.exitCode = 2; return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("File deletion requires an interactive terminal and high-risk approval.");
+    const operation = createPlannedOperation({
+      id: randomUUID(), kind: "delete_file", description: "Move a file into a private recoverable backup",
+      risk: "high", target,
+    });
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      console.log("File: " + target);
+      warning("The file will be moved to a private backup in the same directory, not permanently erased. Restore it with gulz restore if needed.");
+      const confirmation = await rl.question("Type DELETE FILE " + target + " to approve: ");
+      if (confirmation !== "DELETE FILE " + target) { console.log("Deletion cancelled."); return; }
+      const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
+      await recordExecutionAudit(result);
+      if (result.output.kind !== "file_deleted" || !result.output.backupPath) throw new Error("GULZ could not verify the recoverable file backup.");
+      success("File moved to a private backup");
+      label("Backup", result.output.backupPath);
+      console.log("Restore with: gulz restore " + result.output.backupPath + " " + target);
     } finally { rl.close(); }
     return;
   }
