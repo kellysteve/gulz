@@ -376,7 +376,7 @@ async function main(): Promise<void> {
     return;
   }
   if (command === "update") {
-    await updateSourcePreview();
+    await updateInstallation();
     return;
   }
   if (command === "doctor") {
