@@ -374,6 +374,7 @@ export async function executeLocalOperation(
       const backupPath = relative(root, backupAbsolute);
       await rename(realTarget, backupAbsolute);
       try {
+        await chmod(backupAbsolute, 0o600);
         const backupInfo = await lstat(backupAbsolute);
         const backupBytes = await readFile(backupAbsolute, { signal: controller.signal });
         const backupDigest = createHash("sha256").update(backupBytes).digest("hex");
@@ -387,6 +388,7 @@ export async function executeLocalOperation(
           if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
         }
       } catch (error) {
+        await chmod(backupAbsolute, info.mode & 0o777).catch(() => undefined);
         await rename(backupAbsolute, realTarget).catch(() => undefined);
         throw error;
       }
