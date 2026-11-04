@@ -303,3 +303,21 @@ test("rejects listing a file as a directory", async () => withRoot(async (root) 
     /requires an existing directory/,
   );
 }));
+
+
+test("runs an explicitly approved npm version check without a shell", async () => withRoot(async (root) => {
+  if (process.platform === "win32") return;
+  const command = createPlannedOperation({
+    id: "npm-version",
+    kind: "run_command",
+    description: "Check npm version",
+    risk: "moderate",
+    command: "npm",
+    args: ["--version"],
+    target: ".",
+  });
+  const result = await executeLocalOperation(command, { rootDirectory: root, approved: true });
+  assert.equal(result.output.exitCode, 0);
+  assert.match(result.output.stdout ?? "", /^\\d+\\./);
+  assert.equal(result.verified, true);
+}));
