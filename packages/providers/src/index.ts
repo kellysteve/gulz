@@ -174,7 +174,7 @@ export async function generateGoalPlan(
               "You are the GULZ task planner. Return only a JSON object with summary and tasks.",
               "Every task must contain at least one operation. Allowed operation kinds: inspect, list_directory, read_file, write_file, run_command.",
               "Never propose delete, install, network, permission changes, remote operations, shell scripts, arbitrary shell commands, or commands outside the exact allowlist.",
-              "For run_command, only propose node --version, node -v, git status --short, git status --short --branch, git branch --show-current, git log -1 --oneline, git diff --stat, or git rev-parse --show-toplevel.",
+              "For run_command, only propose node --version, node -v, the fixed read-only git status/branch/log/diff/rev-parse diagnostics, npm --version, npm run build:cli, or npm run test:cli.",
               "All file targets must be relative paths inside the user's current authorized workspace.",
               "Do not claim an operation has already run. The user must review and approve the plan before execution.",
               "Schema: {summary:string,tasks:[{title:string,description:string,operations:[{kind:string,description:string,target?:string,content?:string,command?:string,args?:string[]}]}]}.",
