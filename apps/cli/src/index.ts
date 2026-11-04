@@ -367,7 +367,7 @@ async function askForOperationApproval(operationId: string, signal: AbortSignal)
   if (signal.aborted) return false;
   const rl = createInterface({ input: stdin, output: stdout });
   try {
-    const question = rl.question("Type APPROVE " + operationId + " to authorize this operation: ");
+    const question = rl.question("Type APPROVE " + operationId + " to authorize this operation: ").catch(() => "");
     const aborted = new Promise<string>((resolveQuestion) => {
       signal.addEventListener("abort", () => resolveQuestion(""), { once: true });
     });
