@@ -19,6 +19,7 @@ const goalsFile = join(dataHome, "goals.json");
 const goalsLockFile = join(dataHome, "goals.lock");
 const auditFile = join(dataHome, "audit.jsonl");
 const providerFile = join(dataHome, "provider.json");
+const executionLockFile = join(dataHome, "execution.lock");
 
 const isInteractive = Boolean(stdout.isTTY && process.env.NO_COLOR === undefined && process.env.TERM !== "dumb");
 const ansi = { reset: "\u001b[0m", bold: "\u001b[1m", dim: "\u001b[2m", cyan: "\u001b[36m", blue: "\u001b[34m", green: "\u001b[32m", yellow: "\u001b[33m", red: "\u001b[31m", magenta: "\u001b[35m" };
@@ -112,6 +113,8 @@ function help(): void {
     "  provider status       Show provider connection settings",
     "  provider remove       Remove saved provider credentials",
     "  plan <goal-id>        Generate a task plan with your configured AI provider",
+    "  execute <goal-id>     Execute a reviewed plan with per-operation approval",
+    "  resume <goal-id>      Resume paused or interrupted goal execution",
     "  update                Safely update GULZ from its source installation",
     "  goal create <title>   Save a new goal locally",
     "  goals                 List saved goals",
@@ -303,7 +306,236 @@ function validatePlannedOperations(raw: Awaited<ReturnType<typeof generateGoalPl
     });
   });
 }
-\nasync function recordExecutionAudit(result: LocalExecutionResult): Promise<void> {
+\n
+async function mutateGoalRecord(id: string, mutate: (goal: GoalRecord) => GoalRecord): Promise<GoalRecord> {
+  return await withGoalsLock(async () => {
+    const goals = await readGoals();
+    const index = goals.findIndex((item) => item.id === id);
+    if (index < 0) throw new Error("Goal not found.");
+    const updated = mutate(goals[index]!);
+    goals[index] = updated;
+    await saveGoals(goals);
+    return updated;
+  });
+}
+
+async function withExecutionLock<T>(run: () => Promise<T>): Promise<T> {
+  await ensureDataHome();
+  const token = randomUUID();
+  const lockContent = JSON.stringify({ pid: process.pid, token, startedAt: new Date().toISOString() });
+  try {
+    await writeFile(executionLockFile, lockContent, { encoding: "utf8", mode: 0o600, flag: "wx" });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    let lock: unknown;
+    try {
+      const info = await lstat(executionLockFile);
+      if (!info.isFile() || info.isSymbolicLink()) throw new Error("Execution lock is not a regular file.");
+      lock = JSON.parse(await readFile(executionLockFile, "utf8"));
+    } catch {
+      throw new Error("GULZ found an unreadable execution lock. Inspect " + executionLockFile + " before removing it.");
+    }
+    if (isRecord(lock) && typeof lock.pid === "number" && lock.pid > 0) {
+      try {
+        process.kill(lock.pid, 0);
+        throw new Error("Another GULZ execution is active (PID " + lock.pid + "). Wait for it to finish.");
+      } catch (probeError) {
+        if (probeError instanceof Error && probeError.message.startsWith("Another GULZ execution")) throw probeError;
+        if ((probeError as NodeJS.ErrnoException).code !== "ESRCH") {
+          throw new Error("GULZ cannot confirm whether the previous execution is still active. Do not remove the lock automatically.");
+        }
+      }
+    } else {
+      throw new Error("GULZ found an invalid execution lock. Inspect " + executionLockFile + " before removing it.");
+    }
+    await rm(executionLockFile, { force: true });
+    await writeFile(executionLockFile, lockContent, { encoding: "utf8", mode: 0o600, flag: "wx" });
+  }
+  try {
+    return await run();
+  } finally {
+    try {
+      const lock = JSON.parse(await readFile(executionLockFile, "utf8")) as { token?: unknown };
+      if (lock.token === token) await rm(executionLockFile, { force: true });
+    } catch {
+      // Never remove a lock that cannot be confirmed as ours.
+    }
+  }
+}
+
+async function askForOperationApproval(operationId: string, signal: AbortSignal): Promise<boolean> {
+  if (signal.aborted) return false;
+  const rl = createInterface({ input: stdin, output: stdout });
+  try {
+    const question = rl.question("Type APPROVE " + operationId + " to authorize this operation: ");
+    const aborted = new Promise<string>((resolveQuestion) => {
+      signal.addEventListener("abort", () => resolveQuestion(""), { once: true });
+    });
+    const answer = await Promise.race([question, aborted]);
+    return answer === "APPROVE " + operationId;
+  } finally {
+    rl.close();
+  }
+}
+
+async function runGoalExecution(goalId: string, resume: boolean): Promise<void> {
+  if (!stdin.isTTY || !stdout.isTTY) throw new Error("Goal execution requires an interactive terminal and explicit approval.");
+  await withExecutionLock(async () => {
+    let goal = (await readGoals()).find((item) => item.id === goalId);
+    if (!goal) throw new Error("Goal not found.");
+    if (goal.tasks.length === 0 || goal.tasks.some((task) => task.operations.length === 0)) {
+      throw new Error("Every executable task must contain at least one validated operation. Add an AI-generated plan before executing this goal.");
+    }
+    if (goal.status === "completed" || goal.status === "cancelled") throw new Error("This goal is already in a terminal state and cannot be executed.");
+    if (!resume && goal.status !== "planned") throw new Error("Only a planned goal can be executed. Use gulz resume " + goalId + " for paused or interrupted work.");
+    if (resume && !["paused", "running", "failed", "planned"].includes(goal.status)) {
+      throw new Error("This goal cannot be resumed from its current state: " + goal.status + ".");
+    }
+    if (goal.status === "running") {
+      for (const task of goal.tasks) if (task.status === "running") goal = transitionTask(goal, task.id, "paused");
+      goal = transitionGoal(goal, "paused");
+    }
+    if (goal.status === "failed") {
+      for (const task of goal.tasks) {
+        if (task.status === "failed") goal = transitionTask(goal, task.id, "pending");
+        else if (task.status === "running") goal = transitionTask(goal, task.id, "paused");
+      }
+      goal = transitionGoal(goal, "planned");
+    }
+    if (goal.status === "planned" || goal.status === "paused") goal = transitionGoal(goal, "running");
+    await mutateGoalRecord(goalId, () => goal!);
+
+    const controller = new AbortController();
+    const onInterrupt = () => {
+      warning("Interrupt received. GULZ is stopping safely and saving the current task state...");
+      controller.abort();
+    };
+    process.once("SIGINT", onInterrupt);
+    try {
+      for (const initialTask of goal.tasks) {
+        let latest = (await readGoals()).find((item) => item.id === goalId)!;
+        let task = latest.tasks.find((item) => item.id === initialTask.id)!;
+        if (["completed", "skipped"].includes(task.status)) continue;
+        if (task.status === "failed") {
+          latest = await mutateGoalRecord(goalId, (current) => transitionTask(current, task.id, "pending"));
+          task = latest.tasks.find((item) => item.id === task.id)!;
+        }
+        if (task.status === "paused" || task.status === "pending" || task.status === "awaiting_approval") {
+          latest = await mutateGoalRecord(goalId, (current) => transitionTask(current, task.id, "running"));
+          task = latest.tasks.find((item) => item.id === task.id)!;
+        }
+        title("TASK · " + task.title);
+        for (const operation of task.operations) {
+          latest = (await readGoals()).find((item) => item.id === goalId)!;
+          task = latest.tasks.find((item) => item.id === initialTask.id)!;
+          if ((task.completedOperationIds ?? []).includes(operation.id)) {
+            console.log(paint("✓ Already completed · " + operation.description, ansi.green));
+            continue;
+          }
+          if (controller.signal.aborted) throw new Error("Execution interrupted by the user.");
+          console.log("\n" + paint(operation.kind.toUpperCase(), ansi.bold, ansi.cyan) + " · " + operation.description);
+          if (operation.target) label("Target", operation.target);
+          if (operation.commandPreview) label("Command", operation.commandPreview);
+          if (operation.kind === "write_file" && operation.content !== undefined) {
+            label("Content", Buffer.byteLength(operation.content, "utf8") + " bytes");
+            console.log(operation.content.length > 400 ? operation.content.slice(0, 400) + "\n[content preview truncated]" : operation.content);
+          }
+          if (operation.risk !== "low") warning("Approval required · " + operation.risk.toUpperCase() + " risk");
+          if (operation.kind === "write_file" && operation.content !== undefined) {
+            try {
+              const existing = await executeLocalOperation(createPlannedOperation({
+                id: randomUUID(), kind: "read_file", description: "Check whether a previous write already completed",
+                risk: "low", target: operation.target!,
+              }), { rootDirectory: process.cwd(), signal: controller.signal });
+              if (existing.output.content === operation.content) {
+                await mutateGoalRecord(goalId, (current) => {
+                  const index = current.tasks.findIndex((item) => item.id === task.id);
+                  const tasks = [...current.tasks];
+                  const currentTask = tasks[index]!;
+                  tasks[index] = { ...currentTask, completedOperationIds: [...new Set([...(currentTask.completedOperationIds ?? []), operation.id])], updatedAt: new Date().toISOString() };
+                  return { ...current, tasks, updatedAt: new Date().toISOString() };
+                });
+                await recordAudit("operation.recovered", { goalId, taskId: task.id, operationId: operation.id, verified: true });
+                success("Write already exists with the expected content; checkpoint recovered.");
+                continue;
+              }
+            } catch (error) {
+              if (controller.signal.aborted) throw error;
+              // Missing files and unreadable targets are handled by the approved write operation below.
+            }
+          }
+          if (operation.requiresApproval) {
+            const approved = await askForOperationApproval(operation.id, controller.signal);
+            if (!approved) {
+              await mutateGoalRecord(goalId, (current) => {
+                const pausedTask = current.tasks.find((item) => item.id === task.id)?.status === "running"
+                  ? transitionTask(current, task.id, "paused") : current;
+                return pausedTask.status === "running" ? transitionGoal(pausedTask, "paused") : pausedTask;
+              });
+              await recordAudit("operation.approval_declined", { goalId, taskId: task.id, operationId: operation.id });
+              warning("Execution paused. No unapproved operation was run. Use gulz resume " + goalId + " when ready.");
+              return;
+            }
+          }
+          const result = await executeLocalOperation(operation, {
+            rootDirectory: process.cwd(),
+            approved: operation.requiresApproval,
+            signal: controller.signal,
+          });
+          if (!result.verified || (result.output.kind === "command_result" && result.output.exitCode !== 0)) {
+            throw new Error("GULZ could not verify operation " + operation.id + ".");
+          }
+          await recordExecutionAudit(result);
+          await mutateGoalRecord(goalId, (current) => {
+            const index = current.tasks.findIndex((item) => item.id === task.id);
+            const tasks = [...current.tasks];
+            const currentTask = tasks[index]!;
+            tasks[index] = {
+              ...currentTask,
+              completedOperationIds: [...new Set([...(currentTask.completedOperationIds ?? []), operation.id])],
+              updatedAt: new Date().toISOString(),
+            };
+            return { ...current, tasks, updatedAt: new Date().toISOString() };
+          });
+          success("Verified · " + operation.description);
+        }
+        await mutateGoalRecord(goalId, (current) => {
+          const completed = transitionTask(current, initialTask.id, "completed");
+          const tasks = completed.tasks.map((item) => item.id === initialTask.id ? { ...item, result: "All planned operations completed and verified." } : item);
+          return { ...completed, tasks };
+        });
+        success("Task completed · " + initialTask.title);
+      }
+      await mutateGoalRecord(goalId, (current) => transitionGoal(current, "completed"));
+      await recordAudit("goal.completed", { goalId, verified: true });
+      success("Goal completed. Every planned operation was verified.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const latest = (await readGoals()).find((item) => item.id === goalId);
+      if (latest?.status === "running") {
+        await mutateGoalRecord(goalId, (current) => {
+          const active = current.tasks.find((item) => item.status === "running");
+          let next = current;
+          if (active) {
+            next = transitionTask(next, active.id, controller.signal.aborted ? "paused" : "failed");
+            const tasks = next.tasks.map((item) => item.id === active.id ? { ...item, error: message } : item);
+            next = { ...next, tasks };
+          }
+          if (next.status === "running") next = transitionGoal(next, controller.signal.aborted ? "paused" : "failed");
+          return { ...next, ...(controller.signal.aborted ? {} : { failureReason: message }) };
+        });
+      }
+      await recordAudit(controller.signal.aborted ? "goal.paused" : "goal.failed", { goalId, reason: message });
+      if (controller.signal.aborted) warning("Execution paused safely. Use gulz resume " + goalId + " to continue.");
+      else failure("Goal execution stopped: " + message);
+      if (!controller.signal.aborted) process.exitCode = 1;
+    } finally {
+      process.removeListener("SIGINT", onInterrupt);
+    }
+  });
+}
+
+async function recordExecutionAudit(result: LocalExecutionResult): Promise<void> {
   await recordAudit("operation." + result.audit.kind, {
     operationId: result.operationId,
     target: result.audit.target,
@@ -526,6 +758,12 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "execute" || command === "resume") {
+    const id = args[0];
+    if (!id || args.length !== 1) { console.error("Usage: gulz " + command + " <goal-id>"); process.exitCode = 2; return; }
+    await runGoalExecution(id, command === "resume");
+    return;
+  }
   if (command === "provider") {
     const action = args[0] ?? "status";
     if (action === "status") {
