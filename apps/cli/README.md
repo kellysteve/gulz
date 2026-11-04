@@ -44,7 +44,6 @@ gulz goal edit <goal-id>
 gulz goal task add <goal-id> "Review the release checklist"
 gulz goal task status <goal-id> <task-id> running
 gulz goal task status <goal-id> <task-id> completed
-gulz goal status <goal-id> planned
 gulz goal delete <goal-id>
 ~~~
 
