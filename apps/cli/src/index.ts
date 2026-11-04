@@ -124,7 +124,6 @@ function help(): void {
     "  goal delete <id>      Delete a goal after confirmation",
     "  goal task add <id> <title>  Add a checklist task to a goal",
     "  goal task status <goal> <task> <status>  Change a task status",
-    "  goal status <id> <status>  Change a goal lifecycle status",
     "  inspect <path>        Inspect a path inside the current directory",
     "  read <path>           Read a file inside the current directory (256 KiB max)",
     "  write <path>          Write one line of text after explicit confirmation",
@@ -1188,23 +1187,6 @@ async function main(): Promise<void> {
       await recordAudit("task.status_changed", { goalId: id, taskId, status: next });
     });
     success("Task status updated to " + next);
-    return;
-  }
-  if (command === "goal" && args[0] === "status") {
-    const [id, next] = args.slice(1);
-    if (!id || !next || !goalStatuses.has(next as GoalStatus)) {
-      console.error("Usage: gulz goal status <goal-id> <draft|planned|awaiting_approval|running|paused|completed|failed|cancelled>");
-      process.exitCode = 2; return;
-    }
-    await withGoalsLock(async () => {
-      const goals = await readGoals();
-      const index = goals.findIndex((item) => item.id === id);
-      if (index < 0) throw new Error("Goal not found.");
-      goals[index] = transitionGoal(goals[index]!, next as GoalStatus);
-      await saveGoals(goals);
-      await recordAudit("goal.status_changed", { goalId: id, status: next });
-    });
-    success("Goal status updated to " + next);
     return;
   }
   if (command === "goal" && args[0] === "show") {
