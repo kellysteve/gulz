@@ -705,8 +705,19 @@ async function interactiveSession(): Promise<void> {
         console.log("Created:     " + goal.createdAt);
         console.log("Updated:     " + goal.updatedAt);
         console.log("Tasks:       " + goal.tasks.length);
-        for (const task of goal.tasks) console.log("  - [" + task.status + "] " + task.title);
-        warning("No task plan has been generated or executed for this goal.");
+        for (const task of goal.tasks) {
+          console.log("  - [" + task.status + "] " + task.title);
+          for (const operation of task.operations) {
+            console.log("      " + operation.kind + " · " + operation.risk.toUpperCase() + " · " + operation.description);
+            if (operation.target) console.log("        Target: " + operation.target);
+            if (operation.commandPreview) console.log("        Command: " + operation.commandPreview);
+            if (operation.kind === "write_file" && operation.content !== undefined) {
+              console.log("        Content: " + Buffer.byteLength(operation.content, "utf8") + " bytes");
+              console.log("        " + (operation.content.length > 240 ? operation.content.slice(0, 240) + "…" : operation.content));
+            }
+          }
+        }
+        if (goal.tasks.length === 0) warning("No task plan has been generated for this goal.");
         continue;
       }
       if (choice === "3" || choice.toLowerCase() === "doctor") {
@@ -872,6 +883,12 @@ async function main(): Promise<void> {
       for (const operation of task.operations) {
         const riskColor = operation.risk === "low" ? ansi.green : ansi.yellow;
         console.log("   • " + operation.kind + " [" + paint(operation.risk.toUpperCase(), riskColor) + "] " + operation.description);
+        if (operation.target) console.log("     Target: " + operation.target);
+        if (operation.commandPreview) console.log("     Command: " + operation.commandPreview);
+        if (operation.kind === "write_file" && operation.content !== undefined) {
+          console.log("     Proposed content (" + Buffer.byteLength(operation.content, "utf8") + " bytes):");
+          console.log("     " + (operation.content.length > 300 ? operation.content.slice(0, 300) + "…" : operation.content));
+        }
       }
     }
     console.log("\nReview the plan with gulz goal show " + id + ". No operations have been executed.");
