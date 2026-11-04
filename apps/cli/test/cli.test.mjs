@@ -414,3 +414,15 @@ test("requires an interactive high-risk approval before deleting a file", async 
     assert.match(result.stderr, /high-risk approval/);
   });
 });
+
+
+test("requires interactive confirmation for manual task editing and deletion", async () => {
+  await withHome(async (home) => {
+    const edit = invoke(home, "goal", "task", "edit", "goal-id", "task-id");
+    assert.equal(edit.status, 1);
+    assert.match(edit.stderr, /interactive terminal/);
+    const remove = invoke(home, "goal", "task", "delete", "goal-id", "task-id");
+    assert.equal(remove.status, 1);
+    assert.match(remove.stderr, /interactive terminal/);
+  });
+});
