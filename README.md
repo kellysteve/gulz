@@ -49,7 +49,7 @@ All interfaces must use the same execution policy. No interface may bypass permi
 - **CLI:** local goal/task management, private activity history, provider configuration, AI-assisted plan generation, diagnostics and supervised local file/command operations are implemented in source. Runtime verification is still pending.
 - **Distribution:** npm package metadata and platform-specific source-build instructions are prepared. Packages have not been published and native installers are not available.
 - **Website:** installation centre and platform roadmap are in the source repository; deployment of the latest changes is still required.
-- **Not yet implemented:** supervised execution of AI-generated task plans, SSH orchestration, desktop app, native installers, signed release downloads and automatic updates. AI-assisted planning is implemented through an OpenAI-compatible provider adapter; execution remains limited to the existing local supervised operation allowlist.
+- **Not yet implemented:** remote SSH orchestration, desktop app, native installers, signed release downloads and automatic updates. AI-assisted planning and checkpointed supervised execution are implemented for the narrow local operation allowlist; arbitrary shell and destructive operations remain unavailable.
 
 ## Repository layout
 
