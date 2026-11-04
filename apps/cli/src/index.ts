@@ -11,12 +11,14 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { addGoalTask, createGoal, createPlannedOperation, operationRequiresApproval, transitionGoal, transitionTask, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
 import { executeLocalOperation, type LocalExecutionResult } from "@gulz/execution";
+import { generateGoalPlan, type OpenAICompatibleProviderConfig } from "@gulz/providers";
 
 const VERSION = "0.1.0";
 const dataHome = resolve(process.env.GULZ_HOME || join(homedir(), ".gulz"));
 const goalsFile = join(dataHome, "goals.json");
 const goalsLockFile = join(dataHome, "goals.lock");
 const auditFile = join(dataHome, "audit.jsonl");
+const providerFile = join(dataHome, "provider.json");
 
 const isInteractive = Boolean(stdout.isTTY && process.env.NO_COLOR === undefined && process.env.TERM !== "dumb");
 const ansi = { reset: "\u001b[0m", bold: "\u001b[1m", dim: "\u001b[2m", cyan: "\u001b[36m", blue: "\u001b[34m", green: "\u001b[32m", yellow: "\u001b[33m", red: "\u001b[31m", magenta: "\u001b[35m" };
@@ -101,6 +103,10 @@ function help(): void {
     "  init                  Create the local GULZ data directory",
     "  doctor                Check the local runtime and data directory",
     "  audit [--limit N]     View recent local action history",
+    "  provider configure    Set an OpenAI-compatible AI provider",
+    "  provider status       Show provider connection settings",
+    "  provider remove       Remove saved provider credentials",
+    "  plan <goal-id>        Generate a task plan with your configured AI provider",
     "  update                Safely update GULZ from its source installation",
     "  goal create <title>   Save a new goal locally",
     "  goals                 List saved goals",
@@ -194,7 +200,106 @@ async function recordAudit(action: string, details: Record<string, string | numb
   await chmod(auditFile, 0o600);
 }
 
-async function recordExecutionAudit(result: LocalExecutionResult): Promise<void> {
+
+interface StoredProviderConfig {
+  baseUrl: string;
+  model: string;
+  apiKey: string;
+}
+
+async function readProviderConfig(): Promise<StoredProviderConfig | null> {
+  const envBase = process.env.GULZ_AI_BASE_URL;
+  const envModel = process.env.GULZ_AI_MODEL;
+  const envKey = process.env.GULZ_AI_API_KEY;
+  if (envBase || envModel || envKey) {
+    if (!envBase || !envModel || !envKey) throw new Error("Set all three variables: GULZ_AI_BASE_URL, GULZ_AI_MODEL and GULZ_AI_API_KEY.");
+    return { baseUrl: envBase, model: envModel, apiKey: envKey };
+  }
+  try {
+    const info = await lstat(providerFile);
+    if (!info.isFile() || info.isSymbolicLink()) throw new Error("Provider settings must be a regular file, not a symbolic link.");
+    await chmod(providerFile, 0o600);
+    const parsed: unknown = JSON.parse(await readFile(providerFile, "utf8"));
+    if (!isRecord(parsed) || !isNonEmptyString(parsed.baseUrl) || !isNonEmptyString(parsed.model) || !isNonEmptyString(parsed.apiKey)) {
+      throw new Error("Saved provider settings are invalid. Run gulz provider configure to replace them.");
+    }
+    return { baseUrl: parsed.baseUrl, model: parsed.model, apiKey: parsed.apiKey };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function saveProviderConfig(config: StoredProviderConfig): Promise<void> {
+  await ensureDataHome();
+  try {
+    const info = await lstat(providerFile);
+    if (!info.isFile() || info.isSymbolicLink()) throw new Error("Provider settings must be a regular file, not a symbolic link.");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  const temporary = join(dataHome, "provider." + randomUUID() + ".tmp");
+  try {
+    await writeFile(temporary, JSON.stringify(config, null, 2) + "\\n", { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await rm(providerFile, { force: true });
+    await rename(temporary, providerFile);
+    await chmod(providerFile, 0o600);
+  } finally {
+    await rm(temporary, { force: true }).catch(() => undefined);
+  }
+}
+
+async function askSecret(prompt: string): Promise<string> {
+  if (!stdin.isTTY || typeof stdin.setRawMode !== "function") throw new Error("Secret input requires a real interactive terminal.");
+  stdout.write(prompt);
+  stdin.setRawMode(true);
+  stdin.resume();
+  stdin.setEncoding("utf8");
+  let value = "";
+  return await new Promise<string>((resolveSecret, rejectSecret) => {
+    const finish = (error?: Error) => {
+      stdin.removeListener("data", onData);
+      stdin.setRawMode(false);
+      stdout.write("\\n");
+      if (error) rejectSecret(error); else resolveSecret(value);
+    };
+    const onData = (chunk: string | Buffer) => {
+      for (const character of String(chunk)) {
+        if (character === "\\u0003") { finish(new Error("Secret entry cancelled.")); return; }
+        if (character === "\\r" || character === "\\n") { finish(); return; }
+        if (character === "\\u007f" || character === "\\b") value = value.slice(0, -1);
+        else if (character >= " " && character !== "\\u007f") value += character;
+      }
+    };
+    stdin.on("data", onData);
+  });
+}
+
+function validatePlannedOperations(raw: Awaited<ReturnType<typeof generateGoalPlan>>["tasks"][number]["operations"]) {
+  const allowedCommands = [
+    ["node", "--version"], ["node", "-v"],
+    ["git", "status", "--short"], ["git", "status", "--short", "--branch"],
+    ["git", "branch", "--show-current"], ["git", "log", "-1", "--oneline"],
+    ["git", "diff", "--stat"], ["git", "rev-parse", "--show-toplevel"],
+  ];
+  return raw.map((item) => {
+    if (item.kind === "run_command" && !allowedCommands.some((allowed) => JSON.stringify(allowed) === JSON.stringify([item.command, ...(item.args ?? [])]))) {
+      throw new Error("The AI proposed a command outside GULZ's fixed read-only allowlist. The plan was rejected.");
+    }
+    const risk: RiskLevel = item.kind === "inspect" || item.kind === "read_file" ? "low" : "moderate";
+    return createPlannedOperation({
+      id: randomUUID(),
+      kind: item.kind,
+      description: item.description,
+      risk,
+      ...(item.target === undefined ? {} : { target: item.target }),
+      ...(item.content === undefined ? {} : { content: item.content }),
+      ...(item.command === undefined ? {} : { command: item.command }),
+      ...(item.args === undefined ? {} : { args: item.args }),
+    });
+  });
+}
+\nasync function recordExecutionAudit(result: LocalExecutionResult): Promise<void> {
   await recordAudit("operation." + result.audit.kind, {
     operationId: result.operationId,
     target: result.audit.target,
@@ -414,6 +519,119 @@ async function main(): Promise<void> {
     });
     success("GULZ is initialized");
     console.log(`Local data: ${dataHome}`);
+    return;
+  }
+
+  if (command === "provider") {
+    const action = args[0] ?? "status";
+    if (action === "status") {
+      const config = await readProviderConfig();
+      title("AI PROVIDER");
+      if (!config) { warning("No provider configured. Run gulz provider configure."); return; }
+      const host = new URL(config.baseUrl).host;
+      success("Provider settings are available");
+      label("Endpoint", host);
+      label("Model", config.model);
+      label("API key", "Stored privately; value hidden");
+      return;
+    }
+    if (action === "configure") {
+      if (!stdin.isTTY || !stdout.isTTY) throw new Error("Provider configuration requires an interactive terminal.");
+      const existing = await readProviderConfig();
+      const rl = createInterface({ input: stdin, output: stdout });
+      let baseUrl: string;
+      let model: string;
+      try {
+        title("CONFIGURE AI PROVIDER");
+        console.log("GULZ supports OpenAI-compatible chat-completions APIs. Use an HTTPS endpoint; localhost is allowed for local model servers.");
+        baseUrl = (await rl.question("Base URL" + (existing ? " [" + existing.baseUrl + "]" : "") + ": ")).trim() || existing?.baseUrl || "";
+        model = (await rl.question("Model name" + (existing ? " [" + existing.model + "]" : "") + ": ")).trim() || existing?.model || "";
+      } finally { rl.close(); }
+      const apiKey = await askSecret(existing ? "API key (leave blank to keep the current key): " : "API key (input hidden): ");
+      const finalKey = apiKey || existing?.apiKey || "";
+      if (!finalKey) throw new Error("An API key is required.");
+      const validated: OpenAICompatibleProviderConfig = { baseUrl, model, apiKey: finalKey };
+      const parsed = new URL(baseUrl);
+      if (!["https:", "http:"].includes(parsed.protocol) || (parsed.protocol === "http:" && !["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname))) {
+        throw new Error("Provider URL must use HTTPS. HTTP is allowed only for localhost.");
+      }
+      if (!model.trim()) throw new Error("A model name is required.");
+      await saveProviderConfig(validated);
+      success("Provider settings saved");
+      console.log("API key stored in " + providerFile + " with owner-only permissions where supported.");
+      return;
+    }
+    if (action === "remove") {
+      const config = await readProviderConfig();
+      if (!config) { console.log("No saved provider settings were found."); return; }
+      if (process.env.GULZ_AI_API_KEY) throw new Error("Provider settings are supplied by environment variables; remove GULZ_AI_* from your environment instead.");
+      if (!stdin.isTTY || !stdout.isTTY) throw new Error("Removing provider settings requires an interactive terminal.");
+      const rl = createInterface({ input: stdin, output: stdout });
+      try {
+        const confirmation = await rl.question("Type REMOVE PROVIDER to delete the saved API key: ");
+        if (confirmation !== "REMOVE PROVIDER") { console.log("Removal cancelled."); return; }
+      } finally { rl.close(); }
+      await rm(providerFile, { force: true });
+      success("Saved provider settings removed");
+      return;
+    }
+    console.error("Usage: gulz provider [configure|status|remove]");
+    process.exitCode = 2;
+    return;
+  }
+  if (command === "plan") {
+    const id = args[0];
+    if (!id || args.length !== 1) { console.error("Usage: gulz plan <goal-id>"); process.exitCode = 2; return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("AI planning requires an interactive terminal so you can approve sending the goal description.");
+    const config = await readProviderConfig();
+    if (!config) throw new Error("No AI provider configured. Run gulz provider configure first.");
+    const goal = (await readGoals()).find((item) => item.id === id);
+    if (!goal) throw new Error("Goal not found.");
+    if (goal.status !== "draft" || goal.tasks.length > 0) throw new Error("Only an untouched draft goal can be planned. Create a new goal if you need a fresh plan.");
+    const host = new URL(config.baseUrl).host;
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      title("AI GOAL PLANNING");
+      label("Goal", goal.title);
+      label("Provider", host);
+      label("Model", config.model);
+      warning("Only this goal's title and description will be sent. GULZ will not upload workspace files.");
+      const confirmation = await rl.question("Type SEND GOAL " + id + " to request a plan: ");
+      if (confirmation !== "SEND GOAL " + id) { console.log("Planning cancelled; nothing was sent."); return; }
+    } finally { rl.close(); }
+    console.log(paint("Planning your goal...", ansi.cyan));
+    const generated = await generateGoalPlan(config, { title: goal.title, description: goal.description });
+    const updated = await withGoalsLock(async () => {
+      const goals = await readGoals();
+      const index = goals.findIndex((item) => item.id === id);
+      if (index < 0) throw new Error("Goal no longer exists.");
+      if (goals[index]!.status !== "draft" || goals[index]!.tasks.length > 0) throw new Error("Goal changed while planning. The generated plan was not saved.");
+      let next = goals[index]!;
+      for (const item of generated.tasks) {
+        next = addGoalTask(next, {
+          id: randomUUID(),
+          title: item.title,
+          description: item.description,
+          operations: validatePlannedOperations(item.operations),
+        });
+      }
+      next = transitionGoal(next, "planned");
+      goals[index] = next;
+      await saveGoals(goals);
+      await recordAudit("goal.planned", { goalId: id, provider: host, model: config.model, tasks: generated.tasks.length });
+      return next;
+    });
+    success("AI plan saved for review");
+    console.log(generated.summary);
+    for (const [index, task] of updated.tasks.entries()) {
+      console.log(paint("\\n" + (index + 1) + ". " + task.title, ansi.bold, ansi.cyan));
+      console.log(task.description);
+      for (const operation of task.operations) {
+        const riskColor = operation.risk === "low" ? ansi.green : ansi.yellow;
+        console.log("   • " + operation.kind + " [" + paint(operation.risk.toUpperCase(), riskColor) + "] " + operation.description);
+      }
+    }
+    console.log("\\nReview the plan with gulz goal show " + id + ". No operations have been executed.");
     return;
   }
   if (command === "update") {
