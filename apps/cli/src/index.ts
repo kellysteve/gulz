@@ -1142,11 +1142,13 @@ async function main(): Promise<void> {
       warning("This permanently removes the selected goal and its task list from local GULZ storage.");
       const confirmation = await rl.question("Type DELETE " + id + " to confirm: ");
       if (confirmation !== "DELETE " + id) { console.log("Deletion cancelled."); return; }
-      await withGoalsLock(async () => {
+      await withExecutionLock(async () => {
+        await withGoalsLock(async () => {
         const goals = await readGoals();
         if (!goals.some((item) => item.id === id)) throw new Error("Goal no longer exists.");
         await saveGoals(goals.filter((item) => item.id !== id));
         await recordAudit("goal.deleted", { goalId: id });
+        });
       });
       success("Goal deleted");
     } finally { rl.close(); }
@@ -1182,6 +1184,9 @@ async function main(): Promise<void> {
       const goals = await readGoals();
       const index = goals.findIndex((item) => item.id === id);
       if (index < 0) throw new Error("Goal not found.");
+      const task = goals[index]!.tasks.find((item) => item.id === taskId);
+      if (!task) throw new Error("Task not found.");
+      if (task.operations.length > 0) throw new Error("Executable task status is controlled by GULZ. Use execute or resume; manual status changes are disabled for planned operations.");
       goals[index] = transitionTask(goals[index]!, taskId, next as TaskStatus);
       await saveGoals(goals);
       await recordAudit("task.status_changed", { goalId: id, taskId, status: next });
