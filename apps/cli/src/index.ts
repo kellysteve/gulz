@@ -719,8 +719,11 @@ async function interactiveSession(): Promise<void> {
         }
         if (goal.tasks.length === 0) warning("No task plan has been generated for this goal.");
         const action = await ask("\nEnter E to execute this plan, R to resume it, or press Enter to return: ");
-        if (action.toLowerCase() === "e") await runGoalExecution(goal.id, false);
-        else if (action.toLowerCase() === "r") await runGoalExecution(goal.id, true);
+        if (action.toLowerCase() === "e" || action.toLowerCase() === "r") {
+          rl.close();
+          await runGoalExecution(goal.id, action.toLowerCase() === "r");
+          return await interactiveSession();
+        }
         continue;
       }
       if (choice === "3" || choice.toLowerCase() === "doctor") {
