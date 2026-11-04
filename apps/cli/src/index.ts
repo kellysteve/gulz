@@ -128,7 +128,7 @@ function help(): void {
     "  list [path]           List directory entries without following symlinks",
     "  read <path>           Read a file inside the current directory (256 KiB max)",
     "  write <path>          Write one line of text after explicit confirmation",
-    "  run <command> [args]  Run a small allowlist of approved diagnostic commands",
+    "  run <command> [args]  Run approved diagnostics or CLI build/test workflows",
     "  restore <backup> <target>  Restore a saved backup after confirmation",
     "  --help, -h            Show this help",
     "  --version, -v         Show the installed version",
@@ -136,7 +136,7 @@ function help(): void {
     "Data is stored locally in ~/.gulz (or GULZ_HOME if configured).",
     "Filesystem commands are confined to the current working directory.",
     "Writes require interactive approval and preserve replaced files as backups.",
-    "Arbitrary shell commands, installs, deletes and network operations are not available.",
+    "Arbitrary shell commands, package installs, deletes and network operations are not available.",
   ].join("\n"));
 }
 
@@ -486,6 +486,7 @@ async function runGoalExecution(goalId: string, resume: boolean): Promise<void> 
             rootDirectory: process.cwd(),
             approved: operation.requiresApproval,
             signal: controller.signal,
+            timeoutMs: operation.command === "npm" ? 180_000 : 5_000,
           });
           if (!result.verified || (result.output.kind === "command_result" && result.output.exitCode !== 0)) {
             throw new Error("GULZ could not verify operation " + operation.id + ".");
@@ -1061,7 +1062,7 @@ async function main(): Promise<void> {
     const operation = createPlannedOperation({
       id: randomUUID(),
       kind: "run_command",
-      description: "Run an allowlisted local diagnostic command",
+      description: "Run an allowlisted local diagnostic or CLI workflow",
       risk: "moderate",
       command: executable,
       args: commandArgs,
@@ -1072,7 +1073,7 @@ async function main(): Promise<void> {
     try {
       console.log("Command: " + preview);
       console.log("Working directory: " + process.cwd());
-      console.log("Only fixed, read-only diagnostic commands are supported. No shell is used.");
+      console.log("Only fixed diagnostics and CLI build/test workflows are supported. No shell is used; npm workflows execute repository scripts and require explicit approval.");
       const confirmation = await rl.question(`Type RUN ${preview} to approve this command: `);
       if (confirmation !== `RUN ${preview}`) { console.log("Command cancelled."); return; }
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
