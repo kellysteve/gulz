@@ -3,7 +3,7 @@
 import { homedir, platform, arch, release } from "node:os";
 import { access, appendFile, chmod, lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { constants, existsSync } from "node:fs";
-import { dirname, join, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
@@ -296,6 +296,9 @@ function validatePlannedOperations(raw: Awaited<ReturnType<typeof generateGoalPl
     ["npm", "--version"], ["npm", "run", "build:cli"], ["npm", "run", "test:cli"],
   ];
   return raw.map((item) => {
+    if (item.target !== undefined && (isAbsolute(item.target) || /^[A-Za-z]:[\\/]/.test(item.target) || item.target.includes("\\0") || item.target.split(/[\\\\/]/).includes(".."))) {
+      throw new Error("The AI proposed a path outside the authorized relative workspace. The plan was rejected.");
+    }
     if (item.kind === "run_command" && item.command === "npm" && process.platform === "win32") throw new Error("AI proposed an npm workflow that is not supported by the shell-free Windows runner.");
     if (item.kind === "run_command" && !allowedCommands.some((allowed) => JSON.stringify(allowed) === JSON.stringify([item.command, ...(item.args ?? [])]))) {
       throw new Error("The AI proposed a command outside GULZ's fixed read-only allowlist. The plan was rejected.");
