@@ -125,6 +125,8 @@ function help(): void {
     "  goal edit <id>        Edit a goal title or description",
     "  goal delete <id>      Delete a goal after confirmation",
     "  goal task add <id> <title>  Add a checklist task to a goal",
+    "  goal task edit <goal> <task>  Edit a manual checklist task",
+    "  goal task delete <goal> <task>  Delete a manual checklist task",
     "  goal task status <goal> <task> <status>  Change a task status",
     "  inspect <path>        Inspect a path inside the current directory",
     "  list [path]           List directory entries without following symlinks",
@@ -1425,6 +1427,70 @@ async function main(): Promise<void> {
     success("Task added to goal");
     label("Task ID", task.id);
     label("Title", task.title);
+    return;
+  }
+  if (command === "goal" && args[0] === "task" && args[1] === "edit") {
+    const [goalId, taskId] = args.slice(2);
+    if (!goalId || !taskId || args.length !== 4) { console.error("Usage: gulz goal task edit <goal-id> <task-id>"); process.exitCode = 2; return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("Editing a task requires an interactive terminal.");
+    const goal = (await readGoals()).find((item) => item.id === goalId);
+    const task = goal?.tasks.find((item) => item.id === taskId);
+    if (!goal || !task) throw new Error("Goal or task not found.");
+    if (goal.status !== "draft" || task.operations.length > 0) throw new Error("Only manual checklist tasks in draft goals can be edited.");
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      const titleInput = (await rl.question("Task title [" + task.title + "]: ")).trim();
+      const descriptionInput = (await rl.question("Task description [" + (task.description || "none") + "] (use - to clear): ")).trim();
+      await withGoalsLock(async () => {
+        const goals = await readGoals();
+        const goalIndex = goals.findIndex((item) => item.id === goalId);
+        if (goalIndex < 0) throw new Error("Goal not found.");
+        const taskIndex = goals[goalIndex]!.tasks.findIndex((item) => item.id === taskId);
+        if (taskIndex < 0) throw new Error("Task not found.");
+        const tasks = [...goals[goalIndex]!.tasks];
+        const current = tasks[taskIndex]!;
+        tasks[taskIndex] = {
+          ...current,
+          title: titleInput || current.title,
+          description: descriptionInput === "-" ? "" : descriptionInput || current.description,
+          updatedAt: new Date().toISOString(),
+        };
+        goals[goalIndex] = { ...goals[goalIndex]!, tasks, updatedAt: new Date().toISOString() };
+        await saveGoals(goals);
+        await recordAudit("task.updated", { goalId, taskId });
+      });
+      success("Checklist task updated");
+    } finally { rl.close(); }
+    return;
+  }
+  if (command === "goal" && args[0] === "task" && args[1] === "delete") {
+    const [goalId, taskId] = args.slice(2);
+    if (!goalId || !taskId || args.length !== 4) { console.error("Usage: gulz goal task delete <goal-id> <task-id>"); process.exitCode = 2; return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("Deleting a task requires an interactive terminal and explicit confirmation.");
+    const goal = (await readGoals()).find((item) => item.id === goalId);
+    const task = goal?.tasks.find((item) => item.id === taskId);
+    if (!goal || !task) throw new Error("Goal or task not found.");
+    if (goal.status !== "draft" || task.operations.length > 0) throw new Error("Only manual checklist tasks in draft goals can be deleted.");
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      const confirmation = await rl.question("Type DELETE TASK " + taskId + " to remove this checklist task: ");
+      if (confirmation !== "DELETE TASK " + taskId) { console.log("Task deletion cancelled."); return; }
+    } finally { rl.close(); }
+    await withExecutionLock(async () => {
+      await withGoalsLock(async () => {
+        const goals = await readGoals();
+        const goalIndex = goals.findIndex((item) => item.id === goalId);
+        if (goalIndex < 0) throw new Error("Goal not found.");
+        const current = goals[goalIndex]!;
+        if (current.status !== "draft") throw new Error("The goal is no longer a draft.");
+        const currentTask = current.tasks.find((item) => item.id === taskId);
+        if (!currentTask || currentTask.operations.length > 0) throw new Error("The task changed and can no longer be deleted.");
+        goals[goalIndex] = { ...current, tasks: current.tasks.filter((item) => item.id !== taskId), updatedAt: new Date().toISOString() };
+        await saveGoals(goals);
+        await recordAudit("task.deleted", { goalId, taskId });
+      });
+    });
+    success("Checklist task deleted");
     return;
   }
   if (command === "goal" && args[0] === "task" && args[1] === "status") {
