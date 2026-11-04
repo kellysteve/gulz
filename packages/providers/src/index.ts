@@ -1,4 +1,4 @@
-export type ProviderOperationKind = "inspect" | "list_directory" | "create_directory" | "read_file" | "write_file" | "run_command";
+export type ProviderOperationKind = "inspect" | "list_directory" | "create_directory" | "delete_file" | "read_file" | "write_file" | "run_command";
 
 export interface ProviderPlanOperation {
   kind: ProviderOperationKind;
@@ -95,8 +95,8 @@ function parsePlanContent(content: unknown): GeneratedGoalPlan {
     const operations = rawTask.operations.map((rawOperation, operationIndex): ProviderPlanOperation => {
       if (!isRecord(rawOperation)) throw new ProviderError("An AI operation has an invalid structure.");
       const kind = rawOperation.kind;
-      if (!["inspect", "list_directory", "create_directory", "read_file", "write_file", "run_command"].includes(String(kind))) {
-        throw new ProviderError("AI proposed an unsupported operation. Only inspect, list_directory, create_directory, read_file, write_file and allowlisted run_command are supported.");
+      if (!["inspect", "list_directory", "create_directory", "delete_file", "read_file", "write_file", "run_command"].includes(String(kind))) {
+        throw new ProviderError("AI proposed an unsupported operation. Only inspect, list_directory, create_directory, delete_file, read_file, write_file and allowlisted run_command are supported.");
       }
       const operation: ProviderPlanOperation = {
         kind: kind as ProviderOperationKind,
@@ -116,7 +116,7 @@ function parsePlanContent(content: unknown): GeneratedGoalPlan {
         }
         operation.args = rawOperation.args as string[];
       }
-      if ((operation.kind === "inspect" || operation.kind === "list_directory" || operation.kind === "create_directory" || operation.kind === "read_file") && !operation.target) {
+      if ((operation.kind === "inspect" || operation.kind === "list_directory" || operation.kind === "create_directory" || operation.kind === "delete_file" || operation.kind === "read_file") && !operation.target) {
         throw new ProviderError("AI file inspection and read operations require a relative target.");
       }
       if (operation.kind === "write_file" && (!operation.target || operation.content === undefined)) {
@@ -172,8 +172,8 @@ export async function generateGoalPlan(
             role: "system",
             content: [
               "You are the GULZ task planner. Return only a JSON object with summary and tasks.",
-              "Every task must contain at least one operation. Allowed operation kinds: inspect, list_directory, create_directory, read_file, write_file, run_command.",
-              "Never propose delete, install, network, permission changes, remote operations, shell scripts, arbitrary shell commands, or commands outside the exact allowlist.",
+              "Every task must contain at least one operation. Allowed operation kinds: inspect, list_directory, create_directory, delete_file, read_file, write_file, run_command.",
+              "Never propose directory deletion, package installation, network access, permission changes, remote operations, shell scripts, arbitrary shell commands, or commands outside the exact allowlist. A delete_file operation may be proposed only when the user explicitly asks to remove a specific file; it is reversible, moves the file into a private backup and requires high-risk approval.",
               "For run_command, only propose node --version, node -v, the fixed read-only git status/branch/log/diff/rev-parse diagnostics, npm --version, npm run build:cli, or npm run test:cli.",
               "All file targets must be relative paths inside the user's current authorized workspace.",
               "Do not claim an operation has already run. The user must review and approve the plan before execution.",
