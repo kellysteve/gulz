@@ -285,3 +285,42 @@ test("refuses a symbolic link as saved provider settings", async () => {
     assert.match(result.stderr, /regular file, not a symbolic link/);
   });
 });
+
+
+test("rejects task checkpoints that reference unknown operation IDs", async () => {
+  await withHome(async (home) => {
+    const goal = {
+      id: "goal-checkpoint-invalid",
+      title: "Invalid checkpoint",
+      description: "",
+      status: "draft",
+      tasks: [{
+        id: "task-checkpoint-invalid",
+        title: "Task",
+        description: "",
+        status: "pending",
+        operations: [],
+        completedOperationIds: ["not-an-operation"],
+        createdAt: "2026-11-02T12:00:00.000Z",
+        updatedAt: "2026-11-02T12:00:00.000Z",
+      }],
+      createdAt: "2026-11-02T12:00:00.000Z",
+      updatedAt: "2026-11-02T12:00:00.000Z",
+    };
+    await writeFile(join(home, "goals.json"), JSON.stringify([goal]));
+    const result = invoke(home, "doctor");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /failed validation/);
+  });
+});
+
+test("requires an interactive terminal before starting goal execution or resume", async () => {
+  await withHome(async (home) => {
+    const execute = invoke(home, "execute", "goal-id");
+    assert.equal(execute.status, 1);
+    assert.match(execute.stderr, /interactive terminal/);
+    const resume = invoke(home, "resume", "goal-id");
+    assert.equal(resume.status, 1);
+    assert.match(resume.stderr, /interactive terminal/);
+  });
+});
