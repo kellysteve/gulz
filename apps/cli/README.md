@@ -32,7 +32,7 @@ gulz resume <goal-id>
 gulz cancel <goal-id>
 ~~~
 
-Run `gulz update` from an interactive terminal to fast-forward the source checkout, rebuild the CLI and refresh its command link. It requires a clean fast-forwardable checkout and the exact confirmation `UPDATE GULZ`. Your local data in `~/.gulz` is separate from the source installation.
+Run `gulz update` from an interactive terminal to fast-forward the source checkout, rebuild the CLI and refresh its command link. Run `gulz uninstall` to remove the global command link and source checkout; it preserves your local goals, provider settings and audit history in `~/.gulz`. It requires a clean fast-forwardable checkout and the exact confirmation `UPDATE GULZ`. Your local data in `~/.gulz` is separate from the source installation.
 
 ## Goal and task management
 
