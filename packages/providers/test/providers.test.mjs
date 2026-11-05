@@ -127,27 +127,29 @@ test("accepts explicit directory creation proposals in structured plans", async 
   }
 });
 
-test("uses the built-in GULZ AI endpoint without appending a chat-completions path", async () => {
+test("uses the built-in GULZ AI request format", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, options) => {
-    assert.equal(String(url), "https://apis.nabeestech.com/api/v1/ai/gpt5-luna");
-    assert.equal(new Headers(options?.headers).get("authorization"), "Bearer nabeestech");
-    const body = JSON.parse(String(options?.body));
-    assert.equal(body.model, "gpt5-luna");
+    const parsed = new URL(String(url));
+    assert.equal(parsed.origin, "https://apis.nabeestech.com");
+    assert.equal(parsed.pathname, "/api/v1/ai/gpt5-luna");
+    assert.ok(parsed.searchParams.get("apikey"));
+    assert.match(parsed.searchParams.get("q") ?? "", /GULZ task planner/);
+    assert.match(parsed.searchParams.get("q") ?? "", /Inspect this project/);
+    assert.equal(options?.method, "GET");
+    assert.equal(options?.body, undefined);
     return new Response(JSON.stringify({
-      choices: [{ message: { content: JSON.stringify({
+      status: "success",
+      success: true,
+      response: JSON.stringify({
         summary: "Inspect the workspace",
         tasks: [{ title: "Inspect", description: "Check the workspace", operations: [{ kind: "inspect", description: "Inspect the current directory", target: "." }] }],
-      }) } }],
-    }), { status: 200 });
+      }),
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
   };
   try {
     const plan = await generateGoalPlan(
-      {
-        baseUrl: "https://apis.nabeestech.com/api/v1/ai/gpt5-luna",
-        apiKey: "nabeestech",
-        model: "gpt5-luna",
-      },
+      { baseUrl: "https://apis.nabeestech.com/api/v1/ai/gpt5-luna", apiKey: "test-key", model: "gpt5-luna" },
       { title: "Inspect this project", description: "" },
     );
     assert.equal(plan.tasks.length, 1);
