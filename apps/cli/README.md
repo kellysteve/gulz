@@ -11,7 +11,7 @@ Use the interactive installer on Termux, Linux, macOS or a Linux VPS:
 curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
 ~~~
 
-It installs only the CLI workspaces and their build dependencies, avoiding the website's Wrangler/Workerd dependency on Termux. Run it as your normal user. Windows users should follow the PowerShell source-build instructions in [the installation guide](../../docs/INSTALLATION.md).
+It installs only the CLI workspaces and their build dependencies, avoiding the website's Wrangler/Workerd dependency on Termux. Repeat installs and updates reuse the existing dependency installation when the CLI package manifests have not changed, so they skip the slow npm dependency-resolution step. Run it as your normal user. Windows users should follow the PowerShell source-build instructions in [the installation guide](../../docs/INSTALLATION.md).
 
 Requires Node.js 20.19+ and Git. The npm packages are not published yet; this source installation is the supported installation route.
 
