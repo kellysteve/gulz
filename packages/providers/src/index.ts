@@ -61,6 +61,7 @@ function providerEndpoint(baseUrl: string): string {
     throw new ProviderError("Provider URL must not contain credentials, query parameters or fragments.");
   }
   const clean = parsed.toString().replace(/\/$/, "");
+  if (parsed.pathname.replace(/\/$/, "").endsWith("/gpt5-luna")) return clean;
   return clean.endsWith("/chat/completions") ? clean : clean + "/chat/completions";
 }
 
