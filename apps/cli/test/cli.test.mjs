@@ -272,6 +272,20 @@ test("reports an unconfigured AI provider without exposing or inventing credenti
   });
 });
 
+test("configures the built-in AI without asking the user for API details", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "provider", "builtin");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Built-in GULZ AI is ready/);
+    const config = JSON.parse(await readFile(join(home, "provider.json"), "utf8"));
+    assert.equal(new URL(config.baseUrl).pathname, "/api/v1/ai/gpt5-luna");
+    assert.equal(config.model, "gpt5-luna");
+    if (process.platform !== "win32") {
+      assert.equal((await stat(join(home, "provider.json"))).mode & 0o777, 0o600);
+    }
+  });
+});
+
 test("refuses a symbolic link as saved provider settings", async () => {
   if (process.platform === "win32") return;
   await withHome(async (home) => {
