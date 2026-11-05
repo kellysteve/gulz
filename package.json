@@ -18,7 +18,7 @@
     "install:local": "npm run install:cli",
     "test": "npm run test:cli && npm run typecheck --workspace=@gulz/website",
     "build:execution": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/execution",
-    "install:cli": "npm install --workspace=@gulz/core --workspace=@gulz/execution --workspace=@gulz/providers --workspace=@gulz/cli --include-workspace-root=false --include=dev --no-audit --no-fund --package-lock=false && npm run build:cli && npm link --workspace @gulz/cli",
+    "install:cli": "node scripts/install-cli.mjs",
     "test:cli": "npm run test --workspace=@gulz/core && npm run test --workspace=@gulz/execution && npm run test --workspace=@gulz/providers && npm run test --workspace=@gulz/cli && npm run typecheck --workspace=@gulz/core && npm run typecheck --workspace=@gulz/execution && npm run typecheck --workspace=@gulz/providers && npm run typecheck --workspace=@gulz/cli"
   },
   "engines": {
