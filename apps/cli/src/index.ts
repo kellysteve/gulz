@@ -109,7 +109,8 @@ function help(): void {
     "  init                  Create the local GULZ data directory",
     "  doctor                Check the local runtime and data directory",
     "  audit [--limit N]     View recent local action history",
-    "  provider configure    Set an OpenAI-compatible AI provider",
+    "  provider builtin      Use the built-in GULZ AI",
+    "  provider configure    Set your own OpenAI-compatible AI provider",
     "  provider status       Show provider connection settings",
     "  provider remove       Remove saved provider credentials",
     "  plan <goal-id>        Generate a task plan with your configured AI provider",
@@ -928,6 +929,19 @@ async function main(): Promise<void> {
   }
   if (command === "provider") {
     const action = args[0] ?? "status";
+    if (action === "builtin") {
+      if (args.length > 1) { console.error("Usage: gulz provider builtin"); process.exitCode = 2; return; }
+      if (process.env.GULZ_AI_BASE_URL || process.env.GULZ_AI_MODEL || process.env.GULZ_AI_API_KEY) {
+        throw new Error("AI provider settings are controlled by GULZ_AI_* environment variables. Remove them before selecting the built-in provider.");
+      }
+      await saveProviderConfig({
+        baseUrl: "https://apis.nabeestech.com/api/v1/ai/gpt5-luna",
+        model: "gpt5-luna",
+        apiKey: "nabeestech",
+      });
+      success("Built-in GULZ AI is ready");
+      return;
+    }
     if (action === "status") {
       const config = await readProviderConfig();
       title("AI PROVIDER");
@@ -1000,7 +1014,7 @@ async function main(): Promise<void> {
       success("Saved provider settings removed");
       return;
     }
-    console.error("Usage: gulz provider [configure|status|remove]");
+    console.error("Usage: gulz provider [builtin|configure|status|remove]");
     process.exitCode = 2;
     return;
   }
