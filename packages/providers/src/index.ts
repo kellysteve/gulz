@@ -46,7 +46,7 @@ function requiredString(value: unknown, field: string, max = 4000): string {
   return value.trim();
 }
 
-function providerEndpoint(baseUrl: string): string {
+function providerEndpoint(baseUrl: string): { url: URL; builtin: boolean } {
   let parsed: URL;
   try {
     parsed = new URL(baseUrl);
@@ -60,9 +60,9 @@ function providerEndpoint(baseUrl: string): string {
   if (parsed.username || parsed.password || parsed.search || parsed.hash) {
     throw new ProviderError("Provider URL must not contain credentials, query parameters or fragments.");
   }
+  const builtin = parsed.pathname.replace(/\/$/, "").endsWith("/gpt5-luna");
   const clean = parsed.toString().replace(/\/$/, "");
-  if (parsed.pathname.replace(/\/$/, "").endsWith("/gpt5-luna")) return clean;
-  return clean.endsWith("/chat/completions") ? clean : clean + "/chat/completions";
+  return { url: new URL(builtin ? clean : clean.endsWith("/chat/completions") ? clean : clean + "/chat/completions"), builtin };
 }
 
 function parsePlanContent(content: unknown): GeneratedGoalPlan {
@@ -159,39 +159,47 @@ export async function generateGoalPlan(
   const abortFromCaller = () => controller.abort();
   config.signal?.addEventListener("abort", abortFromCaller, { once: true });
   try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + apiKey,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.1,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: [
-              "You are the GULZ task planner. Return only a JSON object with summary and tasks.",
-              "Every task must contain at least one operation. Allowed operation kinds: inspect, list_directory, create_directory, delete_file, read_file, write_file, run_command.",
-              "Never propose directory deletion, package installation, network access, permission changes, remote operations, shell scripts, arbitrary shell commands, or commands outside the exact allowlist. A delete_file operation may be proposed only when the user explicitly asks to remove a specific file; it is reversible, moves the file into a private backup and requires high-risk approval.",
-              "For run_command, only propose node --version, node -v, the fixed read-only git status/branch/log/diff/rev-parse diagnostics, npm --version, npm run build:cli, or npm run test:cli.",
-              "All file targets must be relative paths inside the user's current authorized workspace.",
-              "Do not claim an operation has already run. The user must review and approve the plan before execution.",
-              "Schema: {summary:string,tasks:[{title:string,description:string,operations:[{kind:string,description:string,target?:string,content?:string,command?:string,args?:string[]}]}]}.",
-              "Keep plans practical, ordered, small and verifiable.",
-            ].join(" "),
-          },
-          {
-            role: "user",
-            content: JSON.stringify({ goal: { title, description } }),
-          },
-        ],
-      }),
-      signal: controller.signal,
-    });
+    const systemPrompt = [
+      "You are the GULZ task planner. Return only a JSON object with summary and tasks.",
+      "Every task must contain at least one operation. Allowed operation kinds: inspect, list_directory, create_directory, delete_file, read_file, write_file, run_command.",
+      "Never propose directory deletion, package installation, network access, permission changes, remote operations, shell scripts, arbitrary shell commands, or commands outside the exact allowlist. A delete_file operation may be proposed only when the user explicitly asks to remove a specific file; it is reversible, moves the file into a private backup and requires high-risk approval.",
+      "For run_command, only propose node --version, node -v, the fixed read-only git status/branch/log/diff/rev-parse diagnostics, npm --version, npm run build:cli, or npm run test:cli.",
+      "All file targets must be relative paths inside the user's current authorized workspace.",
+      "Do not claim an operation has already run. The user must review and approve the plan before execution.",
+      "Schema: {summary:string,tasks:[{title:string,description:string,operations:[{kind:string,description:string,target?:string,content?:string,command?:string,args?:string[]}]}]}.",
+      "Keep plans practical, ordered, small and verifiable.",
+    ].join(" ");
+    const userPrompt = JSON.stringify({ goal: { title, description } });
+    let response: Response;
+    if (endpoint.builtin) {
+      const url = new URL(endpoint.url);
+      url.searchParams.set("q", systemPrompt + "\\n\\nUser request: " + userPrompt);
+      url.searchParams.set("apikey", apiKey);
+      response = await fetch(url, {
+        method: "GET",
+        headers: { "Accept": "application/json" },
+        signal: controller.signal,
+      });
+    } else {
+      response = await fetch(endpoint.url, {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + apiKey,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.1,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        }),
+        signal: controller.signal,
+      });
+    }
     if (!response.ok) {
       throw new ProviderError("AI provider request failed with HTTP " + response.status + ". Check the endpoint, model and API key.");
     }
@@ -199,6 +207,12 @@ export async function generateGoalPlan(
     if (responseText.length > 1_000_000) throw new ProviderError("AI provider response exceeded the 1 MB safety limit.");
     let payload: unknown;
     try { payload = JSON.parse(responseText); } catch { throw new ProviderError("AI provider returned invalid response JSON."); }
+    if (endpoint.builtin) {
+      if (!isRecord(payload) || payload.success === false || typeof payload.response !== "string") {
+        throw new ProviderError("Built-in GULZ AI returned an invalid response.");
+      }
+      return parsePlanContent(payload.response);
+    }
     if (!isRecord(payload) || !Array.isArray(payload.choices)) throw new ProviderError("AI provider returned an invalid chat-completions response.");
     const choice = payload.choices[0];
     if (!isRecord(choice) || !isRecord(choice.message)) throw new ProviderError("AI provider returned no assistant message.");
