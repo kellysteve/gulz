@@ -59,7 +59,7 @@ if [ "$(id -u)" -eq 0 ]; then
   ask_yes_no "Continue anyway?" || exit 0
 fi
 
-bold "1/5 · Check prerequisites"
+bold "1/6 · Check prerequisites"
 if ! command_exists git; then
   case "$PLATFORM" in
     termux) INSTALL_CMD="pkg install git" ;;
@@ -102,7 +102,7 @@ info "Git: $(git --version)"
 info "Node.js: v$NODE_VERSION"
 info "npm: $(npm --version)"
 
-bold "2/5 · Choose installation folder"
+bold "2/6 · Choose installation folder"
 printf 'Default: %s\n' "$GULZ_DEFAULT_DIR"
 read -r -p "Install folder [press Enter to accept]: " chosen_dir </dev/tty || true
 INSTALL_DIR="${chosen_dir:-$GULZ_DEFAULT_DIR}"
@@ -114,12 +114,12 @@ if [ -e "$INSTALL_DIR" ] && [ ! -d "$INSTALL_DIR/.git" ]; then
 fi
 printf 'GULZ source will be stored at: %s\n' "$INSTALL_DIR"
 
-bold "3/5 · Review installation"
+bold "3/6 · Review installation"
 printf 'The installer will clone or fast-forward the GULZ repository, install only CLI workspace dependencies (including TypeScript), build the CLI and create a user-level command link. The website and Wrangler/Workerd are excluded.\n'
 printf 'It may use sudo only if you explicitly approve installing a missing Git package. It will not run GULZ operations on your files or install a background service.\n'
 ask_yes_no "Continue with installation?" || { printf 'Installation cancelled.\n'; exit 0; }
 
-bold "4/5 · Download and build"
+bold "4/6 · Download and build"
 if [ -d "$INSTALL_DIR/.git" ]; then
   git -C "$INSTALL_DIR" rev-parse --is-inside-work-tree >/dev/null
   if [ -n "$(git -C "$INSTALL_DIR" status --porcelain)" ]; then
@@ -140,7 +140,37 @@ else
   NPM_CONFIG_PREFIX="$HOME/.local" npm run install:cli
 fi
 
-bold "5/5 · Verify the gulz command"
+bold "5/5 · Choose your AI setup"
+printf 'Choose how GULZ should connect to AI.\n'
+printf '  1) Built-in GULZ AI (recommended)\n'
+printf '  2) Use my own AI provider\n'
+printf '  3) Set this up later\n'
+while true; do
+  read -r -p "Select 1, 2 or 3 [1]: " AI_CHOICE </dev/tty || AI_CHOICE="1"
+  AI_CHOICE="${AI_CHOICE:-1}"
+  case "$AI_CHOICE" in
+    1)
+      if [ -x "$GULZ_BIN_DIR/gulz" ]; then
+        "$GULZ_BIN_DIR/gulz" provider builtin || warn "Built-in AI setup could not be completed. Run gulz provider builtin later."
+      else
+        warn "GULZ command link is not available yet. Run gulz provider builtin after installation."
+      fi
+      break
+      ;;
+    2)
+      if [ -x "$GULZ_BIN_DIR/gulz" ]; then
+        "$GULZ_BIN_DIR/gulz" provider configure || warn "Your provider was not configured. Run gulz provider configure later."
+      else
+        warn "GULZ command link is not available yet. Run gulz provider configure after installation."
+      fi
+      break
+      ;;
+    3) info "AI setup skipped. Run gulz provider builtin or gulz provider configure later."; break ;;
+    *) printf 'Please enter 1, 2 or 3.\n' ;;
+  esac
+done
+
+bold "6/6 · Verify the gulz command"
 case ":$PATH:" in
   *":$GULZ_BIN_DIR:"*) ;;
   *)
