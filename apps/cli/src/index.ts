@@ -946,9 +946,9 @@ async function main(): Promise<void> {
       const config = await readProviderConfig();
       title("AI PROVIDER");
       if (!config) { warning("No provider configured. Run gulz provider configure."); return; }
-      const host = new URL(config.baseUrl).host;
+      const isBuiltin = config.model === "gpt5-luna" && new URL(config.baseUrl).pathname.replace(/\/$/, "").endsWith("/gpt5-luna");
       success("Provider settings are available");
-      label("Endpoint", host);
+      label("Provider", isBuiltin ? "Built-in GULZ AI" : new URL(config.baseUrl).host);
       label("Model", config.model);
       label("API key", "Stored privately; value hidden");
       return;
@@ -1027,12 +1027,13 @@ async function main(): Promise<void> {
     const goal = (await readGoals()).find((item) => item.id === id);
     if (!goal) throw new Error("Goal not found.");
     if (goal.status !== "draft" || goal.tasks.length > 0) throw new Error("Only an untouched draft goal can be planned. Create a new goal if you need a fresh plan.");
-    const host = new URL(config.baseUrl).host;
+    const isBuiltin = config.model === "gpt5-luna" && new URL(config.baseUrl).pathname.replace(/\/$/, "").endsWith("/gpt5-luna");
+    const providerName = isBuiltin ? "Built-in GULZ AI" : new URL(config.baseUrl).host;
     const rl = createInterface({ input: stdin, output: stdout });
     try {
       title("AI GOAL PLANNING");
       label("Goal", goal.title);
-      label("Provider", host);
+      label("Provider", providerName);
       label("Model", config.model);
       warning("Only this goal's title and description will be sent. GULZ will not upload workspace files.");
       const confirmation = await rl.question("Type SEND GOAL " + id + " to request a plan: ");
@@ -1057,7 +1058,7 @@ async function main(): Promise<void> {
       next = transitionGoal(next, "planned");
       goals[index] = next;
       await saveGoals(goals);
-      await recordAudit("goal.planned", { goalId: id, provider: host, model: config.model, tasks: generated.tasks.length });
+      await recordAudit("goal.planned", { goalId: id, provider: providerName, model: config.model, tasks: generated.tasks.length });
       return next;
     });
     success("AI plan saved for review");
