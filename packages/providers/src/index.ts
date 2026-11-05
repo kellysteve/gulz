@@ -60,7 +60,7 @@ function providerEndpoint(baseUrl: string): { url: URL; builtin: boolean } {
   if (parsed.username || parsed.password || parsed.search || parsed.hash) {
     throw new ProviderError("Provider URL must not contain credentials, query parameters or fragments.");
   }
-  const builtin = parsed.pathname.replace(/\/$/, "").endsWith("/gpt5-luna");
+  const builtin = parsed.hostname === "apis.nabeestech.com" && parsed.pathname.replace(/\/$/, "") === "/api/v1/ai/gpt5-luna";
   const clean = parsed.toString().replace(/\/$/, "");
   return { url: new URL(builtin ? clean : clean.endsWith("/chat/completions") ? clean : clean + "/chat/completions"), builtin };
 }
@@ -173,7 +173,7 @@ export async function generateGoalPlan(
     let response: Response;
     if (endpoint.builtin) {
       const url = new URL(endpoint.url);
-      url.searchParams.set("q", systemPrompt + "\\n\\nUser request: " + userPrompt);
+      url.searchParams.set("q", systemPrompt + "\n\nUser request: " + userPrompt);
       url.searchParams.set("apikey", apiKey);
       response = await fetch(url, {
         method: "GET",
