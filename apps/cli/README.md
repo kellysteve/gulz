@@ -54,15 +54,16 @@ Goal and manual checklist task editing is interactive. Deleting a goal or checkl
 
 ## AI provider and planning
 
-Configure any OpenAI-compatible chat-completions endpoint:
+Choose the built-in AI during installation, or configure your own OpenAI-compatible chat-completions endpoint at any time:
 
 ~~~sh
+gulz provider builtin
 gulz provider configure
 gulz provider status
 gulz plan <goal-id>
 ~~~
 
-The API key is entered without echo and stored in `~/.gulz/provider.json` with owner-only permissions where supported. It is stored as plaintext protected by filesystem permissions, not encrypted. Alternatively set `GULZ_AI_BASE_URL`, `GULZ_AI_MODEL` and `GULZ_AI_API_KEY` in the process environment. Remote providers must use HTTPS; HTTP is accepted only for localhost model servers. Before a plan request, GULZ asks for confirmation and sends only the goal title and description; it does not upload workspace files. The provider adapter accepts only bounded JSON plans containing inspect, directory listing/creation, read, write, reversible file deletion and a fixed command allowlist. Every operation is revalidated locally and risk is derived by GULZ, not trusted from the model.
+The built-in option configures GULZ AI automatically. The installer does not display provider connection details. To use your own provider, its API key is entered without echo and stored in `~/.gulz/provider.json` with owner-only permissions where supported. It is stored as plaintext protected by filesystem permissions, not encrypted. Alternatively set `GULZ_AI_BASE_URL`, `GULZ_AI_MODEL` and `GULZ_AI_API_KEY` in the process environment. Remote providers must use HTTPS; HTTP is accepted only for localhost model servers. Before a plan request, GULZ asks for confirmation and sends only the goal title and description; it does not upload workspace files. The provider adapter accepts only bounded JSON plans containing inspect, directory listing/creation, read, write, reversible file deletion and a fixed command allowlist. Every operation is revalidated locally and risk is derived by GULZ, not trusted from the model.
 
 AI planning saves a plan for review. Run `gulz goal show <goal-id>` to inspect the proposed operations, then `gulz execute <goal-id>` to begin. Moderate-risk operations require typing their exact operation ID; high-risk file deletion requires the same explicit approval and creates a private recoverable backup. Low-risk inspection, directory listing and reads run only after you explicitly start execution. Press Ctrl+C to pause safely; `gulz resume <goal-id>` continues from saved operation checkpoints. Use `gulz cancel <goal-id>` to cancel a goal after confirmation. A local execution lock prevents simultaneous GULZ runs, and a write whose expected content already exists is checkpointed rather than written a second time after recovery.
 
