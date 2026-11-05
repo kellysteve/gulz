@@ -752,7 +752,9 @@ async function interactiveSession(): Promise<void> {
   try {
     title("WELCOME TO GULZ");
     console.log("Goals are saved on this device in " + paint(dataHome, ansi.cyan));
-    warning("This CLI currently supports local goal management and supervised workspace operations. AI planning and remote execution are not configured in this installation.");
+    const configuredProvider = await readProviderConfig().catch(() => null);
+    if (configuredProvider) warning("AI planning is ready. Review every generated plan and approve operations before GULZ executes them.");
+    else warning("AI planning is not configured. Run gulz provider builtin or gulz provider configure to get started.");
     while (true) {
       showMenu();
       const choice = await ask("\nChoose an option: ");
