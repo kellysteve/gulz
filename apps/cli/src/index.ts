@@ -1348,8 +1348,8 @@ async function main(): Promise<void> {
       const bytes = Buffer.byteLength(content, "utf8");
       console.log("Target: " + target + "\nBytes:  " + bytes + "\nPreview: " + content);
       console.log("If this file already exists, GULZ will preserve the original as a private backup.");
-      const confirmation = await rl.question(`Type WRITE ${target} to approve this change: `);
-      if (confirmation !== `WRITE ${target}`) { console.log("Write cancelled."); return; }
+      const confirmation = await rl.question("Write this file and preserve any existing version as a backup? (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Write cancelled."); return; }
       const operation = createPlannedOperation({ id: randomUUID(), kind: "write_file", description: "Write a local text file", risk: "moderate", target, content });
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
       await recordExecutionAudit(result);
