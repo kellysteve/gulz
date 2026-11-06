@@ -1,8 +1,8 @@
 # GULZ
 
-**Goals. Executed.**
+**Tell it. Get it done.**
 
-GULZ is an open-source, AI-assisted goal-execution and machine-operations platform for local devices and authorized remote environments.
+GULZ is an open-source AI assistant and supervised agent designed to help people get work done on local devices and authorized remote environments.
 
 **A Gaxity product.**
 
@@ -10,7 +10,7 @@ GULZ is licensed under the **Apache License 2.0**. You can use, study, modify an
 
 ## Project status
 
-GULZ is in active development. The CLI currently supports local goal/task management, a continuous AI chat mode with locally saved conversation history, OpenAI-compatible AI planning, supervised local execution, recovery and source updates. An interactive Bash source installer is available for Termux, Linux, macOS and VPS hosts, alongside a PowerShell source-build guide for Windows. These install the CLI from source; they are not packaged binary releases. Remote SSH orchestration, connected services, native installers, desktop/Android apps, published npm packages and signed release downloads remain outstanding.
+GULZ is in active development. The CLI currently supports local work/task management, a continuous AI chat mode with locally saved conversation history, OpenAI-compatible AI planning, supervised local execution, recovery and source updates. An interactive Bash source installer is available for Termux, Linux, macOS and VPS hosts, alongside a PowerShell source-build guide for Windows. These install the CLI from source; they are not packaged binary releases. Remote SSH orchestration, connected services, native installers, desktop/Android apps, published npm packages and signed release downloads remain outstanding.
 
 ## Install the GULZ CLI
 
@@ -22,7 +22,7 @@ curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/instal
 
 The installer detects the platform, asks where to install the source checkout, requests confirmation, then offers built-in GULZ AI, your own provider, or AI setup later. It tests the selected provider with a generic sample request (no saved goals or workspace files) before finishing. It installs only the CLI workspace dependencies, builds the CLI and links the `gulz` command. It installs only the CLI workspaces and their development dependencies (including TypeScript), deliberately skipping the website's Wrangler/Workerd dependency, which does not support Android's Termux environment. Run it as your normal user, not with `sudo`. Windows users should follow the PowerShell instructions in [docs/INSTALLATION.md](docs/INSTALLATION.md). This installs the GULZ command-line application from its source repository.
 
-## Start chatting with GULZ\n\nAfter installation and AI provider setup, run `gulz chat` to open a continuous conversation. Send multiple messages without restarting the command; recent conversation history is saved privately under `~/.gulz/conversation.json` (or your configured `GULZ_HOME`). Use `/clear` to clear the saved conversation or `/exit` to return. Chat history is sent to the selected AI provider as context when you send a new message. The current chat mode is conversational only: it does not execute machine operations from chat messages. Use `gulz do \"...\"` for the current supervised task-planning and execution workflow.\n\n## Product experience
+## Start chatting with GULZ\n\nAfter installation and AI provider setup, run `gulz chat` to open a continuous conversation. Send multiple messages without restarting the command; recent conversation history is saved privately under `~/.gulz/conversation.json` (or your configured `GULZ_HOME`). Use `/clear` to clear the saved conversation or `/exit` to return. Chat history is sent to the selected AI provider as context when you send a new message. Provider setup is the one-time choice to connect an AI service. After that, messages go straight to the selected provider; GULZ does not ask for permission again on every chat launch or message. Chat is currently conversational only and does not execute machine operations directly. Use `gulz do \"...\"` for the existing supervised task-planning and execution workflow.\n\n## Product experience
 
 GULZ is being built around three connected interfaces backed by one shared core:
 
@@ -37,14 +37,14 @@ All interfaces must use the same execution policy. No interface may bypass permi
 - Supervised autonomy: low-risk work can proceed; sensitive or destructive actions require explicit approval.
 - Real execution and verification: never simulate tool results or claim an operation succeeded without checking.
 - Least privilege: operate only on resources the user has authorized.
-- Durable work: save goals, plans, task state, logs and recoverable progress.
+- Durable work: internal plans, task state, logs and recoverable progress are managed behind the scenes.
 - Provider flexibility: the core product remains useful when an AI provider is unavailable.
 - Platform-aware installation: separate, tested paths for Termux, Linux, macOS, Windows, VPS environments and developers.
 - Open development: source code, design discussions and contributions are intended to be public.
 
 ## Current implementation status
 
-- **Core:** goal/task types, guarded lifecycle transitions and risk-derived approval decisions.
+- **Core:** internal work/task records, guarded lifecycle transitions and risk-derived approval decisions.
 - **Execution:** bounded path inspection, directory listing/creation, UTF-8 reads/writes, high-risk reversible file deletion with private backups/restore, and a fixed allowlist of diagnostics plus approved CLI build/test workflows. The command runner uses no shell, a sanitized environment, bounded output/time and interactive approval.
 - **CLI:** local goal/task management, private activity history, provider configuration, continuous AI chat with local conversation persistence, AI-assisted planning, supervised execution, per-operation approval, durable checkpoints, pause/resume/cancel, repair, update and uninstall are implemented in source. Runtime verification is still pending.
 - **Distribution:** npm package metadata and platform-specific source-build instructions are prepared. Packages have not been published and native installers are not available.
