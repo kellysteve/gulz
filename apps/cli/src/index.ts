@@ -769,8 +769,8 @@ async function interactiveSession(): Promise<void> {
   const rl = createInterface({ input: stdin, output: stdout });
   const ask = async (question: string): Promise<string> => (await rl.question(question)).trim();
   const showMenu = (): void => {
-    console.log("\n" + paint("GULZ", ansi.bold, ansi.cyan) + paint("  GOALS. EXECUTED.", ansi.bold));
-    console.log(paint("Your local supervised workspace", ansi.dim));
+    console.log("\n" + paint("GULZ", ansi.bold, ansi.cyan) + paint("  YOUR AI, READY TO WORK.", ansi.bold));
+    console.log(paint("Tell GULZ what you need. Keep chatting naturally.", ansi.dim));
     console.log("\n  " + paint("1.", ansi.cyan) + " Chat with GULZ (continuous conversation)");
     console.log("  " + paint("2.", ansi.cyan) + " View saved work and progress");
     console.log("  " + paint("3.", ansi.cyan) + " System check");
@@ -785,7 +785,7 @@ async function interactiveSession(): Promise<void> {
 
   try {
     title("WELCOME TO GULZ");
-    console.log("Goals are saved on this device in " + paint(dataHome, ansi.cyan));
+    console.log("Your conversations and work are saved on this device in " + paint(dataHome, ansi.cyan));
     const configuredProvider = await readProviderConfig().catch(() => null);
     if (configuredProvider) warning("AI is ready. Open chat and keep sending messages; use gulz do when you want GULZ to prepare an executable task plan.");
     else warning("AI is not set up yet. Choose option 7 to enable built-in GULZ AI or connect your own provider.");
@@ -793,7 +793,7 @@ async function interactiveSession(): Promise<void> {
       showMenu();
       const choice = await ask("\nChoose an option: ");
       if (choice === "0" || choice.toLowerCase() === "exit" || choice.toLowerCase() === "quit" || choice.toLowerCase() === "q") {
-        success("Session closed. Your saved goals remain on this device.");
+        success("See you next time. Your saved conversations and work remain on this device.");
         break;
       }
       if (choice === "9" || choice.toLowerCase() === "create") {
@@ -967,18 +967,14 @@ async function chatSession(): Promise<void> {
   const rl = createInterface({ input: stdin, output: stdout });
   try {
     title("GULZ AI");
-    console.log("Keep chatting naturally. Your recent conversation is saved privately on this device.");
-    console.log("Commands: /clear to clear this conversation · /exit to return");
+    console.log("Chat naturally. Your conversation is saved on this device. Type /clear to erase it or /exit to leave.");
     const messages = await readConversation();
     if (messages.length) {
-      label("History", messages.length + " recent messages restored");
-      const last = [...messages].reverse().find((message) => message.role === "assistant");
-      if (last) console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + "\n" + last.content);
-    }
-    const consent = await rl.question("Send messages to your selected AI provider? (y/N): ");
-    if (!["y", "yes"].includes(consent.trim().toLowerCase())) {
-      console.log("No messages were sent.");
-      return;
+      for (const message of messages.slice(-12)) {
+        const speaker = message.role === "user" ? "You" : "GULZ";
+        const color = message.role === "user" ? ansi.green : ansi.cyan;
+        console.log("\n" + paint(speaker, color, ansi.bold) + "\n" + message.content);
+      }
     }
     while (true) {
       const input = (await rl.question("\n" + paint("You › ", ansi.green, ansi.bold))).trim();
@@ -999,7 +995,6 @@ async function chatSession(): Promise<void> {
       }
       messages.push({ role: "user", content: input });
       try {
-        console.log(paint("GULZ is thinking...", ansi.dim));
         const answer = await generateChatReply(config, messages.slice(-40));
         messages.push({ role: "assistant", content: answer });
         await saveConversation(messages);
@@ -1009,7 +1004,6 @@ async function chatSession(): Promise<void> {
         warning(error instanceof Error ? error.message : String(error));
       }
     }
-    success("Conversation saved. You can return to it with gulz chat.");
   } finally {
     rl.close();
   }
