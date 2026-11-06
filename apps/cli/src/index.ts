@@ -102,7 +102,7 @@ function validateGoals(value: unknown): GoalRecord[] {
 
 function help(): void {
   console.log([
-    "GULZ — Goals. Executed.",
+    "GULZ — Tell it. Get it done.",
     "",
     "Usage: gulz <command>",
     "",
