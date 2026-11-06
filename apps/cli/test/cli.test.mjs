@@ -272,6 +272,16 @@ test("reports an unconfigured AI provider without exposing or inventing credenti
   });
 });
 
+test("AI connection test gives a clear setup path when no provider is configured", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "provider", "test");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /No AI provider is configured/);
+    assert.match(result.stderr, /provider builtin/);
+    assert.match(result.stderr, /provider configure/);
+  });
+});
+
 test("configures the built-in AI without asking the user for API details", async () => {
   await withHome(async (home) => {
     const result = invoke(home, "provider", "builtin");
