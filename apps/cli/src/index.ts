@@ -785,7 +785,7 @@ async function interactiveSession(): Promise<void> {
     title("WELCOME TO GULZ");
     console.log("Goals are saved on this device in " + paint(dataHome, ansi.cyan));
     const configuredProvider = await readProviderConfig().catch(() => null);
-    if (configuredProvider) warning("AI planning is ready. Review every generated plan and approve operations before GULZ executes them.");
+    if (configuredProvider) warning("AI is ready. Tell GULZ what you need done; review its plan and approve actions before execution.");
     else warning("AI is not set up yet. Choose option 7 to enable built-in GULZ AI or connect your own provider.");
     while (true) {
       showMenu();
