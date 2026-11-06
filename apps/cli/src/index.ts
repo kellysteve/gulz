@@ -11,7 +11,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { addGoalTask, createGoal, createPlannedOperation, operationRequiresApproval, transitionGoal, transitionTask, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
 import { executeLocalOperation, type LocalExecutionResult } from "@gulz/execution";
-import { generateGoalPlan, type OpenAICompatibleProviderConfig } from "@gulz/providers";
+import { generateChatReply, generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderChatMessage } from "@gulz/providers";
 
 const VERSION = "0.1.0";
 const dataHome = resolve(process.env.GULZ_HOME || join(homedir(), ".gulz"));
@@ -19,6 +19,7 @@ const goalsFile = join(dataHome, "goals.json");
 const goalsLockFile = join(dataHome, "goals.lock");
 const auditFile = join(dataHome, "audit.jsonl");
 const providerFile = join(dataHome, "provider.json");
+const conversationFile = join(dataHome, "conversation.json");
 const executionLockFile = join(dataHome, "execution.lock");
 
 const isInteractive = Boolean(stdout.isTTY && process.env.NO_COLOR === undefined && process.env.TERM !== "dumb");
@@ -114,7 +115,8 @@ function help(): void {
     "  provider status       Show provider connection settings",
     "  provider test         Test the configured AI connection with a sample request",
     "  provider remove       Remove saved provider credentials",
-    "  do <request>          Tell GULZ what you need; AI plans it and can execute it",
+    "  chat                  Open a continuous AI conversation with GULZ",
+    "  do <request>          Ask GULZ to plan and execute a specific task",
     "  plan <goal-id>        Generate a task plan with your configured AI provider",
     "  execute <goal-id>     Execute a reviewed plan with per-operation approval",
     "  resume <goal-id>      Resume paused or interrupted goal execution",
@@ -927,6 +929,94 @@ async function interactiveSession(): Promise<void> {
   }
 }
 
+
+async function readConversation(): Promise<ProviderChatMessage[]> {
+  await ensureDataHome();
+  try {
+    const info = await lstat(conversationFile);
+    if (!info.isFile() || info.isSymbolicLink()) throw new Error("Conversation storage must be a regular file, not a symbolic link.");
+    await chmod(conversationFile, 0o600);
+    const parsed: unknown = JSON.parse(await readFile(conversationFile, "utf8"));
+    if (!Array.isArray(parsed) || parsed.length > 40 || !parsed.every((item) =>
+      isRecord(item) && (item.role === "user" || item.role === "assistant") &&
+      typeof item.content === "string" && item.content.length > 0 && item.content.length <= 8000)) {
+      throw new Error("Saved conversation is invalid. It was left untouched.");
+    }
+    return parsed as ProviderChatMessage[];
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function saveConversation(messages: ProviderChatMessage[]): Promise<void> {
+  await ensureDataHome();
+  const bounded = messages.slice(-40);
+  const temporary = join(dataHome, "conversation." + randomUUID() + ".tmp");
+  try {
+    await writeFile(temporary, JSON.stringify(bounded, null, 2) + "\n", { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await rename(temporary, conversationFile);
+    await chmod(conversationFile, 0o600);
+  } finally {
+    await rm(temporary, { force: true }).catch(() => undefined);
+  }
+}
+
+async function chatSession(): Promise<void> {
+  if (!stdin.isTTY || !stdout.isTTY) throw new Error("GULZ chat requires an interactive terminal.");
+  const config = await readProviderConfig();
+  if (!config) throw new Error("AI is not configured. Run gulz provider builtin or choose AI setup from the GULZ menu.");
+  const rl = createInterface({ input: stdin, output: stdout });
+  try {
+    title("GULZ AI");
+    console.log("Keep chatting naturally. Your recent conversation is saved privately on this device.");
+    console.log("Commands: /clear to clear this conversation · /exit to return");
+    const messages = await readConversation();
+    if (messages.length) {
+      label("History", messages.length + " recent messages restored");
+      const last = [...messages].reverse().find((message) => message.role === "assistant");
+      if (last) console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + "\n" + last.content);
+    }
+    const consent = await rl.question("Send messages to your selected AI provider? (y/N): ");
+    if (!["y", "yes"].includes(consent.trim().toLowerCase())) {
+      console.log("No messages were sent.");
+      return;
+    }
+    while (true) {
+      const input = (await rl.question("\n" + paint("You › ", ansi.green, ansi.bold))).trim();
+      if (!input) continue;
+      if (input.toLowerCase() === "/exit" || input.toLowerCase() === "/quit") break;
+      if (input.toLowerCase() === "/clear") {
+        const confirmation = await rl.question("Clear the saved conversation? (y/N): ");
+        if (["y", "yes"].includes(confirmation.trim().toLowerCase())) {
+          messages.length = 0;
+          await saveConversation(messages);
+          success("Conversation cleared.");
+        }
+        continue;
+      }
+      if (input.length > 8000) {
+        warning("That message is too long. Keep each message under 8,000 characters.");
+        continue;
+      }
+      messages.push({ role: "user", content: input });
+      try {
+        console.log(paint("GULZ is thinking...", ansi.dim));
+        const answer = await generateChatReply(config, messages.slice(-40));
+        messages.push({ role: "assistant", content: answer });
+        await saveConversation(messages);
+        console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + "\n" + answer);
+      } catch (error) {
+        messages.pop();
+        warning(error instanceof Error ? error.message : String(error));
+      }
+    }
+    success("Conversation saved. You can return to it with gulz chat.");
+  } finally {
+    rl.close();
+  }
+}
+
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
   if (!command) return interactiveSession();
@@ -1088,6 +1178,11 @@ async function main(): Promise<void> {
     }
     console.error("Usage: gulz provider [builtin|configure|status|remove]");
     process.exitCode = 2;
+    return;
+  }
+  if (command === "chat") {
+    if (args.length) { console.error("Usage: gulz chat"); process.exitCode = 2; return; }
+    await chatSession();
     return;
   }
   if (command === "do") {
