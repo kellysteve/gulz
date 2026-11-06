@@ -151,7 +151,11 @@ while true; do
   case "$AI_CHOICE" in
     1)
       if [ -x "$GULZ_BIN_DIR/gulz" ]; then
-        "$GULZ_BIN_DIR/gulz" provider builtin || warn "Built-in AI setup could not be completed. Run gulz provider builtin later."
+        if "$GULZ_BIN_DIR/gulz" provider builtin; then
+          "$GULZ_BIN_DIR/gulz" provider test || warn "The built-in AI settings were saved, but the connection test did not pass. Run gulz provider test after installation."
+        else
+          warn "Built-in AI setup could not be completed. Run gulz provider builtin later."
+        fi
       else
         warn "GULZ command link is not available yet. Run gulz provider builtin after installation."
       fi
@@ -159,7 +163,11 @@ while true; do
       ;;
     2)
       if [ -x "$GULZ_BIN_DIR/gulz" ]; then
-        "$GULZ_BIN_DIR/gulz" provider configure || warn "Your provider was not configured. Run gulz provider configure later."
+        if "$GULZ_BIN_DIR/gulz" provider configure; then
+          "$GULZ_BIN_DIR/gulz" provider test || warn "Your provider settings were saved, but the connection test did not pass. Run gulz provider test after installation."
+        else
+          warn "Your provider was not configured. Run gulz provider configure later."
+        fi
       else
         warn "GULZ command link is not available yet. Run gulz provider configure after installation."
       fi
