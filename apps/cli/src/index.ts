@@ -1189,17 +1189,7 @@ async function main(): Promise<void> {
     if (!config) throw new Error("AI is not set up yet. Run 'gulz provider builtin' or open 'gulz' and choose AI setup first.");
     title("LET GULZ HANDLE IT");
     console.log(request);
-    warning("GULZ will send this request to your selected AI provider to create a task plan. Workspace files are not uploaded automatically.");
-    const consentRl = createInterface({ input: stdin, output: stdout });
-    let consent = "";
-    try {
-      consent = await consentRl.question("Send this request to your AI provider? (y/N): ");
-    } finally { consentRl.close(); }
-    if (!["y", "yes"].includes(consent.trim().toLowerCase())) {
-      console.log("Nothing was sent and no task was created.");
-      return;
-    }
-
+    console.log("Using your configured AI provider. Your request is sent directly; workspace files are not uploaded automatically.");
     console.log(paint("\nUnderstanding your request and preparing a safe plan...", ansi.cyan));
     const generated = await generateGoalPlan(config, { title: "User request", description: request });
     const goalId = randomUUID();
