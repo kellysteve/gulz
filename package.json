@@ -2,7 +2,7 @@
   "name": "gulz",
   "version": "0.1.0",
   "private": true,
-  "description": "GULZ — Goals. Executed.",
+  "description": "GULZ — Tell it. Get it done.",
   "workspaces": [
     "apps/*",
     "packages/*"
