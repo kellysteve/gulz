@@ -319,7 +319,6 @@ function validatePlannedOperations(raw: Awaited<ReturnType<typeof generateGoalPl
     });
   });
 }
-\n
 async function mutateGoalRecord(id: string, mutate: (goal: GoalRecord) => GoalRecord): Promise<GoalRecord> {
   return await withGoalsLock(async () => {
     const goals = await readGoals();
