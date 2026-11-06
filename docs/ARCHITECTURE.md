@@ -22,7 +22,7 @@ No interface may bypass the shared execution policy. AI output is untrusted inpu
 
 ## Current CLI lifecycle
 
-Goal states are validated by core. Planning moves an untouched draft goal to planned. Execution moves it to running and persists task/operation checkpoints. Ctrl+C safely pauses work; `gulz resume` recovers interrupted runs from saved checkpoints; `gulz cancel` requires confirmation. Completed and cancelled goals are terminal.
+Goal states are validated by core. The primary CLI workflow is `gulz do <request>`: the user describes the outcome in natural language, the selected AI proposes tasks and operations, GULZ creates an internal goal automatically, and the user can start execution without manually creating or selecting a goal. Manual goal and plan commands remain available as advanced controls. Execution moves the internal goal to running and persists task/operation checkpoints. Ctrl+C safely pauses work; `gulz resume` recovers interrupted runs from saved checkpoints; `gulz cancel` uses a yes/no confirmation. Completed and cancelled goals are terminal.
 
 Task states are independent. Executable tasks cannot be manually marked completed. They become completed only after all planned operations return verified results. Manual checklist tasks without operations remain user-managed.
 
@@ -33,9 +33,9 @@ Task states are independent. Executable tasks cannot be manually marked complete
 | Inspect path | Low | Authorized root only; symlinks rejected |
 | List directory | Low | Maximum 200 entry names/types; child symlinks never followed |
 | Read file | Low | UTF-8, bounded size, SHA-256 verified |
-| Create directory | Moderate | Typed approval; recursive path-component checks |
-| Write file | Moderate | Typed approval; atomic write; replaced file backed up |
-| Delete file | High | Typed approval; regular files only, 256 KiB max, moved to private recoverable backup |
+| Create directory | Moderate | Explicit yes/no approval; recursive path-component checks |
+| Write file | Moderate | Explicit yes/no approval; atomic write; replaced file backed up |
+| Delete file | High | Explicit yes/no approval; regular files only, 256 KiB max, moved to private recoverable backup |
 | Run command | Moderate | Exact argument allowlist, no shell; npm build/test workflows require approval |
 
 Arbitrary shell, package installation, permanent deletion, permission changes, general network access and SSH are not available through the current execution adapter.
