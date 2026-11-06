@@ -977,7 +977,7 @@ async function main(): Promise<void> {
     if (action === "status") {
       const config = await readProviderConfig();
       title("AI PROVIDER");
-      if (!config) { warning("No provider configured. Run gulz provider configure."); return; }
+      if (!config) { warning("No provider configured. Run gulz provider builtin for the recommended setup, or gulz provider configure to use your own."); return; }
       const isBuiltin = config.model === "gpt5-luna" && new URL(config.baseUrl).pathname.replace(/\/$/, "").endsWith("/gpt5-luna");
       success("Provider settings are available");
       label("Provider", isBuiltin ? "Built-in GULZ AI" : new URL(config.baseUrl).host);
