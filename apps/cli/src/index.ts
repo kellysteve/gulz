@@ -114,6 +114,7 @@ function help(): void {
     "  provider status       Show provider connection settings",
     "  provider test         Test the configured AI connection with a sample request",
     "  provider remove       Remove saved provider credentials",
+    "  do <request>          Tell GULZ what you need; AI plans it and can execute it",
     "  plan <goal-id>        Generate a task plan with your configured AI provider",
     "  execute <goal-id>     Execute a reviewed plan with per-operation approval",
     "  resume <goal-id>      Resume paused or interrupted goal execution",
@@ -1048,6 +1049,74 @@ async function main(): Promise<void> {
     }
     console.error("Usage: gulz provider [builtin|configure|status|remove]");
     process.exitCode = 2;
+    return;
+  }
+  if (command === "do") {
+    const request = args.join(" ").trim();
+    if (!request) {
+      console.error('Usage: gulz do "Describe what you want GULZ to do"');
+      process.exitCode = 2;
+      return;
+    }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("The AI task workflow needs an interactive terminal for data-sharing and execution approvals.");
+    const config = await readProviderConfig();
+    if (!config) throw new Error("AI is not set up yet. Run 'gulz provider builtin' or open 'gulz' and choose AI setup first.");
+    title("LET GULZ HANDLE IT");
+    console.log(request);
+    warning("GULZ will send this request to your selected AI provider to create a task plan. Workspace files are not uploaded automatically.");
+    const consentRl = createInterface({ input: stdin, output: stdout });
+    let consent = "";
+    try {
+      consent = await consentRl.question("Send this request to your AI provider? (y/N): ");
+    } finally { consentRl.close(); }
+    if (!["y", "yes"].includes(consent.trim().toLowerCase())) {
+      console.log("Nothing was sent and no task was created.");
+      return;
+    }
+
+    console.log(paint("\nUnderstanding your request and preparing a safe plan...", ansi.cyan));
+    const generated = await generateGoalPlan(config, { title: "User request", description: request });
+    const goalId = randomUUID();
+    const goalTitle = (generated.summary || request).trim().slice(0, 120) || "AI task";
+    const created = await withGoalsLock(async () => {
+      let goal = createGoal({ id: goalId, title: goalTitle, description: request });
+      for (const item of generated.tasks) {
+        goal = addGoalTask(goal, {
+          id: randomUUID(),
+          title: item.title,
+          description: item.description,
+          operations: validatePlannedOperations(item.operations),
+        });
+      }
+      goal = transitionGoal(goal, "planned");
+      const goals = await readGoals();
+      await saveGoals([...goals, goal]);
+      await recordAudit("goal.created_by_ai", { goalId, provider: config.model, tasks: generated.tasks.length });
+      return goal;
+    });
+
+    success("GULZ created a task plan for your request");
+    console.log(generated.summary);
+    for (const [index, task] of created.tasks.entries()) {
+      console.log(paint("\n" + (index + 1) + ". " + task.title, ansi.bold, ansi.cyan));
+      console.log(task.description);
+      for (const operation of task.operations) {
+        const riskColor = operation.risk === "low" ? ansi.green : ansi.yellow;
+        console.log("   • " + operation.kind + " [" + paint(operation.risk.toUpperCase(), riskColor) + "] " + operation.description);
+        if (operation.target) console.log("     Target: " + operation.target);
+        if (operation.commandPreview) console.log("     Command: " + operation.commandPreview);
+      }
+    }
+    const executeRl = createInterface({ input: stdin, output: stdout });
+    let executeNow = "";
+    try {
+      executeNow = await executeRl.question("\nWould you like GULZ to start doing this now? (y/N): ");
+    } finally { executeRl.close(); }
+    if (!["y", "yes"].includes(executeNow.trim().toLowerCase())) {
+      console.log("Your plan is saved. You can start it later with 'gulz execute " + goalId + "'.");
+      return;
+    }
+    await runGoalExecution(goalId, false);
     return;
   }
   if (command === "plan") {
