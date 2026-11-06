@@ -787,7 +787,7 @@ async function interactiveSession(): Promise<void> {
     title("WELCOME TO GULZ");
     console.log("Goals are saved on this device in " + paint(dataHome, ansi.cyan));
     const configuredProvider = await readProviderConfig().catch(() => null);
-    if (configuredProvider) warning("AI is ready. Tell GULZ what you need done; review its plan and approve actions before execution.");
+    if (configuredProvider) warning("AI is ready. Open chat and keep sending messages; use gulz do when you want GULZ to prepare an executable task plan.");
     else warning("AI is not set up yet. Choose option 7 to enable built-in GULZ AI or connect your own provider.");
     while (true) {
       showMenu();
@@ -889,11 +889,9 @@ async function interactiveSession(): Promise<void> {
         }
         return await interactiveSession();
       }
-      if (choice === "1" || choice.toLowerCase() === "do") {
-        const request = await ask("What do you want GULZ to do? ");
-        if (!request) continue;
+      if (choice === "1" || choice.toLowerCase() === "chat") {
         rl.close();
-        const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "do", request], { stdio: "inherit", env: process.env });
+        const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "chat"], { stdio: "inherit", env: process.env });
         if (result.error) throw result.error;
         return await interactiveSession();
       }
