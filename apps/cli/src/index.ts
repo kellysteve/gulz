@@ -744,7 +744,7 @@ async function interactiveSession(): Promise<void> {
     console.log("  " + paint("4.", ansi.cyan) + " Command reference");
     console.log("  " + paint("5.", ansi.cyan) + " Update GULZ");
     console.log("  " + paint("6.", ansi.cyan) + " Recent activity");
-    console.log("  " + paint("7.", ansi.cyan) + " Configure AI provider");
+    console.log("  " + paint("7.", ansi.cyan) + " Set up AI (built-in or your own provider)");
     console.log("  " + paint("8.", ansi.cyan) + " Plan a saved goal with AI");
     console.log("  " + paint("0.", ansi.dim) + " Exit");
   };
@@ -754,7 +754,7 @@ async function interactiveSession(): Promise<void> {
     console.log("Goals are saved on this device in " + paint(dataHome, ansi.cyan));
     const configuredProvider = await readProviderConfig().catch(() => null);
     if (configuredProvider) warning("AI planning is ready. Review every generated plan and approve operations before GULZ executes them.");
-    else warning("AI planning is not configured. Run gulz provider builtin or gulz provider configure to get started.");
+    else warning("AI is not set up yet. Choose option 7 to enable built-in GULZ AI or connect your own provider.");
     while (true) {
       showMenu();
       const choice = await ask("\nChoose an option: ");
@@ -838,9 +838,21 @@ async function interactiveSession(): Promise<void> {
         return;
       }
       if (choice === "7" || choice.toLowerCase() === "provider") {
+        console.log("\n  1) Built-in GULZ AI (recommended)");
+        console.log("  2) Use my own OpenAI-compatible provider");
+        console.log("  3) Test the current AI connection");
+        console.log("  0) Back");
+        const setupChoice = await ask("Choose an AI setup option: ");
+        if (setupChoice === "0" || !setupChoice) continue;
+        const action = setupChoice === "1" ? "builtin" : setupChoice === "2" ? "configure" : setupChoice === "3" ? "test" : "";
+        if (!action) { warning("Choose 1, 2, 3 or 0."); continue; }
         rl.close();
-        const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "provider", "configure"], { stdio: "inherit", env: process.env });
+        const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "provider", action], { stdio: "inherit", env: process.env });
         if (result.error) throw result.error;
+        if (result.status === 0 && (action === "builtin" || action === "configure")) {
+          const testResult = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "provider", "test"], { stdio: "inherit", env: process.env });
+          if (testResult.error) throw testResult.error;
+        }
         return await interactiveSession();
       }
       if (choice === "8" || choice.toLowerCase() === "plan") {
