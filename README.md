@@ -20,7 +20,7 @@ On Termux, Linux, macOS or a Linux VPS, install Node.js 20.19+ (Termux can insta
 curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
 ~~~
 
-The installer detects the platform, asks where to install the source checkout and requests confirmation before installing only the CLI workspace dependencies, building the CLI and linking the `gulz` command. It installs only the CLI workspaces and their development dependencies (including TypeScript), deliberately skipping the website's Wrangler/Workerd dependency, which does not support Android's Termux environment. Run it as your normal user, not with `sudo`. Windows users should follow the PowerShell instructions in [docs/INSTALLATION.md](docs/INSTALLATION.md). This installs the GULZ command-line application from its source repository.
+The installer detects the platform, asks where to install the source checkout, requests confirmation, then offers built-in GULZ AI, your own provider, or AI setup later. It tests the selected provider with a generic sample request (no saved goals or workspace files) before finishing. It installs only the CLI workspace dependencies, builds the CLI and links the `gulz` command. It installs only the CLI workspaces and their development dependencies (including TypeScript), deliberately skipping the website's Wrangler/Workerd dependency, which does not support Android's Termux environment. Run it as your normal user, not with `sudo`. Windows users should follow the PowerShell instructions in [docs/INSTALLATION.md](docs/INSTALLATION.md). This installs the GULZ command-line application from its source repository.
 
 ## Product experience
 
