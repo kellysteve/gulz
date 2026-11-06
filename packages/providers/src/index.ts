@@ -139,6 +139,82 @@ function parsePlanContent(content: unknown): GeneratedGoalPlan {
   return { summary, tasks };
 }
 
+
+export interface ProviderChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+/**
+ * Sends a bounded conversational turn to the selected provider.
+ * Conversation history is supplied by the caller and is never used to authorize operations.
+ */
+export async function generateChatReply(
+  config: OpenAICompatibleProviderConfig,
+  messages: ProviderChatMessage[],
+): Promise<string> {
+  if (!config || typeof config !== "object") throw new ProviderError("Provider configuration is required.");
+  if (!Array.isArray(messages) || messages.length < 1 || messages.length > 40) {
+    throw new ProviderError("A conversation must contain between 1 and 40 recent messages.");
+  }
+  const bounded = messages.map((message) => {
+    if (!message || (message.role !== "user" && message.role !== "assistant") ||
+        typeof message.content !== "string" || !message.content.trim() || message.content.length > 8000) {
+      throw new ProviderError("A conversation message is invalid or exceeds the 8,000-character limit.");
+    }
+    return { role: message.role, content: message.content.trim() };
+  });
+  const endpoint = providerEndpoint(requiredString(config.baseUrl, "provider URL", 2000));
+  const apiKey = requiredString(config.apiKey, "API key", 4096);
+  const model = requiredString(config.model, "model name", 300);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Math.max(1000, Math.min(config.timeoutMs ?? 60000, 120000)));
+  const abortFromCaller = () => controller.abort();
+  config.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  try {
+    const system = "You are GULZ, a capable, honest and practical AI assistant. Help the user think, learn and get work done. Keep conversation context. Never claim to have inspected files, run commands, changed a machine or completed an action unless a separate authorized execution tool has actually done so. AI responses are not permission to perform operations. If a request requires machine changes, explain that the user can ask GULZ to prepare an execution plan; never invent tool results.";
+    let response: Response;
+    if (endpoint.builtin) {
+      const url = new URL(endpoint.url);
+      url.searchParams.set("q", system + "\n\nConversation:\n" + bounded.map((item) => item.role.toUpperCase() + ": " + item.content).join("\n"));
+      url.searchParams.set("apikey", apiKey);
+      response = await fetch(url, { method: "GET", headers: { "Accept": "application/json" }, signal: controller.signal });
+    } else {
+      response = await fetch(endpoint.url, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ model, temperature: 0.4, messages: [{ role: "system", content: system }, ...bounded] }),
+        signal: controller.signal,
+      });
+    }
+    if (!response.ok) throw new ProviderError("AI provider request failed with HTTP " + response.status + ". Check the endpoint, model and API key.");
+    const responseText = await response.text();
+    if (responseText.length > 1_000_000) throw new ProviderError("AI provider response exceeded the 1 MB safety limit.");
+    let payload: unknown;
+    try { payload = JSON.parse(responseText); } catch { throw new ProviderError("AI provider returned invalid response JSON."); }
+    let answer: unknown;
+    if (endpoint.builtin) {
+      if (!isRecord(payload) || payload.success === false) throw new ProviderError("Built-in GULZ AI returned an invalid response.");
+      answer = payload.response;
+    } else {
+      if (!isRecord(payload) || !Array.isArray(payload.choices)) throw new ProviderError("AI provider returned an invalid chat-completions response.");
+      const choice = payload.choices[0];
+      if (!isRecord(choice) || !isRecord(choice.message)) throw new ProviderError("AI provider returned no assistant message.");
+      answer = choice.message.content;
+    }
+    if (typeof answer !== "string" || !answer.trim()) throw new ProviderError("AI provider returned an empty assistant response.");
+    if (answer.length > 32000) throw new ProviderError("AI response exceeded the 32,000-character limit.");
+    return answer.trim();
+  } catch (error) {
+    if (error instanceof ProviderError) throw error;
+    if (controller.signal.aborted) throw new ProviderError("AI conversation was cancelled or timed out.");
+    throw new ProviderError(error instanceof Error ? error.message : "AI conversation request failed.");
+  } finally {
+    clearTimeout(timeout);
+    config.signal?.removeEventListener("abort", abortFromCaller);
+  }
+}
+
 /**
  * Requests a structured plan from any OpenAI-compatible chat-completions API.
  * The provider is untrusted: this function validates shape and size only.
