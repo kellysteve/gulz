@@ -114,7 +114,7 @@ Connect to a Linux VPS with your own SSH account. Install Node.js 20.19+ and cur
 curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
 ~~~
 
-The installer detects Linux, asks for an install folder and confirmation, then builds and links the CLI. It does not set up SSH access or configure a service daemon.
+The installer detects Linux, asks for an install folder and confirmation, builds and links the CLI, then asks whether to use built-in GULZ AI, connect your own OpenAI-compatible provider/model, or configure AI later. The selected connection is tested with a generic request. You can change the provider or model later.
 
 The current CLI runs on the server where it is installed. GULZ does not yet provide remote SSH orchestration or manage other machines automatically. Do not run the CLI as root unless a future, explicitly documented operation requires it.
 
@@ -126,14 +126,13 @@ After building and linking the CLI:
 gulz --version
 gulz doctor
 gulz init
-gulz goal create "Prepare my first development environment"
+gulz do "Prepare my development environment and check what needs to be installed"
 gulz goals
-gulz goal show <goal-id>
 ~~~
 
 Run `gulz` with no arguments whenever you want to open the interactive terminal session. You do not need to repeat the installation commands each time; once linked, the `gulz` command is available from your terminal. Close the session with option 0.
 
-To update this installation later, run `gulz update` from an interactive terminal. Review the repository path and type `UPDATE GULZ` to approve. GULZ then runs a fast-forward-only Git update, installs only the CLI workspaces (including TypeScript development dependencies), rebuilds the CLI and refreshes the global link. It deliberately does not install the website's Wrangler/Workerd dependency. Close the current session and run `gulz` again. This updater is for source-checkout installations; published package updates are not available yet.
+To update this installation later, run `gulz update` from an interactive terminal and answer `y` or `n`. GULZ runs a fast-forward-only Git update, installs only the CLI workspaces (including TypeScript development dependencies), rebuilds the CLI and refreshes the global link. It then asks whether you want to configure or change your AI provider/model. You can keep your current settings and change them later with the AI setup menu. It deliberately does not install the website's Wrangler/Workerd dependency. Close the current session and run `gulz` again. This updater is for source-checkout installations; published package updates are not available yet.
 
 Goals are stored locally in ~/.gulz/goals.json. Set GULZ_HOME to choose another data directory. The CLI validates stored records before use and refuses malformed data instead of silently overwriting it.
 
@@ -151,9 +150,9 @@ gulz run git log -1 --oneline
 gulz run git diff --stat
 ~~~
 
-File paths are confined to the current working directory; absolute paths, traversal and symbolic links are rejected. Reads and writes are limited to 256 KiB by default. Writes and restores require a typed, path-specific confirmation. Replaced files are preserved as owner-only backups.
+File paths are confined to the current working directory; absolute paths, traversal and symbolic links are rejected. Reads and writes are limited to 256 KiB by default. Writes and restores show the target and ask for a simple yes/no confirmation. Replaced files are preserved as owner-only backups.
 
-The run command is not a general shell. It accepts only the fixed diagnostic allowlist documented in the CLI reference, starts processes without a shell, strips inherited command-override environment variables, caps combined output at 64 KiB and requires typed approval. Package installs, arbitrary shell commands, deletes, permission changes and remote execution are not available.
+The run command is not a general shell. It accepts only the fixed diagnostic allowlist documented in the CLI reference, starts processes without a shell, strips inherited command-override environment variables, caps combined output at 64 KiB and requires an explicit yes/no approval. Package installs, arbitrary shell commands, deletes, permission changes and remote execution are not available.
 
 ## Run the automated checks
 
