@@ -815,7 +815,7 @@ async function interactiveSession(): Promise<void> {
       if (choice === "2" || choice.toLowerCase() === "goals" || choice.toLowerCase() === "view") {
         const goals = await readGoals();
         if (!goals.length) {
-          console.log("No saved goals yet. Choose 1 to create your first goal.");
+          console.log("No saved goals yet. Choose 1 to tell GULZ what you need done, or 9 to create a manual goal.");
           continue;
         }
         console.log("\nSaved goals:");
