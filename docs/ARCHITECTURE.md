@@ -2,7 +2,7 @@
 
 ## Product direction
 
-GULZ is an open-source supervised goal-execution and machine-operations platform. Its three intended interfaces share one policy and state model:
+GULZ is an open-source AI assistant and supervised work-execution platform. Its three intended interfaces share one policy and state model:
 
 1. **Terminal:** direct commands and local machine control.
 2. **AI assistant:** natural-language goal capture and structured planning.
@@ -13,14 +13,14 @@ No interface may bypass the shared execution policy. AI output is untrusted inpu
 ## Package boundaries
 
 - **CLI (`apps/cli`):** terminal UX, local goal storage, provider setup, plan review, approvals, execution orchestration, recovery, update/repair/uninstall.
-- **Core (`packages/core`):** goal/task records, typed operation contracts, lifecycle transitions and risk-derived approval requirements. No network or machine side effects.
+- **Core (`packages/core`):** internal work/task records, typed operation contracts, lifecycle transitions and risk-derived approval requirements. No network or machine side effects.
 - **Execution (`packages/execution`):** the only current machine-operation adapter. It validates operations again, enforces authorized-root path rules, symlink protection, approvals, timeouts, output limits and verification.
 - **Providers (`packages/providers`):** OpenAI-compatible conversational response and structured planning adapters. Chat responses are text only; planner proposals are untrusted and local policy validates every path, command, risk and operation before anything is saved or executed.
 - **Local state:** currently stored under `~/.gulz` (or `GULZ_HOME`) as validated JSON/JSONL files with owner-only permissions where supported. SQLite, encrypted secret storage and backup/restore policy remain future hardening work.
 - **Website/API:** Cloudflare Workers and static assets. The website is not yet the source of truth for local machine execution.
 - **Remote adapters:** SSH/VPS and connected-service adapters are not yet implemented.
 
-## Continuous chat lifecycle\n\n`gulz chat` opens a persistent interactive conversation. Recent user and assistant messages are stored in `~/.gulz/conversation.json` (owner-only permissions where supported), bounded to 40 messages and 8,000 characters per message. The user confirms provider data sharing once per chat session. `/clear` requires a yes/no confirmation; `/exit` returns to the shell. Conversation history is sent to the configured provider as context. Chat is deliberately separate from machine execution: an assistant response cannot execute an operation or grant permission. Use the supervised `gulz do` workflow for the current task planner and execution engine.\n\n## Current CLI lifecycle
+## Continuous chat lifecycle\n\n`gulz chat` opens a persistent interactive conversation. Recent user and assistant messages are stored in `~/.gulz/conversation.json` (owner-only permissions where supported), bounded to 40 messages and 8,000 characters per message. Provider configuration is the user's one-time choice to connect an AI service. Once configured, chat messages are sent directly to that provider without a repeated per-session or per-message consent prompt. The user can change or remove the provider in settings. `/clear` requires a yes/no confirmation; `/exit` returns to the shell. Conversation history is sent to the configured provider as context. Chat is deliberately separate from machine execution: an assistant response cannot execute an operation or grant permission. Use the supervised `gulz do` workflow for the current task planner and execution engine.\n\n## Current CLI lifecycle
 
 Goal states are validated by core. The primary CLI workflow is `gulz do <request>`: the user describes the outcome in natural language, the selected AI proposes tasks and operations, GULZ creates an internal goal automatically, and the user can start execution without manually creating or selecting a goal. Manual goal and plan commands remain available as advanced controls. Execution moves the internal goal to running and persists task/operation checkpoints. Ctrl+C safely pauses work; `gulz resume` recovers interrupted runs from saved checkpoints; `gulz cancel` uses a yes/no confirmation. Completed and cancelled goals are terminal.
 
