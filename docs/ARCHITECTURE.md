@@ -52,7 +52,7 @@ Before a planning request, the user confirms that the goal title and description
 2. Ask the configured provider for a structured plan after explicit data-sharing confirmation.
 3. Validate task/operation count, paths, operation kinds and command allowlists.
 4. Save the plan for user review.
-5. On explicit execute, run low-risk reads/inspection and request typed approval for moderate/high-risk operations.
+5. On explicit execute, run low-risk reads/inspection and request explicit yes/no approval for moderate/high-risk operations.
 6. Verify each result and persist its operation ID as a checkpoint.
 7. On restart, skip saved checkpoints; verify a write's expected content or a deterministic delete backup before recovering a checkpoint.
 8. Persist task/goal status and local audit events. A process-wide execution lock prevents concurrent runs.
