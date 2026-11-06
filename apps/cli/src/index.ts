@@ -747,6 +747,7 @@ async function interactiveSession(): Promise<void> {
     console.log("  " + paint("6.", ansi.cyan) + " Recent activity");
     console.log("  " + paint("7.", ansi.cyan) + " Set up AI (built-in or your own provider)");
     console.log("  " + paint("8.", ansi.cyan) + " Plan a saved goal with AI");
+    console.log("  " + paint("9.", ansi.cyan) + " Tell GULZ what you want done");
     console.log("  " + paint("0.", ansi.dim) + " Exit");
   };
 
@@ -856,6 +857,14 @@ async function interactiveSession(): Promise<void> {
         }
         return await interactiveSession();
       }
+      if (choice === "9" || choice.toLowerCase() === "do") {
+        const request = await ask("What do you want GULZ to do? ");
+        if (!request) continue;
+        rl.close();
+        const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "do", request], { stdio: "inherit", env: process.env });
+        if (result.error) throw result.error;
+        return await interactiveSession();
+      }
       if (choice === "8" || choice.toLowerCase() === "plan") {
         const drafts = (await readGoals()).filter((goal) => goal.status === "draft" && goal.tasks.length === 0);
         if (!drafts.length) { warning("Create a new draft goal before requesting an AI plan."); continue; }
@@ -881,7 +890,7 @@ async function interactiveSession(): Promise<void> {
         help();
         continue;
       }
-      console.log("I didn't recognise that option. Choose 1, 2, 3, 4, 5, 6, 7, 8 or 0.");
+      console.log("I didn't recognise that option. Choose 1, 2, 3, 4, 5, 6, 7, 8, 9 or 0.");
     }
   } finally {
     rl.close();
