@@ -112,6 +112,7 @@ function help(): void {
     "  provider builtin      Use the built-in GULZ AI",
     "  provider configure    Set your own OpenAI-compatible AI provider",
     "  provider status       Show provider connection settings",
+    "  provider test         Test the configured AI connection with a sample request",
     "  provider remove       Remove saved provider credentials",
     "  plan <goal-id>        Generate a task plan with your configured AI provider",
     "  execute <goal-id>     Execute a reviewed plan with per-operation approval",
@@ -930,6 +931,24 @@ async function main(): Promise<void> {
   }
   if (command === "provider") {
     const action = args[0] ?? "status";
+    if (action === "test") {
+      if (args.length > 1) { console.error("Usage: gulz provider test"); process.exitCode = 2; return; }
+      const config = await readProviderConfig();
+      if (!config) throw new Error("No AI provider is configured. Choose the built-in GULZ AI with 'gulz provider builtin' or configure your own with 'gulz provider configure'.");
+      title("TEST AI CONNECTION");
+      console.log("Sending a small sample request only. No workspace files or saved goals are included.");
+      const plan = await generateGoalPlan(config, {
+        title: "GULZ AI connection test",
+        description: "Create a tiny safe test plan with exactly one inspect operation targeting the current workspace root. Return the required structured JSON only.",
+      });
+      const operationCount = plan.tasks.reduce((total, task) => total + task.operations.length, 0);
+      if (!plan.tasks.length || !operationCount) throw new Error("The AI connection responded, but did not return a usable plan.");
+      success("AI connection works and returned a valid structured plan.");
+      label("Test tasks", String(plan.tasks.length));
+      label("Test operations", String(operationCount));
+      console.log("The test plan was discarded. Nothing was saved or executed.");
+      return;
+    }
     if (action === "builtin") {
       if (args.length > 1) { console.error("Usage: gulz provider builtin"); process.exitCode = 2; return; }
       if (process.env.GULZ_AI_BASE_URL || process.env.GULZ_AI_MODEL || process.env.GULZ_AI_API_KEY) {
