@@ -2,14 +2,14 @@
 
 This roadmap distinguishes source changes from verified, user-tested capabilities. A feature is not complete for release until its tests, platform behavior, security review and documentation are verified.
 
-## Current milestone — continuous CLI assistant
+## Product direction\n\nGULZ is presented as a general AI assistant and supervised agent, not a goal manager. Users speak naturally; goals, plans and task records are internal implementation details and should not be pushed into the everyday interface. Preferred product line: **Tell it. Get it done.**\n\n## Current milestone — continuous CLI assistant
 
 - [x] Add `gulz chat` as a continuous interactive conversation.
 - [x] Keep recent conversation context across turns.
 - [x] Persist up to 40 recent messages in the private local GULZ data directory.
 - [x] Add `/clear` and `/exit` controls.
 - [x] Support built-in GULZ AI and OpenAI-compatible chat-completions providers.
-- [x] Make chat the first interactive-menu action.
+- [x] Make chat the first interactive-menu action.\n- [x] Remove repeated provider-consent prompts from chat after the user has configured a provider.\n- [x] Simplify chat output so restored conversation and assistant replies are shown directly.
 - [x] Keep conversational responses separate from machine-operation authorization.
 - [x] Add provider and CLI help tests.
 - [ ] Run provider, CLI and TypeScript tests on a supported development host.
@@ -70,7 +70,7 @@ This roadmap distinguishes source changes from verified, user-tested capabilitie
 ## User verification required now
 
 1. Run `gulz update` in the existing source installation.
-2. Keep the current provider settings when asked unless you intentionally want to change them.
+2. Keep the current provider settings unless you intentionally want to change them. Provider setup is the one-time connection choice; chat should not ask again each session.
 3. Run `gulz chat`, approve sending messages to the configured provider, and send at least two related messages.
 4. Exit with `/exit`, run `gulz chat` again, and confirm the recent conversation is restored.
 5. Try `/clear` and confirm it removes the saved conversation.
