@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { homedir, platform, arch, release } from "node:os";
+import { homedir, platform, aroh, release } from "node:os";
 import { access, appendFile, chmod, lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { constants, existsSync, type Stats } from "node:fs";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
@@ -381,14 +381,14 @@ async function askForOperationApproval(operationId: string, signal: AbortSignal)
   const rl = createInterface({ input: stdin, output: stdout });
   let onAbort: (() => void) | undefined;
   try {
-    const question = rl.question("Type APPROVE " + operationId + " to authorize this operation: ").catch(() => "");
+    const question = rl.question("Approve this operation? (y/N): ").catch(() => "");
     const aborted = new Promise<string>((resolveQuestion) => {
       onAbort = () => resolveQuestion("");
       signal.addEventListener("abort", onAbort, { once: true });
       if (signal.aborted) onAbort();
     });
     const answer = await Promise.race([question, aborted]);
-    return answer === "APPROVE " + operationId;
+    return ["y", "yes"].includes(answer.trim().toLowerCase());
   } finally {
     if (onAbort) signal.removeEventListener("abort", onAbort);
     rl.close();
@@ -702,8 +702,8 @@ async function updateInstallation(): Promise<void> {
     console.log("Repository: " + installDirectory);
     console.log("This will fast-forward the source checkout, install only CLI workspace dependencies (including TypeScript), rebuild the CLI and refresh the global link. The website and Wrangler/Workerd are excluded.");
     console.log("Local goal data in " + dataHome + " will not be intentionally changed.");
-    const confirmation = await rl.question("Type UPDATE GULZ to continue: ");
-    if (confirmation !== "UPDATE GULZ") { console.log("Update cancelled."); return; }
+    const confirmation = await rl.question("Continue with the update? (y/N): ");
+    if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Update cancelled."); return; }
   } finally { rl.close(); }
   await withExecutionLock(async () => {
     const dirty = spawnSync("git", ["status", "--porcelain"], { cwd: installDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
@@ -919,8 +919,8 @@ async function main(): Promise<void> {
     const rl = createInterface({ input: stdin, output: stdout });
     try {
       warning("This cancels the goal and all unfinished tasks. Completed work and its audit history are preserved.");
-      const confirmation = await rl.question("Type CANCEL " + id + " to confirm: ");
-      if (confirmation !== "CANCEL " + id) { console.log("Cancellation aborted."); return; }
+      const confirmation = await rl.question("Cancel this goal and its unfinished tasks? (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Cancellation aborted."); return; }
     } finally { rl.close(); }
     await withExecutionLock(async () => {
       await mutateGoalRecord(id, (current) => {
@@ -1039,8 +1039,8 @@ async function main(): Promise<void> {
       if (!stdin.isTTY || !stdout.isTTY) throw new Error("Removing provider settings requires an interactive terminal.");
       const rl = createInterface({ input: stdin, output: stdout });
       try {
-        const confirmation = await rl.question("Type REMOVE PROVIDER to delete the saved API key: ");
-        if (confirmation !== "REMOVE PROVIDER") { console.log("Removal cancelled."); return; }
+        const confirmation = await rl.question("Remove the saved AI provider settings? (y/N): ");
+        if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Removal cancelled."); return; }
       } finally { rl.close(); }
       await rm(providerFile, { force: true });
       success("Saved provider settings removed");
@@ -1068,8 +1068,8 @@ async function main(): Promise<void> {
       label("Provider", providerName);
       label("Model", config.model);
       warning("Only this goal's title and description will be sent. GULZ will not upload workspace files.");
-      const confirmation = await rl.question("Type SEND GOAL " + id + " to request a plan: ");
-      if (confirmation !== "SEND GOAL " + id) { console.log("Planning cancelled; nothing was sent."); return; }
+      const confirmation = await rl.question("Send this goal description to the selected AI provider? (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Planning cancelled; nothing was sent."); return; }
     } finally { rl.close(); }
     console.log(paint("Planning your goal...", ansi.cyan));
     const generated = await generateGoalPlan(config, { title: goal.title, description: goal.description });
@@ -1124,8 +1124,8 @@ async function main(): Promise<void> {
       title("REPAIR GULZ");
       console.log("Source checkout: " + installDirectory);
       console.log("This reinstalls CLI workspace dependencies, rebuilds the CLI and refreshes the global link. Local data is not changed.");
-      const confirmation = await rl.question("Type REPAIR GULZ to continue: ");
-      if (confirmation !== "REPAIR GULZ") { console.log("Repair cancelled."); return; }
+      const confirmation = await rl.question("Repair the GULZ CLI now? (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Repair cancelled."); return; }
     } finally { rl.close(); }
     const npm = process.platform === "win32" ? "npm.cmd" : "npm";
     const repairEnv: NodeJS.ProcessEnv = { ...process.env };
@@ -1164,8 +1164,8 @@ async function main(): Promise<void> {
       console.log("Source checkout: " + installDirectory);
       console.log("Local goals, provider settings and activity history in " + dataHome + " will be preserved.");
       warning("This removes the global CLI link and deletes the GULZ source checkout.");
-      const confirmation = await rl.question("Type UNINSTALL GULZ to continue: ");
-      if (confirmation !== "UNINSTALL GULZ") { console.log("Uninstallation cancelled."); return; }
+      const confirmation = await rl.question("Remove the GULZ command and source files? Your saved goals and AI settings will stay. (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Uninstallation cancelled."); return; }
     } finally { rl.close(); }
     await withExecutionLock(async () => {
       const npm = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -1280,8 +1280,8 @@ async function main(): Promise<void> {
       console.log("Command: " + preview);
       console.log("Working directory: " + process.cwd());
       console.log("Only fixed diagnostics and CLI build/test workflows are supported. No shell is used; npm workflows execute repository scripts and require explicit approval.");
-      const confirmation = await rl.question(`Type RUN ${preview} to approve this command: `);
-      if (confirmation !== `RUN ${preview}`) { console.log("Command cancelled."); return; }
+      const confirmation = await rl.question("Run this approved command? (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Command cancelled."); return; }
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true, timeoutMs: executable === "npm" ? 180_000 : 5_000 });
       await recordExecutionAudit(result);
       title("COMMAND RESULT");
@@ -1314,8 +1314,8 @@ async function main(): Promise<void> {
     const rl = createInterface({ input: stdin, output: stdout });
     try {
       console.log("Backup: " + backupPath + "\nRestore target: " + target + "\nBytes: " + Buffer.byteLength(content, "utf8"));
-      const confirmation = await rl.question(`Type RESTORE ${target} to approve this rollback: `);
-      if (confirmation !== `RESTORE ${target}`) { console.log("Restore cancelled."); return; }
+      const confirmation = await rl.question("Restore this backup to the target path? (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Restore cancelled."); return; }
       const operation = createPlannedOperation({
         id: randomUUID(), kind: "write_file", description: "Restore a local file from backup",
         risk: "moderate", target, content,
@@ -1338,8 +1338,8 @@ async function main(): Promise<void> {
     try {
       console.log("File: " + target);
       warning("The file will be moved to a private backup in the same directory, not permanently erased. Restore it with gulz restore if needed.");
-      const confirmation = await rl.question("Type DELETE FILE " + target + " to approve: ");
-      if (confirmation !== "DELETE FILE " + target) { console.log("Deletion cancelled."); return; }
+      const confirmation = await rl.question("Move this file into a recoverable backup? (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Deletion cancelled."); return; }
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
       await recordExecutionAudit(result);
       if (result.output.kind !== "file_deleted" || !result.output.backupPath) throw new Error("GULZ could not verify the recoverable file backup.");
@@ -1361,8 +1361,8 @@ async function main(): Promise<void> {
     try {
       console.log("Directory: " + target);
       warning("GULZ will create missing parent directories if necessary. Existing directories are left unchanged.");
-      const confirmation = await rl.question("Type CREATE DIRECTORY " + target + " to approve: ");
-      if (confirmation !== "CREATE DIRECTORY " + target) { console.log("Directory creation cancelled."); return; }
+      const confirmation = await rl.question("Create this directory? (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Directory creation cancelled."); return; }
       const result = await executeLocalOperation(operation, { rootDirectory: process.cwd(), approved: true });
       await recordExecutionAudit(result);
       success("Directory created or already present · " + target);
@@ -1487,8 +1487,8 @@ async function main(): Promise<void> {
       const goal = (await readGoals()).find((item) => item.id === id);
       if (!goal) throw new Error("Goal not found.");
       warning("This permanently removes the selected goal and its task list from local GULZ storage.");
-      const confirmation = await rl.question("Type DELETE " + id + " to confirm: ");
-      if (confirmation !== "DELETE " + id) { console.log("Deletion cancelled."); return; }
+      const confirmation = await rl.question("Permanently remove this saved goal and its task list? (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Deletion cancelled."); return; }
       await withExecutionLock(async () => {
         await withGoalsLock(async () => {
         const goals = await readGoals();
@@ -1565,8 +1565,8 @@ async function main(): Promise<void> {
     if (goal.status !== "draft" || task.operations.length > 0) throw new Error("Only manual checklist tasks in draft goals can be deleted.");
     const rl = createInterface({ input: stdin, output: stdout });
     try {
-      const confirmation = await rl.question("Type DELETE TASK " + taskId + " to remove this checklist task: ");
-      if (confirmation !== "DELETE TASK " + taskId) { console.log("Task deletion cancelled."); return; }
+      const confirmation = await rl.question("Remove this checklist task? (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Task deletion cancelled."); return; }
     } finally { rl.close(); }
     await withExecutionLock(async () => {
       await withGoalsLock(async () => {
