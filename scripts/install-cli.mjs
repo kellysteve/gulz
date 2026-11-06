@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
@@ -13,7 +13,6 @@ const workspaces = [
   ["@gulz/providers", "packages/providers/package.json"],
   ["@gulz/cli", "apps/cli/package.json"],
 ];
-const manifests = ["package.json", ...workspaces.map(([, path]) => path)];
 const marker = join(root, "node_modules", ".gulz-cli-install.json");
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 
