@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { homedir, platform, aroh, release } from "node:os";
+import { arch, homedir, platform, release } from "node:os";
 import { access, appendFile, chmod, lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { constants, existsSync, type Stats } from "node:fs";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
