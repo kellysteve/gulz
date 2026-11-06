@@ -27,8 +27,6 @@ gulz goals
 gulz audit
 gulz provider status
 gulz provider test
-gulz provider test
-gulz provider test
 gulz plan <goal-id>
 gulz execute <goal-id>
 gulz resume <goal-id>
