@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateGoalPlan, ProviderError } from "../dist/index.js";
+import { generateChatReply, generateGoalPlan, ProviderError } from "../dist/index.js";
 
 test("rejects insecure remote provider URLs", async () => {
   await assert.rejects(
@@ -153,6 +153,67 @@ test("uses the built-in GULZ AI request format", async () => {
       { title: "Inspect this project", description: "" },
     );
     assert.equal(plan.tasks.length, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+
+test("sends bounded conversational history to an OpenAI-compatible provider", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, options) => {
+    const body = JSON.parse(String(options?.body));
+    assert.equal(body.messages.at(-1).content, "Can you explain that again?");
+    assert.equal(body.messages.at(-2).content, "Scalar means magnitude only.");
+    return new Response(JSON.stringify({ choices: [{ message: { content: "Of course. A scalar has size but no direction." } }] }), { status: 200 });
+  };
+  try {
+    const answer = await generateChatReply(
+      { baseUrl: "https://api.example.com/v1", apiKey: "test-key", model: "test-model" },
+      [
+        { role: "assistant", content: "Scalar means magnitude only." },
+        { role: "user", content: "Can you explain that again?" },
+      ],
+    );
+    assert.match(answer, /no direction/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("rejects invalid or oversized conversational history before network access", async () => {
+  await assert.rejects(
+    generateChatReply(
+      { baseUrl: "https://api.example.com/v1", apiKey: "test-key", model: "test-model" },
+      [{ role: "system", content: "not allowed" }],
+    ),
+    /message is invalid/,
+  );
+  await assert.rejects(
+    generateChatReply(
+      { baseUrl: "https://api.example.com/v1", apiKey: "test-key", model: "test-model" },
+      Array.from({ length: 41 }, () => ({ role: "user", content: "hello" })),
+    ),
+    /between 1 and 40/,
+  );
+});
+
+test("uses the built-in GULZ AI request format for conversational turns", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    const parsed = new URL(String(url));
+    assert.equal(parsed.pathname, "/api/v1/ai/gpt5-luna");
+    assert.match(parsed.searchParams.get("q") ?? "", /CONTINUOUS|capable, honest and practical AI assistant/);
+    assert.match(parsed.searchParams.get("q") ?? "", /USER: Hello GULZ/);
+    assert.equal(options?.method, "GET");
+    return new Response(JSON.stringify({ success: true, response: "Hello! What can I help you with?" }), { status: 200 });
+  };
+  try {
+    const answer = await generateChatReply(
+      { baseUrl: "https://apis.nabeestech.com/api/v1/ai/gpt5-luna", apiKey: "test-key", model: "gpt5-luna" },
+      [{ role: "user", content: "Hello GULZ" }],
+    );
+    assert.match(answer, /What can I help/);
   } finally {
     globalThis.fetch = originalFetch;
   }
