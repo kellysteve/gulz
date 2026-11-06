@@ -184,6 +184,13 @@ test("requires a title when creating a goal", async () => {
   });
 });
 
+test("shows the AI-first natural-language task command", async () => {
+  const help = invoke(process.cwd(), "--help");
+  assert.equal(help.status, 0, help.stderr);
+  assert.match(help.stdout, /do <request>/);
+  assert.match(help.stdout, /AI provider/);
+});
+
 test("shows the supervised run command and fails closed without an interactive terminal", async () => {
   const help = invoke(process.cwd(), "--help");
   assert.equal(help.status, 0, help.stderr);
