@@ -1144,6 +1144,10 @@ async function main(): Promise<void> {
         console.log("   • " + operation.kind + " [" + paint(operation.risk.toUpperCase(), riskColor) + "] " + operation.description);
         if (operation.target) console.log("     Target: " + operation.target);
         if (operation.commandPreview) console.log("     Command: " + operation.commandPreview);
+        if (operation.kind === "write_file" && operation.content !== undefined) {
+          console.log("     Proposed content (" + Buffer.byteLength(operation.content, "utf8") + " bytes):");
+          console.log("     " + (operation.content.length > 300 ? operation.content.slice(0, 300) + "…" : operation.content));
+        }
       }
     }
     const executeRl = createInterface({ input: stdin, output: stdout });
