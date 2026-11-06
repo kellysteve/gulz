@@ -696,13 +696,13 @@ async function updateInstallation(): Promise<void> {
   if (!existsSync(join(installDirectory, ".git")) || !existsSync(join(installDirectory, "package.json"))) {
     throw new Error("This GULZ installation is not linked from a source checkout. Published package updates are not available yet. Follow the platform update instructions at gulz.gaxity.com.ng.");
   }
-  if (!stdin.isTTY || !stdout.isTTY) throw new Error("Updates require an interactive terminal and explicit confirmation.");
+  if (!stdin.isTTY || !stdout.isTTY) throw new Error("Updates require an interactive terminal and confirmation.");
   const rl = createInterface({ input: stdin, output: stdout });
   try {
-    console.log("GULZ source update");
+    title("UPDATE GULZ");
     console.log("Repository: " + installDirectory);
-    console.log("This will fast-forward the source checkout, install only CLI workspace dependencies (including TypeScript), rebuild the CLI and refresh the global link. The website and Wrangler/Workerd are excluded.");
-    console.log("Local goal data in " + dataHome + " will not be intentionally changed.");
+    console.log("GULZ will download the latest CLI source, rebuild it and refresh the command.");
+    console.log("Your saved goals, files and AI provider settings will be preserved.");
     const confirmation = await rl.question("Continue with the update? (y/N): ");
     if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Update cancelled."); return; }
   } finally { rl.close(); }
@@ -722,11 +722,41 @@ async function updateInstallation(): Promise<void> {
       console.log("\n$ " + program + " " + args.join(" "));
       const result = spawnSync(program, [...args], { cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: updateEnv });
       if (result.error) throw result.error;
-      if (result.status !== 0) throw new Error("Update stopped because " + program + " exited with status " + String(result.status) + ". Fix the reported issue and run `gulz update` again.");
+      if (result.status !== 0) throw new Error("Update stopped because " + program + " exited with status " + String(result.status) + ". Fix the reported issue and run gulz update again.");
     }
-    console.log("\nGULZ update completed. Close this session and run `gulz` again to use the updated CLI.");
+    success("GULZ source updated and rebuilt.");
+
+    const setupRl = createInterface({ input: stdin, output: stdout });
+    let changeProvider = "";
+    try {
+      changeProvider = await setupRl.question("Would you like to set up or change your AI provider now? (y/N): ");
+    } finally { setupRl.close(); }
+    if (["y", "yes"].includes(changeProvider.trim().toLowerCase())) {
+      const choiceRl = createInterface({ input: stdin, output: stdout });
+      let choice = "";
+      try {
+        console.log("\n  1) Built-in GULZ AI");
+        console.log("  2) Use my own AI provider / choose a model");
+        console.log("  3) Keep my current settings");
+        choice = await choiceRl.question("Choose 1, 2 or 3: ");
+      } finally { choiceRl.close(); }
+      const action = choice.trim() === "1" ? "builtin" : choice.trim() === "2" ? "configure" : "";
+      if (action) {
+        const cliEntry = join(installDirectory, "apps", "cli", "dist", "index.js");
+        const configured = spawnSync(process.execPath, [cliEntry, "provider", action], { stdio: "inherit", env: updateEnv });
+        if (configured.error) throw configured.error;
+        if (configured.status !== 0) throw new Error("The source update succeeded, but AI provider setup did not finish.");
+        const tested = spawnSync(process.execPath, [cliEntry, "provider", "test"], { stdio: "inherit", env: updateEnv });
+        if (tested.error) throw tested.error;
+        if (tested.status !== 0) warning("The source update succeeded, but the AI connection test did not pass. You can retry with gulz provider test.");
+      } else if (choice.trim() !== "3") {
+        warning("No provider changes were made. Your existing settings were preserved.");
+      }
+    }
+    console.log("\nGULZ update completed. Close this session and run gulz again to use the updated CLI.");
   });
 }
+
 async function interactiveSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) {
     help();
