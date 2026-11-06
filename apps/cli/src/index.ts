@@ -777,7 +777,7 @@ async function interactiveSession(): Promise<void> {
     console.log("  " + paint("6.", ansi.cyan) + " Recent activity");
     console.log("  " + paint("7.", ansi.cyan) + " Set up AI (built-in or your own provider)");
     console.log("  " + paint("8.", ansi.cyan) + " Plan a saved goal with AI");
-    console.log("  " + paint("9.", ansi.cyan) + " Tell GULZ what you want done");
+    console.log("  " + paint("9.", ansi.cyan) + " Create a goal manually");
     console.log("  " + paint("0.", ansi.dim) + " Exit");
   };
 
@@ -794,7 +794,7 @@ async function interactiveSession(): Promise<void> {
         success("Session closed. Your saved goals remain on this device.");
         break;
       }
-      if (choice === "1" || choice.toLowerCase() === "create") {
+      if (choice === "9" || choice.toLowerCase() === "create") {
         const title = await ask("What goal do you want to save? ");
         if (!title) { console.log("No goal entered; nothing was saved."); continue; }
         const description = await ask("Describe the goal (optional): ");
@@ -887,7 +887,7 @@ async function interactiveSession(): Promise<void> {
         }
         return await interactiveSession();
       }
-      if (choice === "9" || choice.toLowerCase() === "do") {
+      if (choice === "1" || choice.toLowerCase() === "do") {
         const request = await ask("What do you want GULZ to do? ");
         if (!request) continue;
         rl.close();
