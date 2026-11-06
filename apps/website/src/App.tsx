@@ -76,22 +76,22 @@ function App() {
         <section className="hero">
           <div className="hero-copy">
             <div className="eyebrow"><span className="pulse-dot"/> A NEW WAY TO GET WORK DONE</div>
-            <h1>Stop managing tasks.<br/><span>Start executing goals.</span></h1>
-            <p className="hero-description">Meet GULZ — an open-source machine-operations platform in active development. Its CLI foundation is taking shape around real actions, clear approvals and verified results.</p>
+            <h1>Tell GULZ what you need.<br/><span>Let it work it out.</span></h1>
+            <p className="hero-description">Meet GULZ — an open-source AI assistant for getting real work done. Tell it what you need, keep the conversation going, and stay in control of every sensitive operation.</p>
             <div className="hero-actions"><a className="button button-primary" href="#install">Explore installation <ArrowRight size={17}/></a><a className="button button-quiet" href="https://github.com/kellysteve/gulz" target="_blank" rel="noreferrer">View source</a></div>
             <div className="hero-note"><ShieldCheck size={15}/> You stay in control. Sensitive actions need your approval.</div>
           </div>
           <div className="terminal-card" aria-label="Illustrative GULZ terminal preview">
-            <div className="terminal-head"><div className="window-dots"><i/><i/><i/></div><span>gulz — interactive session</span><span className="terminal-live">CONCEPT</span></div>
+            <div className="terminal-head"><div className="window-dots"><i/><i/><i/></div><span>gulz — interactive session</span><span className="terminal-live">CLI PREVIEW</span></div>
             <div className="terminal-body">
               <div className="terminal-prompt"><b>❯</b> gulz</div>
-              <div className="terminal-title">Good evening. I'm GULZ.</div>
-              <div className="terminal-muted">Tell me what you want to accomplish.</div>
-              <div className="terminal-input">› Prepare my server for deployment<span className="cursor"/></div>
-              <div className="terminal-line"><span className="ok"><Check size={13}/></span> Goal understood</div>
-              <div className="terminal-line"><span className="ok"><Check size={13}/></span> Environment inspection planned</div>
-              <div className="terminal-line"><span className="wait">◌</span> Awaiting execution approval</div>
-              <div className="terminal-footer"><span><Bot size={13}/> PLANNED AI LAYER</span><span>SUPERVISED MODE</span></div>
+              <div className="terminal-title">Hi. I'm GULZ.</div>
+              <div className="terminal-muted">A continuous conversation. No repeated commands.</div>
+              <div className="terminal-input">› Build a portfolio website for me<span className="cursor"/></div>
+              <div className="terminal-line"><span className="ok"><Check size={13}/></span> Request understood</div>
+              <div className="terminal-line"><span className="ok"><Check size={13}/></span> Conversation context retained</div>
+              <div className="terminal-line"><span className="wait">◌</span> Task operations require approval</div>
+              <div className="terminal-footer"><span><Bot size={13}/> CONTINUOUS AI CHAT</span><span>SUPERVISED MODE</span></div>
             </div>
           </div>
         </section>
@@ -102,13 +102,13 @@ function App() {
           <div className="section-kicker">BUILT FOR REAL WORK</div><h2>One interface. Many environments.</h2><p className="section-lead">From your phone's terminal to a remote VPS, GULZ is being designed to work where your projects and systems already live.</p>
           <div className="feature-grid">
             <article className="feature-card"><div className="feature-icon"><Command/></div><h3>Machine operations</h3><p>The current CLI preview can inspect and read local files, write approved text changes with backups, and run a small allowlist of diagnostics.</p></article>
-            <article className="feature-card"><div className="feature-icon"><Bot/></div><h3>AI goal execution</h3><p>Planned: turn a goal into a structured plan, request approval for sensitive steps, coordinate tools and verify real outcomes.</p></article>
+            <article className="feature-card"><div className="feature-icon"><Bot/></div><h3>AI goal execution</h3><p>Continuous AI chat is available in the CLI preview. Supervised task planning turns requests into internal goals and validated operations.</p></article>
             <article className="feature-card"><div className="feature-icon"><Server/></div><h3>Remote management</h3><p>Planned: connect to authorized SSH and VPS environments through the same permission and approval system. Remote execution is not available yet.</p></article>
           </div>
         </section>
 
         <section className="section process-section" id="how-it-works">
-          <div className="section-kicker">THE PLANNED WORKFLOW</div><h2>From intention to verified outcome.</h2>
+          <div className="section-kicker">HOW GULZ WORKS</div><h2>From intention to verified outcome.</h2>
           <div className="process-grid">
             <div><span className="process-number">01</span><h3>Describe the goal</h3><p>Describe the outcome you want in plain language.</p></div>
             <div><span className="process-number">02</span><h3>Review the plan</h3><p>The planned AI layer inspects only authorized resources and prepares an actionable plan.</p></div>
