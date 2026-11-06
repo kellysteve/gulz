@@ -771,7 +771,7 @@ async function interactiveSession(): Promise<void> {
   const showMenu = (): void => {
     console.log("\n" + paint("GULZ", ansi.bold, ansi.cyan) + paint("  GOALS. EXECUTED.", ansi.bold));
     console.log(paint("Your local supervised workspace", ansi.dim));
-    console.log("\n  " + paint("1.", ansi.cyan) + " Tell GULZ what you want done");
+    console.log("\n  " + paint("1.", ansi.cyan) + " Chat with GULZ (continuous conversation)");
     console.log("  " + paint("2.", ansi.cyan) + " View saved work and progress");
     console.log("  " + paint("3.", ansi.cyan) + " System check");
     console.log("  " + paint("4.", ansi.cyan) + " Command reference");
