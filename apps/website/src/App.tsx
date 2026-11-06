@@ -96,13 +96,13 @@ function App() {
           </div>
         </section>
 
-        <section className="trust-strip"><span><Zap size={16}/> Goal-oriented execution</span><span><ShieldCheck size={16}/> Permission-aware by design</span><span><Terminal size={16}/> Local-first execution</span></section>
+        <section className="trust-strip"><span><Zap size={16}/> Work that gets done</span><span><ShieldCheck size={16}/> Permission-aware by design</span><span><Terminal size={16}/> Local-first execution</span></section>
 
         <section className="section" id="capabilities">
           <div className="section-kicker">BUILT FOR REAL WORK</div><h2>One interface. Many environments.</h2><p className="section-lead">From your phone's terminal to a remote VPS, GULZ is being designed to work where your projects and systems already live.</p>
           <div className="feature-grid">
             <article className="feature-card"><div className="feature-icon"><Command/></div><h3>Machine operations</h3><p>The current CLI preview can inspect and read local files, write approved text changes with backups, and run a small allowlist of diagnostics.</p></article>
-            <article className="feature-card"><div className="feature-icon"><Bot/></div><h3>AI goal execution</h3><p>Continuous AI chat is available in the CLI preview. Supervised task planning turns requests into internal goals and validated operations.</p></article>
+            <article className="feature-card"><div className="feature-icon"><Bot/></div><h3>AI that gets work done</h3><p>Continuous AI chat is available in the CLI preview. Supervised task planning turns requests into internal goals and validated operations.</p></article>
             <article className="feature-card"><div className="feature-icon"><Server/></div><h3>Remote management</h3><p>Planned: connect to authorized SSH and VPS environments through the same permission and approval system. Remote execution is not available yet.</p></article>
           </div>
         </section>
@@ -110,7 +110,7 @@ function App() {
         <section className="section process-section" id="how-it-works">
           <div className="section-kicker">HOW GULZ WORKS</div><h2>From intention to verified outcome.</h2>
           <div className="process-grid">
-            <div><span className="process-number">01</span><h3>Describe the goal</h3><p>Describe the outcome you want in plain language.</p></div>
+            <div><span className="process-number">01</span><h3>Tell GULZ what you need</h3><p>Describe the outcome you want in plain language.</p></div>
             <div><span className="process-number">02</span><h3>Review the plan</h3><p>The planned AI layer inspects only authorized resources and prepares an actionable plan.</p></div>
             <div><span className="process-number">03</span><h3>Approve sensitive work</h3><p>High-impact and destructive operations wait for your explicit approval.</p></div>
             <div><span className="process-number">04</span><h3>Verify the result</h3><p>The execution layer verifies results and saves progress so work can recover after interruptions.</p></div>
@@ -164,7 +164,7 @@ function App() {
 
         <section className="final-cta"><div><div className="section-kicker">THE BEGINNING</div><h2>Make progress, not just plans.</h2><p>GULZ is in active development. Platform downloads will appear here after they are built, tested and ready.</p></div><a className="button button-primary" href="#install">Explore installation <ArrowUpRight size={16}/></a></section>
       </main>
-      <footer><a className="brand" href="#"><span className="brand-mark">G</span><span>GULZ</span></a><span>Goals. Executed.</span><span>A Gaxity product · © 2026</span></footer>
+      <footer><a className="brand" href="#"><span className="brand-mark">G</span><span>GULZ</span></a><span>Tell it. Get it done.</span><span>A Gaxity product · © 2026</span></footer>
     </div>
   );
 }
