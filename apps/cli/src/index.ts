@@ -770,14 +770,14 @@ async function interactiveSession(): Promise<void> {
     console.log("\n" + paint("GULZ", ansi.bold, ansi.cyan) + paint("  GOALS. EXECUTED.", ansi.bold));
     console.log(paint("Your local supervised workspace", ansi.dim));
     console.log("\n  " + paint("1.", ansi.cyan) + " Create a goal");
-    console.log("  " + paint("2.", ansi.cyan) + " View saved goals and inspect a goal");
+    console.log("  " + paint("2.", ansi.cyan) + " View saved work and progress");
     console.log("  " + paint("3.", ansi.cyan) + " System check");
     console.log("  " + paint("4.", ansi.cyan) + " Command reference");
     console.log("  " + paint("5.", ansi.cyan) + " Update GULZ");
     console.log("  " + paint("6.", ansi.cyan) + " Recent activity");
     console.log("  " + paint("7.", ansi.cyan) + " Set up AI (built-in or your own provider)");
-    console.log("  " + paint("8.", ansi.cyan) + " Plan a saved goal with AI");
-    console.log("  " + paint("9.", ansi.cyan) + " Create a goal manually");
+    console.log("  " + paint("8.", ansi.cyan) + " Advanced: plan a manual goal with AI");
+    console.log("  " + paint("9.", ansi.cyan) + " Advanced: create a manual goal");
     console.log("  " + paint("0.", ansi.dim) + " Exit");
   };
 
@@ -818,7 +818,7 @@ async function interactiveSession(): Promise<void> {
           console.log("No saved goals yet. Choose 1 to tell GULZ what you need done, or 9 to create a manual goal.");
           continue;
         }
-        console.log("\nSaved goals:");
+        console.log("\nSaved work:");
         goals.forEach((goal, index) => {
           console.log("  " + (index + 1) + ". " + goal.title + "  [" + goal.status + "]");
           console.log("     ID: " + goal.id);
