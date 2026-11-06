@@ -64,7 +64,7 @@ async function main() {
   if (npmVersion.error || npmVersion.status !== 0) throw new Error("npm could not be started. Install a supported Node.js/npm release and try again.");
   const fingerprint = createHash("sha256")
     .update(manifestContents.join("\n---\n"))
-    .update("\nplatform=" + process.platform + "\narch=" + process.arch + "\nnpm=" + npmVersion.stdout.trim())
+    .update("\nnode=" + process.versions.node + "\nplatform=" + process.platform + "\narch=" + process.arch + "\nnpm=" + npmVersion.stdout.trim())
     .digest("hex");
   let installedFingerprint = "";
   try {
