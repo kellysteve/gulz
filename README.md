@@ -76,7 +76,7 @@ supabase/    Database migrations for release infrastructure
 - **VPS:** headless CLI source build; SSH-based remote orchestration planned.
 - **Desktop:** one task workspace using the same local execution policy as the CLI. No desktop binary is available yet.
 
-See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the interactive Bash installer, platform-specific setup and exact release status. Public release gates are tracked in [docs/PUBLIC_RELEASE_CHECKLIST.md](docs/PUBLIC_RELEASE_CHECKLIST.md). The desktop product direction and release requirements are in [docs/DESKTOP_APP.md](docs/DESKTOP_APP.md).
+See [docs/ROADMAP.md](docs/ROADMAP.md) for remaining development and verification work. See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the interactive Bash installer, platform-specific setup and exact release status. Public release gates are tracked in [docs/PUBLIC_RELEASE_CHECKLIST.md](docs/PUBLIC_RELEASE_CHECKLIST.md). The desktop product direction and release requirements are in [docs/DESKTOP_APP.md](docs/DESKTOP_APP.md).
 
 ## Architecture direction
 
