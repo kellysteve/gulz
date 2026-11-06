@@ -459,8 +459,10 @@ test("requires interactive confirmation for manual task editing and deletion", a
 });
 
 
-test("help documents continuous AI chat mode", () => {
-  const result = invoke(process.env.GULZ_HOME || process.cwd(), "--help");
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /chat\s+Open a continuous AI conversation/);
+test("help documents continuous AI chat mode", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "--help");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /chat\s+Open a continuous AI conversation/);
+  });
 });
