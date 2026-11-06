@@ -126,11 +126,13 @@ After building and linking the CLI:
 gulz --version
 gulz doctor
 gulz init
-gulz do "Prepare my development environment and check what needs to be installed"
+gulz chat
+# For supervised task planning and execution, use:
+gulz do "Inspect this project and summarize its main folders"
 gulz goals
 ~~~
 
-Run `gulz` with no arguments whenever you want to open the interactive terminal session. You do not need to repeat the installation commands each time; once linked, the `gulz` command is available from your terminal. Close the session with option 0.
+Run `gulz` with no arguments whenever you want to open the interactive terminal session. Choose **Chat with GULZ** to keep sending messages without restarting the command. Recent conversation history is saved privately in `~/.gulz/conversation.json` (or your configured `GULZ_HOME`). Use `/clear` to erase it or `/exit` to leave chat. Chat replies are conversational and do not directly execute machine operations; use `gulz do "..."` for supervised task planning and execution. You do not need to repeat the installation commands each time; once linked, the `gulz` command is available from your terminal. Close the session with option 0.
 
 To update this installation later, run `gulz update` from an interactive terminal and answer `y` or `n`. GULZ runs a fast-forward-only Git update, installs only the CLI workspaces (including TypeScript development dependencies), rebuilds the CLI and refreshes the global link. It then asks whether you want to configure or change your AI provider/model. You can keep your current settings and change them later with the AI setup menu. It deliberately does not install the website's Wrangler/Workerd dependency. Close the current session and run `gulz` again. This updater is for source-checkout installations; published package updates are not available yet.
 
