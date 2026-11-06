@@ -1184,7 +1184,7 @@ async function main(): Promise<void> {
       process.exitCode = 2;
       return;
     }
-    if (!stdin.isTTY || !stdout.isTTY) throw new Error("The AI task workflow needs an interactive terminal for data-sharing and execution approvals.");
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("The AI task workflow needs an interactive terminal for reviewing and approving operations.");
     const config = await readProviderConfig();
     if (!config) throw new Error("AI is not set up yet. Run 'gulz provider builtin' or open 'gulz' and choose AI setup first.");
     title("LET GULZ HANDLE IT");
