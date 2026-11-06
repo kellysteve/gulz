@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { chmod, copyFile, lstat, mkdir, realpath, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { constants, type Stats } from "node:fs";
 import { spawn } from "node:child_process";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { createPlannedOperation, type PlannedOperation } from "@gulz/core";
 
 export interface LocalExecutionOptions {
