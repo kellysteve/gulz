@@ -778,8 +778,8 @@ async function interactiveSession(): Promise<void> {
     console.log("  " + paint("5.", ansi.cyan) + " Update GULZ");
     console.log("  " + paint("6.", ansi.cyan) + " Recent activity");
     console.log("  " + paint("7.", ansi.cyan) + " Set up AI (built-in or your own provider)");
-    console.log("  " + paint("8.", ansi.cyan) + " Advanced: plan a manual goal with AI");
-    console.log("  " + paint("9.", ansi.cyan) + " Advanced: create a manual goal");
+    console.log("  " + paint("8.", ansi.cyan) + " Advanced: manual planning");
+    console.log("  " + paint("9.", ansi.cyan) + " Advanced: create a work item");
     console.log("  " + paint("0.", ansi.dim) + " Exit");
   };
 
@@ -817,7 +817,7 @@ async function interactiveSession(): Promise<void> {
       if (choice === "2" || choice.toLowerCase() === "goals" || choice.toLowerCase() === "view") {
         const goals = await readGoals();
         if (!goals.length) {
-          console.log("No saved goals yet. Choose 1 to tell GULZ what you need done, or 9 to create a manual goal.");
+          console.log("No saved work yet. Start a conversation with GULZ or use the advanced controls to create a work item.");
           continue;
         }
         console.log("\nSaved work:");
