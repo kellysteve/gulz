@@ -95,4 +95,4 @@ GULZ is a provider-independent AI agent with a conversation-first experience. Us
 
 The local agent and an initial paired OpenSSH remote agent are implemented in source, but real-host integration testing remains. GULZ can run approved direct programs on a paired host; dedicated end-to-end workflows for public API/website hosting, TLS, reverse proxies, databases and service monitoring are not yet implemented. Direct commands require user approval and are not a hardened sandbox. The built-in provider's ability to issue tool calls still needs live verification.
 
-Do not advertise unimplemented remote execution, hosting automation, native apps or signed installers as available.
+Do not advertise full remote hosting automation, native apps or signed installers as available. The initial remote execution foundation is implemented in source but still requires real-host testing.
