@@ -11,7 +11,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { addGoalTask, createGoal, createPlannedOperation, operationRequiresApproval, transitionGoal, transitionTask, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
 import { executeLocalOperation, type LocalExecutionResult } from "@gulz/execution";
-import { generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderChatMessage } from "@gulz/providers";
+import { generateAgentTurn, generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderChatMessage } from "@gulz/providers";
 import { createLocalAgentTools, createRemoteAgentTools, runAgent } from "@gulz/agent";
 import { OpenSshRemoteTransport, validateRemoteAlias, validateRemoteDestination, validateRemoteWorkspace } from "@gulz/remote";
 
@@ -1249,17 +1249,34 @@ async function main(): Promise<void> {
       const config = await readProviderConfig();
       if (!config) throw new Error("No AI provider is configured. Choose the built-in GULZ AI with 'gulz provider builtin' or configure your own with 'gulz provider configure'.");
       title("TEST AI CONNECTION");
-      console.log("Sending a small sample request only. No workspace files or saved goals are included.");
-      const plan = await generateGoalPlan(config, {
-        title: "GULZ AI connection test",
-        description: "Create a tiny safe test plan with exactly one inspect operation targeting the current workspace root. Return the required structured JSON only.",
-      });
-      const operationCount = plan.tasks.reduce((total, task) => total + task.operations.length, 0);
-      if (!plan.tasks.length || !operationCount) throw new Error("The AI connection responded, but did not return a usable plan.");
-      success("AI connection works and returned a valid structured plan.");
-      label("Test tasks", String(plan.tasks.length));
-      label("Test operations", String(operationCount));
-      console.log("The test plan was discarded. Nothing was saved or executed.");
+      console.log("Sending a small tool-calling test only. No workspace files, saved conversations or machine operations are included.");
+      try {
+        const turn = await generateAgentTurn(config, [
+          { role: "user", content: "Call the gulz_connection_check tool exactly once with an empty object. Do not execute any real-world action." },
+        ], [{
+          name: "gulz_connection_check",
+          description: "A harmless test tool used only to verify that this model can return a structured tool call. It must never be executed.",
+          parameters: { type: "object", properties: {}, additionalProperties: false },
+        }]);
+        const supported = turn.toolCalls.some((call) => call.name === "gulz_connection_check" && isRecord(call.arguments) && Object.keys(call.arguments).length === 0);
+        if (supported) {
+          success("AI provider supports GULZ agent tool calling.");
+          label("Tool calling", "Available");
+        } else {
+          warning("The AI provider responded, but did not return the required tool call.");
+          label("Tool calling", "Not confirmed for this model");
+          console.log("Conversation may still work, but real device and VPS operations require a model that supports tool calling.");
+        }
+        console.log("The test tool was never executed. No files or machine settings were changed.");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (/HTTP 400|supports tool calling|invalid agent response/i.test(message)) {
+          warning("The provider responded, but agent tool calling is not supported or not configured for this model.");
+          console.log("Try a model/provider with OpenAI-compatible function calling. No workspace files or machine operations were included in this test.");
+          return;
+        }
+        throw error;
+      }
       return;
     }
     if (action === "builtin") {
