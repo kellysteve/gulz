@@ -32,7 +32,7 @@ Provider tool calls are proposals, not trusted instructions. The engine limits e
 - packages/execution remains the enforcement boundary for local operations. The current catalogue offers workspace inspection, directory listing, bounded UTF-8 file reads, approved directory creation, approved file writes with backups, and approved commands from the fixed diagnostic allowlist.
 - apps/cli connects continuous chat to the local agent engine. It asks for approval only when a proposed tool is mutating or otherwise classified as requiring approval. Provider configuration remains a one-time user choice.
 
-The current local catalogue does not install packages, run arbitrary shell commands, access the general network, configure system services, create public hosting, or connect to remote VPSs. These require additional narrowly scoped adapters and security review.
+The current local catalogue can run approved direct programs without a shell, so it can invoke detected package managers and system tools when the user approves the exact program and arguments. It has no dedicated package-manager, HTTP, firewall, service-management or hosting adapters yet. A paired OpenSSH remote agent can expose the same bounded tools on a selected VPS workspace, but this source implementation still needs real-host integration tests. GULZ is not a hardened sandbox.
 
 ## Local and remote environment separation
 
