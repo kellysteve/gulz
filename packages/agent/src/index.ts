@@ -87,7 +87,6 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
       return { messages, reply, toolCallsExecuted: executed, stoppedForApproval: anyDenied };
     }
     messages.push({ role: "assistant", content: turn.content, toolCalls: turn.toolCalls });
-    let denied = false;
     const callsToRun = turn.toolCalls.slice(0, remaining);
     for (const call of callsToRun) {
       handled += 1;
@@ -101,7 +100,6 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
         approved = options.approve ? await options.approve({ toolName: call.name, description: tool.definition.description, arguments: call.arguments, risk }) : false;
         if (!approved) {
           result = { ok: false, status: "approval_denied", message: "The user did not approve this operation. Do not retry or attempt an equivalent action." };
-          denied = true;
           anyDenied = true;
         }
       }
@@ -115,7 +113,6 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
       await options.onToolResult?.(call.name, result);
       messages.push({ role: "tool", toolCallId: call.id, content: boundedToolResult(result) });
     }
-    if (denied) messages.push({ role: "user", content: "One or more operations were not approved. Continue only with safe, non-equivalent alternatives or explain what remains." });
     if (turn.toolCalls.length > remaining) {
       const reply = "I completed the approved actions available in this turn, but reached the safe action limit. Ask me to continue and I'll carry on from the latest results.";
       messages.push({ role: "assistant", content: reply });
