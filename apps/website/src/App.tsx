@@ -13,7 +13,7 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
     methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "Native Android app (planned)"],
     steps: ["Install Termux from F-Droid or the official GitHub releases.","Run pkg update && pkg upgrade -y.","Install curl with pkg install curl.","Copy the Bash command above into Termux and answer the installer's questions.","After installation, run gulz."],
     commands: ["pkg update && pkg upgrade -y","pkg install curl","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz","gulz doctor"],
-    note: "The installer asks for the install folder and confirmation. It installs only the CLI workspaces and deliberately skips Wrangler/Workerd, which is unsupported on Android/Termux. It can offer to install missing Termux Git and Node.js LTS packages. This is a developer-preview CLI inside Termux, not a standalone Android app.",
+    note: "The installer asks for the install folder and confirmation. It installs only the CLI workspaces and deliberately skips Wrangler/Workerd, which is unsupported on Android/Termux. This is a source-build CLI inside Termux, not a standalone Android app.",
   },
   {
     id: "linux", name: "Linux", detail: "Ubuntu, Debian and other distributions", icon: Terminal,
@@ -138,18 +138,18 @@ function App() {
 
         <section className="section cli-reference" id="commands">
           <div className="section-kicker">CLI QUICK REFERENCE</div><h2>Open GULZ whenever you need it.</h2>
-          <p className="section-lead">Run `gulz` to open the interactive terminal session. Create and revisit locally saved goals, or use the commands below. Install once; to update this source preview later, enter the cloned repository and run `git pull --ff-only` followed by `npm run install:cli`, then restart GULZ. This CLI-only command skips the website Wrangler/Workerd dependency.</p>
+          <p className="section-lead">Run gulz to open the interactive assistant. Chat naturally, connect your AI provider and use the CLI tools below when needed. To update this source preview later, run gulz update and answer yes when prompted.</p>
           <div className="command-grid">
-            <article><h3><Terminal size={17}/> Start and inspect</h3><pre><code>{"gulz --help\ngulz doctor\ngulz init\ngulz goals"}</code></pre></article>
-            <article><h3><Code2 size={17}/> Goals and files</h3><pre><code>{'gulz goal create "Prepare my project"\ngulz inspect .\ngulz read README.md\ngulz write notes.txt'}</code></pre></article>
-            <article><h3><ShieldCheck size={17}/> Approved diagnostics</h3><pre><code>{"gulz run node --version\ngulz run git status --short\ngulz run git status --short --branch\ngulz run git branch --show-current\ngulz run git log -1 --oneline\ngulz run git diff --stat\ngulz run git rev-parse --show-toplevel\ngulz restore <backup> <target>"}</code></pre></article>
+            <article><h3><Terminal size={17}/> Start and inspect</h3><pre><code>{"gulz\ngulz chat\ngulz doctor\ngulz provider status"}</code></pre></article>
+            <article><h3><Code2 size={17}/> Workspace tools</h3><pre><code>{"gulz inspect .\ngulz list\ngulz read README.md\ngulz write notes.txt"}</code></pre></article>
+            <article><h3><ShieldCheck size={17}/> Agent requests</h3><pre><code>{"Inside gulz chat, ask:\nInspect this project\nInstall Python on Termux\nCreate a README for this app\nRun the project tests"}</code></pre></article>
           </div>
-          <div className="release-notice"><ShieldCheck size={17}/><p><b>Safety boundary:</b><br/>The run command uses a fixed allowlist, starts processes without a shell, strips inherited command-injection environment variables, caps output and requires typed approval. Arbitrary shell commands, package installs, deletes, remote SSH execution and unattended AI-driven machine changes are not available.</p></div>
+          <div className="release-notice"><ShieldCheck size={17}/><p><b>Safety boundary:</b><br/>The agent starts approved programs directly without a shell; shell interpreters and inline code are blocked. File tools are confined to the current workspace. Package-manager and system commands require approval and may affect the wider system. GULZ shows the exact command before execution. Remote VPS orchestration is not available yet.</p></div>
         </section>
 
         <section className="section desktop-section" id="desktop">
           <div className="section-kicker">DESKTOP EXPERIENCE</div><h2>A native workspace is on the roadmap.</h2>
-          <p className="section-lead">The planned desktop app will bring the GULZ task workspace, approvals, execution activity and local project access together in one focused interface. It will use the same local execution engine and approval policy as the CLI rather than introducing a second, less-restricted execution path.</p>
+          <p className="section-lead">The planned desktop app will bring conversations, local and remote environment connections, approvals, tool activity and project access together in one focused interface. It will use the same local execution engine and approval policy as the CLI rather than introducing a second, less-restricted execution path.</p>
           <div className="desktop-grid">
             <article><AppWindow/><h3>Windows</h3><p>Signed .msi or .exe installer, with verified updates.</p><span>Planned</span></article>
             <article><Laptop/><h3>macOS</h3><p>Signed .dmg app for Apple Silicon and Intel.</p><span>Planned</span></article>
