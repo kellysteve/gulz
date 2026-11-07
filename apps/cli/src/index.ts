@@ -234,7 +234,8 @@ async function readRemoteEnvironments(): Promise<RemoteEnvironmentRecord[]> {
       throw new Error("Saved remote environment settings are invalid. They were left untouched.");
     }
     const names = parsed.map((item) => (item as { name: string }).name);
-    if (new Set(names).size !== names.length) throw new Error("Saved remote environment names contain duplicates.");
+    const toolPrefixes = names.map((name) => name.replace(/-/g, "_"));
+    if (new Set(names).size !== names.length || new Set(toolPrefixes).size !== toolPrefixes.length) throw new Error("Saved remote environment names contain duplicates or collide in agent tool names.");
     return parsed.map((item) => ({
       name: validateRemoteAlias((item as { name: string }).name),
       destination: validateRemoteDestination((item as { destination: string }).destination),
@@ -248,8 +249,10 @@ async function readRemoteEnvironments(): Promise<RemoteEnvironmentRecord[]> {
 }
 
 async function saveRemoteEnvironments(environments: RemoteEnvironmentRecord[]): Promise<void> {
-  if (environments.length > 4 || new Set(environments.map((item) => item.name)).size !== environments.length) {
-    throw new Error("Remote environment list is invalid or contains duplicate names.");
+  const names = environments.map((item) => item.name);
+  const toolPrefixes = names.map((name) => name.replace(/-/g, "_"));
+  if (environments.length > 4 || new Set(names).size !== names.length || new Set(toolPrefixes).size !== toolPrefixes.length) {
+    throw new Error("Remote environment list is invalid or contains duplicate/colliding names.");
   }
   for (const item of environments) {
     validateRemoteAlias(item.name);
@@ -1123,7 +1126,7 @@ async function remoteCommand(args: string[]): Promise<void> {
     const workspace = validateRemoteWorkspace(values[2] ?? ".");
     const environments = await readRemoteEnvironments();
     if (environments.length >= 4) throw new Error("GULZ currently supports up to four paired VPS environments so the agent tool catalogue stays within provider limits.");
-    if (environments.some((item) => item.name === name)) throw new Error("A remote environment with that name already exists. Remove it first or choose another name.");
+    if (environments.some((item) => item.name === name || item.name.replace(/-/g, "_") === name.replace(/-/g, "_"))) throw new Error("A remote environment with that name already exists or collides with another tool prefix. Choose another name.");
     if (!stdin.isTTY || !stdout.isTTY) throw new Error("Adding a remote environment requires an interactive terminal.");
     const rl = createInterface({ input: stdin, output: stdout });
     try {
