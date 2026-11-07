@@ -23,6 +23,24 @@ export interface AgentRunOptions {
 export interface AgentRunResult { messages: ProviderAgentMessage[]; reply: string; toolCallsExecuted: number; stoppedForApproval: boolean; }
 export class AgentError extends Error { constructor(message: string) { super(message); this.name = "AgentError"; } }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
+function boundedToolResult(value: unknown): string {
+  let serialized = JSON.stringify(value);
+  if (serialized.length <= 30000) return serialized;
+  if (isRecord(value) && isRecord(value.output)) {
+    const output: Record<string, unknown> = { ...value.output };
+    let truncated = false;
+    for (const key of ["content", "stdout", "stderr"]) {
+      if (typeof output[key] === "string" && (output[key] as string).length > 8000) {
+        output[key] = (output[key] as string).slice(0, 8000);
+        truncated = true;
+      }
+    }
+    serialized = JSON.stringify({ ...value, output: { ...output, ...(truncated ? { outputTruncated: true } : {}) } });
+    if (serialized.length <= 30000) return serialized;
+  }
+  return JSON.stringify({ ok: false, outputTruncated: true, message: "The tool returned too much data to include in AI context. Ask for a smaller or more specific result." });
+}
+
 
 /** Bounded provider/tool loop. Models propose calls; tool policy and user approval authorize execution. */
 export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult> {
@@ -60,7 +78,7 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
         } catch (error) { result = { ok: false, error: error instanceof Error ? error.message : "Tool execution failed." }; }
       }
       await options.onToolResult?.(call.name, result);
-      messages.push({ role: "tool", toolCallId: call.id, content: JSON.stringify(result).slice(0, 32000) });
+      messages.push({ role: "tool", toolCallId: call.id, content: boundedToolResult(result) });
     }
     if (denied) messages.push({ role: "user", content: "One or more operations were not approved. Continue only with safe, non-equivalent alternatives or explain what remains." });
   }
