@@ -66,12 +66,13 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
   if (registry.size !== options.tools.length) throw new AgentError("Agent tool names must be unique.");
   const messages = options.messages.slice(-30);
   let executed = 0;
+  let anyDenied = false;
   for (let round = 0; round < maxRounds; round += 1) {
     if (options.signal?.aborted) throw new AgentError("Agent run cancelled.");
     const turn = await generateAgentTurn({ ...options.provider, ...(options.signal ? { signal: options.signal } : {}) }, messages.slice(-30), options.tools.map((tool) => tool.definition));
     if (turn.toolCalls.length === 0) {
       messages.push({ role: "assistant", content: turn.content });
-      return { messages: messages.slice(-30), reply: turn.content, toolCallsExecuted: executed, stoppedForApproval: false };
+      return { messages: messages.slice(-30), reply: turn.content, toolCallsExecuted: executed, stoppedForApproval: anyDenied };
     }
     messages.push({ role: "assistant", content: turn.content, toolCalls: turn.toolCalls });
     let denied = false;
@@ -87,8 +88,10 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
         if (!approved) {
           result = { ok: false, status: "approval_denied", message: "The user did not approve this operation. Do not retry or attempt an equivalent action." };
           denied = true;
+          anyDenied = true;
         }
       }
+      if (options.signal?.aborted) throw new AgentError("Agent run cancelled.");
       if (result === undefined) {
         try {
           result = { ok: true, output: await tool.execute(call.arguments, { approved, ...(options.signal ? { signal: options.signal } : {}) }) };
@@ -100,7 +103,7 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
     }
     if (denied) messages.push({ role: "user", content: "One or more operations were not approved. Continue only with safe, non-equivalent alternatives or explain what remains." });
   }
-  throw new AgentError("GULZ reached the maximum agent round limit. Completed operations were verified individually; ask it to continue if more work remains.");
+  throw new AgentError("GULZ reached the maximum agent round limit. Any completed operations are recorded; ask it to continue if more work remains.");
 }
 
 function assertSafeReadablePath(path: string): void {
