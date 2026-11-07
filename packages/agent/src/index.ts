@@ -47,7 +47,7 @@ function approvalRisk(toolName: string, input: Record<string, unknown>): "modera
   const forceFlag = effectiveArgs.some((value) => value === "--force" || (value.startsWith("-") && value.includes("f")));
   const recursiveForce = recursiveFlag && forceFlag;
   if ((effectiveCommand === "rm" && recursiveForce && effectiveArgs.some((value) => value === "/" || value === "/*")) ||
-      (effectiveCommand === "dd" && effectiveArgs.some((value) => value.startsWith("of=/dev/")) || effectiveCommand.startsWith("mkfs"))) return "critical";
+      (effectiveCommand === "dd" && effectiveArgs.some((value) => value.startsWith("of=/dev/")) || effectiveCommand.startsWith("mkfs") || ["fdisk", "sfdisk", "parted", "wipefs"].includes(effectiveCommand))) return "critical";
   if (["sudo", "su", "systemctl", "service", "reboot", "shutdown", "poweroff", "ufw", "iptables", "nft", "firewall-cmd", "chmod", "chown", "useradd", "userdel", "groupadd", "groupdel", "mount", "umount"].includes(command) ||
       ["sudo", "su", "systemctl", "service", "reboot", "shutdown", "poweroff", "ufw", "iptables", "nft", "firewall-cmd", "chmod", "chown", "useradd", "userdel", "groupadd", "groupdel", "mount", "umount"].includes(effectiveCommand) ||
       effectiveArgs.some((value) => ["--force", "--delete", "--purge", "--recursive"].includes(value)) || recursiveForce) return "high";
