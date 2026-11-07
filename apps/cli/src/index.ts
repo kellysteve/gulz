@@ -910,6 +910,42 @@ async function saveConversation(messages: ProviderChatMessage[]): Promise<void> 
   }
 }
 
+async function runRemoteAgentStdio(): Promise<void> {
+  const tools = createLocalAgentTools(process.cwd());
+  const registry = new Map(tools.map((tool) => [tool.definition.name, tool]));
+  const rl = createInterface({ input: stdin, crlfDelay: Infinity, terminal: false });
+  for await (const rawLine of rl) {
+    const line = String(rawLine);
+    let requestId = "";
+    try {
+      if (Buffer.byteLength(line, "utf8") > 300000) throw new Error("Remote request exceeds the 300 KB limit.");
+      const request: unknown = JSON.parse(line);
+      if (!isRecord(request) || request.protocolVersion !== 1 || !isNonEmptyString(request.requestId) ||
+          !isNonEmptyString(request.toolName) || !isRecord(request.arguments) || typeof request.approved !== "boolean") {
+        throw new Error("Remote agent request has an invalid protocol shape.");
+      }
+      requestId = request.requestId;
+      const tool = registry.get(request.toolName);
+      if (!tool) throw new Error("Remote tool is not registered on this host.");
+      if (tool.requiresApproval(request.arguments) && request.approved !== true) {
+        throw new Error("Remote policy denied this operation because the controller did not provide an approval.");
+      }
+      const output = await tool.execute(request.arguments, { approved: request.approved });
+      await recordAudit("remote.agent.tool", {
+        toolName: request.toolName,
+        outcome: isRecord(output) && output.processSucceeded === false ? "process_failed" : isRecord(output) && output.verified === true ? "verified" : "returned",
+      });
+      const response = { protocolVersion: 1, requestId, ok: true, output };
+      const serialized = JSON.stringify(response);
+      if (Buffer.byteLength(serialized, "utf8") > 650000) throw new Error("Remote tool output exceeded the 650 KB response limit.");
+      stdout.write(serialized + "\n");
+    } catch (error) {
+      const response = { protocolVersion: 1, requestId, ok: false, error: error instanceof Error ? error.message : "Remote agent operation failed." };
+      stdout.write(JSON.stringify(response) + "\n");
+    }
+  }
+}
+
 async function chatSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) throw new Error("GULZ chat requires an interactive terminal.");
   const config = await readProviderConfig();
