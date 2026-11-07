@@ -87,3 +87,12 @@ test("blocks recursive deletion of the root filesystem before requesting approva
     }), /blocks this critical disk or root-filesystem command/);
   } finally { globalThis.fetch = originalFetch; }
 });
+
+test("blocks known secret files and credential directories from provider context", async () => {
+  const tools = createLocalAgentTools(process.cwd());
+  const read = tools.find((tool) => tool.definition.name === "read_file");
+  assert.ok(read);
+  await assert.rejects(read.execute({ path: ".env.production" }, {}), /likely secret or credential file/);
+  await assert.rejects(read.execute({ path: ".ssh/id_ed25519" }, {}), /known credential directories/);
+  await assert.rejects(read.execute({ path: ".docker/config.json" }, {}), /known credential directories/);
+});
