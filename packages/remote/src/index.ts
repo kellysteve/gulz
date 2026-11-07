@@ -72,7 +72,7 @@ export class OpenSshRemoteTransport {
       approved: request.approved === true,
       workspaceRoot: this.workspaces[request.environmentId] ?? ".",
     });
-    if (Buffer.byteLength(body, "utf8") > 300000) throw new RemoteTransportError("Remote tool request exceeds the 300 KB protocol limit.");
+    if (Buffer.byteLength(body, "utf8") > 1700000) throw new RemoteTransportError("Remote tool request exceeds the 1.7 MB protocol limit.");
     const output = await this.runSsh(destination, "gulz agent --stdio", body, 660000, request.signal);
     let parsed: unknown;
     try { parsed = JSON.parse(output.stdout.trim()); } catch { throw new RemoteTransportError("Remote agent returned invalid protocol JSON."); }
