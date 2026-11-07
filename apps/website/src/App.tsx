@@ -38,10 +38,10 @@ const platforms: { id: Platform; name: string; detail: string; icon: typeof Term
   },
   {
     id: "vps", name: "VPS / Remote servers", detail: "Ubuntu, Debian and SSH-connected hosts", icon: Server,
-    methods: ["SSH + interactive Bash installer (developer preview)", "Headless server package (planned)"],
-    steps: ["Connect to your server using your own SSH account.","Install Node.js 20.19+ and curl on the VPS.","Run the Bash command above as your normal user, not root, and answer the installer's questions.","Run gulz on the VPS itself. Remote SSH orchestration is not available yet."],
-    commands: ["# Install Node.js 20.19+ and curl first","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz doctor"],
-    note: "Install Node.js 20.19+ and curl first, then run the interactive installer as your normal non-root SSH user. The CLI runs on this VPS; it does not yet connect to or administer other machines automatically.",
+    methods: ["Paired OpenSSH remote agent (source preview)", "Headless CLI source build", "Dedicated hosting workflows (in development)"],
+    steps: ["Install or update the latest GULZ CLI on the VPS as your normal non-root user.","From your local device, connect once with ssh user@host and verify the host fingerprint yourself.","Ensure the gulz command is available in non-interactive SSH sessions.","Run gulz remote add production user@host /var/www/project (or omit the path to use the remote home directory).","Run gulz remote test production.","Open gulz chat and ask it to work on the production environment."],
+    commands: ["# On the VPS, install/update GULZ first","gulz update","# On your local device, verify the host key manually","ssh user@host","# Pair the already-installed remote agent","gulz remote add production user@host /var/www/project","gulz remote test production","gulz chat"],
+    note: "GULZ uses the system OpenSSH client with strict host-key checking, no agent forwarding and no automatic host-key acceptance. Pairing stores only the SSH destination and chosen workspace; your SSH keys stay in your own SSH config/agent. The remote agent exposes the same bounded tools and asks for approval before changes or program execution. Package managers can be run as the SSH user; privileged commands must use sudo -n. Dedicated API/website hosting workflows are still in development.",
   },
 ];
 
@@ -103,7 +103,7 @@ function App() {
           <div className="feature-grid">
             <article className="feature-card"><div className="feature-icon"><Command/></div><h3>Machine operations</h3><p>The local agent can inspect workspaces, read files, create folders, write approved changes with backups and run approved programs without a shell.</p></article>
             <article className="feature-card"><div className="feature-icon"><Bot/></div><h3>AI that gets work done</h3><p>Choose an AI provider and chat naturally. The Agent Engine turns supported requests into tool calls, executes approved actions and returns results to the same conversation.</p></article>
-            <article className="feature-card"><div className="feature-icon"><Server/></div><h3>Remote management</h3><p>Remote VPS support is planned: a separately paired remote agent will manage authorized servers without giving the AI provider direct access to SSH credentials.</p></article>
+            <article className="feature-card"><div className="feature-icon"><Server/></div><h3>Remote management</h3><p>Pair a VPS through OpenSSH. GULZ can inspect its selected workspace and run approved programs there without sending SSH credentials to the AI provider. Full hosting workflows are still being built.</p></article>
           </div>
         </section>
 
@@ -138,13 +138,13 @@ function App() {
 
         <section className="section cli-reference" id="commands">
           <div className="section-kicker">CLI QUICK REFERENCE</div><h2>Open GULZ whenever you need it.</h2>
-          <p className="section-lead">Run gulz to open the interactive assistant. Chat naturally, connect your AI provider and use the CLI tools below when needed. To update this source preview later, run gulz update and answer yes when prompted.</p>
+          <p className="section-lead">Run gulz to open the interactive assistant. Connect an AI provider, pair any VPS you authorize and describe the work you want done.</p>
           <div className="command-grid">
             <article><h3><Terminal size={17}/> Start and inspect</h3><pre><code>{"gulz\ngulz chat\ngulz doctor\ngulz provider status"}</code></pre></article>
             <article><h3><Code2 size={17}/> Workspace tools</h3><pre><code>{"gulz inspect .\ngulz list\ngulz read README.md\ngulz write notes.txt"}</code></pre></article>
-            <article><h3><ShieldCheck size={17}/> Agent requests</h3><pre><code>{"Inside gulz chat, ask:\nInspect this project\nInstall Python on Termux\nCreate a README for this app\nRun the project tests"}</code></pre></article>
+            <article><h3><Server size={17}/> Connect a VPS</h3><pre><code>{"gulz remote add production user@host /var/www/project\ngulz remote list\ngulz remote test production\ngulz chat"}</code></pre></article>
           </div>
-          <div className="release-notice"><ShieldCheck size={17}/><p><b>Safety boundary:</b><br/>The agent starts approved programs directly without a shell; shell interpreters and inline code are blocked. File tools are confined to the current workspace. Package-manager and system commands require approval and may affect the wider system. GULZ shows the exact command before execution. Remote VPS orchestration is not available yet.</p></div>
+          <div className="release-notice"><ShieldCheck size={17}/><p><b>Safety boundary:</b><br/>GULZ uses strict SSH host-key verification and never stores SSH private keys. File changes and direct program execution require approval. Remote tools are scoped to the workspace selected when the connection is added. Shell interpreters and inline code are blocked. Dedicated end-to-end hosting workflows remain in development.</p></div>
         </section>
 
         <section className="section desktop-section" id="desktop">
