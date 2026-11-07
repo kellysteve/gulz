@@ -515,9 +515,12 @@ export async function executeApprovedCommand(
   }
   if (command.toLowerCase() === "sudo") {
     if (args[0] !== "-n") throw new ExecutionError("sudo must use non-interactive mode (-n). GULZ will not collect or forward administrator passwords.");
-    if (typeof args[1] !== "string" || forbiddenExecutables.has(args[1].toLowerCase())) throw new ExecutionError("sudo cannot be used to launch a shell, interpreter wrapper or remote-login program.");
+    const delegated = typeof args[1] === "string" ? args[1].split(/[\\/]/).pop()?.toLowerCase() : undefined;
+    if (!delegated || forbiddenExecutables.has(delegated)) throw new ExecutionError("sudo cannot be used to launch a shell, interpreter wrapper or remote-login program.");
   }
-  if (command.toLowerCase() === "find" && args.some((arg) => ["-exec", "-execdir"].includes(arg.toLowerCase()))) {
+  const effectiveCommand = command.toLowerCase() === "sudo" ? (args[1]?.split(/[\\/]/).pop()?.toLowerCase() ?? "") : command.toLowerCase();
+  const effectiveArgs = command.toLowerCase() === "sudo" ? args.slice(2) : args;
+  if (effectiveCommand === "find" && effectiveArgs.some((arg) => ["-exec", "-execdir"].includes(arg.toLowerCase()))) {
     throw new ExecutionError("find -exec is blocked because it can launch unreviewed nested commands.");
   }
   if (options.signal?.aborted) throw new ExecutionError("Command was cancelled before it started.");
