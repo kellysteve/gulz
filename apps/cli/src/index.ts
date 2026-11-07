@@ -817,9 +817,10 @@ async function interactiveSession(): Promise<void> {
     console.log("\n  " + paint("1.", ansi.cyan) + " Chat with GULZ");
     console.log("  " + paint("2.", ansi.cyan) + " System check");
     console.log("  " + paint("3.", ansi.cyan) + " AI provider settings");
-    console.log("  " + paint("4.", ansi.cyan) + " Recent activity");
-    console.log("  " + paint("5.", ansi.cyan) + " Update GULZ");
-    console.log("  " + paint("6.", ansi.cyan) + " Help");
+    console.log("  " + paint("4.", ansi.cyan) + " Connected VPS environments");
+    console.log("  " + paint("5.", ansi.cyan) + " Recent activity");
+    console.log("  " + paint("6.", ansi.cyan) + " Update GULZ");
+    console.log("  " + paint("7.", ansi.cyan) + " Help");
     console.log("  " + paint("0.", ansi.dim) + " Exit");
   };
   const runCli = async (args: string[]): Promise<number | null> => {
@@ -864,20 +865,53 @@ async function interactiveSession(): Promise<void> {
         if (result === 0 && (action === "builtin" || action === "configure")) await runCli(["provider", "test"]);
         return await interactiveSession();
       }
-      if (choice === "4" || ["activity", "audit"].includes(choice.toLowerCase())) {
+      if (choice === "4" || ["remote", "vps", "servers"].includes(choice.toLowerCase())) {
+        const environments = await readRemoteEnvironments();
+        console.log("\nConnected VPS environments:");
+        if (environments.length) for (const environment of environments) console.log("  " + environment.name + " · " + environment.destination + " · " + environment.workspace);
+        else console.log("  None connected yet.");
+        console.log("\n  1) Add a VPS");
+        console.log("  2) Test a VPS connection");
+        console.log("  3) Remove a VPS connection");
+        console.log("  0) Back");
+        const remoteChoice = await ask("Choose an option: ");
+        if (remoteChoice === "0" || !remoteChoice) continue;
+        if (remoteChoice === "1") {
+          const name = await ask("Connection name (e.g. production): ");
+          const destination = await ask("SSH destination (user@host or SSH config alias): ");
+          const workspace = await ask("Existing remote workspace path (blank for SSH home): ");
+          const remoteArgs = ["remote", "add", name, destination];
+          if (workspace) remoteArgs.push(workspace);
+          await runCli(remoteArgs);
+          return await interactiveSession();
+        }
+        if (remoteChoice === "2") {
+          const name = await ask("Saved connection name: ");
+          await runCli(["remote", "test", name]);
+          return await interactiveSession();
+        }
+        if (remoteChoice === "3") {
+          const name = await ask("Saved connection name: ");
+          await runCli(["remote", "remove", name]);
+          return await interactiveSession();
+        }
+        warning("Choose 1, 2, 3 or 0.");
+        continue;
+      }
+      if (choice === "5" || ["activity", "audit"].includes(choice.toLowerCase())) {
         await runCli(["audit"]);
         return await interactiveSession();
       }
-      if (choice === "5" || choice.toLowerCase() === "update") {
+      if (choice === "6" || choice.toLowerCase() === "update") {
         rl.close();
         await updateInstallation();
         return;
       }
-      if (choice === "6" || choice.toLowerCase() === "help") {
+      if (choice === "7" || choice.toLowerCase() === "help") {
         help();
         continue;
       }
-      warning("Choose 1, 2, 3, 4, 5, 6 or 0.");
+      warning("Choose 1, 2, 3, 4, 5, 6, 7 or 0.");
     }
   } finally {
     rl.close();
