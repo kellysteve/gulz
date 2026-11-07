@@ -510,9 +510,6 @@ export async function executeApprovedCommand(
       Buffer.byteLength(JSON.stringify(args), "utf8") > 32000) {
     throw new ExecutionError("Command arguments are invalid or exceed the configured limits.");
   }
-  if (args.some((arg) => inlineCodeFlags.has(arg.toLowerCase()))) {
-    throw new ExecutionError("Inline shell or interpreter code is not supported. Use a project file or a dedicated GULZ tool instead.");
-  }
   let effectiveCommand = command.toLowerCase();
   let effectiveArgs = args;
   if (effectiveCommand === "sudo") {
@@ -532,6 +529,9 @@ export async function executeApprovedCommand(
     if (!delegated || forbiddenExecutables.has(delegated)) throw new ExecutionError("sudo cannot be used to launch a shell, interpreter wrapper or remote-login program.");
     effectiveCommand = delegated;
     effectiveArgs = args.slice(targetIndex + 1);
+  }
+  if (interpreterExecutables.has(effectiveCommand) && effectiveArgs.some((arg) => inlineCodeFlags.has(arg.toLowerCase()))) {
+    throw new ExecutionError("Inline interpreter code is not supported. Use a project file or a dedicated GULZ tool instead.");
   }
   const recursiveFlag = effectiveArgs.some((arg) => arg === "--recursive" || (arg.startsWith("-") && arg.includes("r")));
   const forceFlag = effectiveArgs.some((arg) => arg === "--force" || (arg.startsWith("-") && arg.includes("f")));
