@@ -1024,6 +1024,80 @@ async function chatSession(): Promise<void> {
   }
 }
 
+async function remoteCommand(args: string[]): Promise<void> {
+  const [action, ...values] = args;
+  if (!action || action === "list") {
+    const environments = await readRemoteEnvironments();
+    if (!environments.length) {
+      console.log("No VPS environments connected yet.");
+      console.log("Add one with: gulz remote add <name> <user@host>");
+      return;
+    }
+    title("CONNECTED VPS ENVIRONMENTS");
+    for (const environment of environments) {
+      console.log("  " + environment.name + "  ·  " + environment.destination);
+    }
+    console.log("\nThe remote host must have a compatible GULZ CLI installed and its SSH host key verified.");
+    return;
+  }
+  if (action === "add") {
+    if (values.length !== 2) { console.error("Usage: gulz remote add <name> <user@host-or-ssh-alias>"); process.exitCode = 2; return; }
+    const name = validateRemoteAlias(values[0]!);
+    const destination = validateRemoteDestination(values[1]!);
+    const environments = await readRemoteEnvironments();
+    if (environments.some((item) => item.name === name)) throw new Error("A remote environment with that name already exists. Remove it first or choose another name.");
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("Adding a remote environment requires an interactive terminal.");
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      title("CONNECT A VPS");
+      console.log("Name: " + name);
+      console.log("SSH destination: " + destination);
+      console.log("GULZ will use your existing OpenSSH configuration and SSH agent. It will not store your private key or password.");
+      warning("Strict host-key verification is enabled. GULZ will never automatically accept an unknown or changed host key.");
+      const confirmation = await rl.question("Check this VPS over SSH? (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Connection cancelled."); return; }
+      const capabilities = await new OpenSshRemoteTransport({}).testDestination(destination);
+      console.log("Remote GULZ version: " + capabilities.version);
+      console.log("Remote tools: " + capabilities.tools.join(", "));
+      const save = await rl.question("Save this VPS connection for GULZ chat? (y/N): ");
+      if (!["y", "yes"].includes(save.trim().toLowerCase())) { console.log("Connection was tested but not saved."); return; }
+      await saveRemoteEnvironments([...environments, { name, destination, addedAt: new Date().toISOString() }]);
+      await recordAudit("remote.environment_added", { name, destination });
+      success("VPS connection saved. Its tools will be available in gulz chat.");
+    } finally { rl.close(); }
+    return;
+  }
+  if (action === "test") {
+    if (values.length !== 1) { console.error("Usage: gulz remote test <name>"); process.exitCode = 2; return; }
+    const environments = await readRemoteEnvironments();
+    const environment = environments.find((item) => item.name === values[0]);
+    if (!environment) throw new Error("Remote environment not found.");
+    const capabilities = await new OpenSshRemoteTransport({}).testDestination(environment.destination);
+    success("Remote GULZ agent is reachable · version " + capabilities.version);
+    label("Tools", capabilities.tools.join(", "));
+    return;
+  }
+  if (action === "remove") {
+    if (values.length !== 1) { console.error("Usage: gulz remote remove <name>"); process.exitCode = 2; return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("Removing a remote environment requires an interactive terminal.");
+    const environments = await readRemoteEnvironments();
+    const environment = environments.find((item) => item.name === values[0]);
+    if (!environment) throw new Error("Remote environment not found.");
+    const rl = createInterface({ input: stdin, output: stdout });
+    try {
+      console.log("Remove connection " + environment.name + " (" + environment.destination + ") from GULZ?");
+      const confirmation = await rl.question("Remove this saved connection? (y/N): ");
+      if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Nothing changed."); return; }
+      await saveRemoteEnvironments(environments.filter((item) => item.name !== environment.name));
+      await recordAudit("remote.environment_removed", { name: environment.name });
+      success("Remote connection removed from GULZ. The VPS itself was not changed.");
+    } finally { rl.close(); }
+    return;
+  }
+  console.error("Usage: gulz remote <list|add|test|remove>");
+  process.exitCode = 2;
+}
+
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
   if (!command) return interactiveSession();
