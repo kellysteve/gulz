@@ -52,7 +52,7 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
   let executed = 0;
   for (let round = 0; round < maxRounds; round += 1) {
     if (options.signal?.aborted) throw new AgentError("Agent run cancelled.");
-    const turn = await generateAgentTurn(options.provider, messages.slice(-30), options.tools.map((tool) => tool.definition));
+    const turn = await generateAgentTurn({ ...options.provider, ...(options.signal ? { signal: options.signal } : {}) }, messages.slice(-30), options.tools.map((tool) => tool.definition));
     if (turn.toolCalls.length === 0) {
       messages.push({ role: "assistant", content: turn.content });
       return { messages: messages.slice(-30), reply: turn.content, toolCallsExecuted: executed, stoppedForApproval: false };
@@ -110,7 +110,7 @@ function localOperation(kind: "inspect" | "list_directory" | "read_file" | "writ
   if (kind === "run_command") {
     const command = requiredText(input, "command", 100);
     if (!Array.isArray(input.args) || input.args.length > 50 || !input.args.every((arg) => typeof arg === "string" && arg.length <= 4000)) throw new AgentError("Command arguments must be a bounded string array.");
-    return executeApprovedCommand(command, input.args as string[], { cwd: rootDirectory, approved, ...(signal ? { signal } : {}) });
+    return executeApprovedCommand(command, input.args as string[], { cwd: rootDirectory, approved, timeoutMs: 600000, ...(signal ? { signal } : {}) });
   }
   if (kind === "write_file") {
     const content = input.content;
