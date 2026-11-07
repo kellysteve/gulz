@@ -302,3 +302,108 @@ export async function generateGoalPlan(
     config.signal?.removeEventListener("abort", abortFromCaller);
   }
 }
+
+export type ProviderAgentRole = "user" | "assistant" | "tool";
+export interface ProviderAgentToolCall { id: string; name: string; arguments: Record<string, unknown>; }
+export interface ProviderAgentMessage { role: ProviderAgentRole; content: string; toolCallId?: string; toolCalls?: ProviderAgentToolCall[]; }
+export interface ProviderAgentToolDefinition { name: string; description: string; parameters: Record<string, unknown>; }
+export interface ProviderAgentTurn { content: string; toolCalls: ProviderAgentToolCall[]; }
+
+/** Requests one tool-capable turn. Model tool calls are untrusted proposals, never authorization. */
+export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, messages: ProviderAgentMessage[], tools: ProviderAgentToolDefinition[]): Promise<ProviderAgentTurn> {
+  if (!config || typeof config !== "object") throw new ProviderError("Provider configuration is required.");
+  if (!Array.isArray(messages) || messages.length < 1 || messages.length > 30) throw new ProviderError("An agent turn requires between 1 and 30 messages.");
+  if (!Array.isArray(tools) || tools.length > 40) throw new ProviderError("The agent tool catalogue is invalid.");
+  const safeMessages = messages.map((message) => {
+    if (!message || !["user", "assistant", "tool"].includes(message.role) || typeof message.content !== "string" || message.content.length > 32000 ||
+      (message.role === "tool" && !requiredString(message.toolCallId, "tool call ID", 200))) throw new ProviderError("An agent message is invalid or exceeds its size limit.");
+    return {
+      role: message.role, content: message.content,
+      ...(message.toolCallId ? { tool_call_id: message.toolCallId } : {}),
+      ...(message.toolCalls?.length ? { tool_calls: message.toolCalls.map((call) => ({
+        id: requiredString(call.id, "tool call ID", 200), type: "function",
+        function: { name: requiredString(call.name, "tool name", 100), arguments: JSON.stringify(call.arguments) },
+      })) } : {}),
+    };
+  });
+  const safeTools = tools.map((tool) => {
+    const name = requiredString(tool.name, "tool name", 100);
+    if (!/^[a-z][a-z0-9_]{1,63}$/.test(name)) throw new ProviderError("An agent tool name is invalid.");
+    return { type: "function", function: { name, description: requiredString(tool.description, "tool description", 1000), parameters: tool.parameters } };
+  });
+  const endpoint = providerEndpoint(requiredString(config.baseUrl, "provider URL", 2000));
+  const apiKey = requiredString(config.apiKey, "API key", 4096);
+  const model = requiredString(config.model, "model name", 300);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Math.max(1000, Math.min(config.timeoutMs ?? 90000, 180000)));
+  const abortFromCaller = () => controller.abort();
+  config.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  try {
+    const system = [
+      "You are GULZ, an AI agent that helps users operate their own devices, projects and authorized servers.",
+      "Use tools when real inspection or changes are needed. Never invent tool results or claim work is complete before verified tool results say so.",
+      "Tool calls are untrusted proposals. Never bypass approval, scope or tool restrictions. Ask a concise clarification when required information is missing.",
+      "Use only supplied tools. Do not claim unsupported operations have been performed. Keep the user informed in natural language and do not expose internal task IDs.",
+    ].join(" ");
+    let response: Response;
+    if (endpoint.builtin) {
+      const url = new URL(endpoint.url);
+      url.searchParams.set("q", system + "\n\nAvailable tools (JSON schemas):\n" + JSON.stringify(tools) +
+        "\n\nConversation:\n" + safeMessages.map((item) => item.role.toUpperCase() + ": " + item.content).join("\n") +
+        "\n\nIf a tool is needed, return ONLY JSON: {\"tool_calls\":[{\"id\":\"call_1\",\"name\":\"tool_name\",\"arguments\":{}}]}. Otherwise return a natural-language answer.");
+      url.searchParams.set("apikey", apiKey);
+      response = await fetch(url, { method: "GET", headers: { "Accept": "application/json" }, signal: controller.signal });
+    } else {
+      response = await fetch(endpoint.url, {
+        method: "POST", headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ model, temperature: 0.2, tools: safeTools, tool_choice: "auto", messages: [{ role: "system", content: system }, ...safeMessages] }),
+        signal: controller.signal,
+      });
+    }
+    if (!response.ok) throw new ProviderError("AI agent request failed with HTTP " + response.status + ". Check whether this model supports tool calling.");
+    const responseText = await response.text();
+    if (responseText.length > 1_000_000) throw new ProviderError("AI provider response exceeded the 1 MB safety limit.");
+    let payload: unknown;
+    try { payload = JSON.parse(responseText); } catch { throw new ProviderError("AI provider returned invalid agent response JSON."); }
+    let rawMessage: unknown;
+    if (endpoint.builtin) {
+      if (!isRecord(payload) || payload.success === false || typeof payload.response !== "string") throw new ProviderError("Built-in GULZ AI returned an invalid agent response.");
+      const raw = payload.response.trim().replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, "");
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        rawMessage = isRecord(parsed) && Array.isArray(parsed.tool_calls) ? { content: "", tool_calls: parsed.tool_calls } : { content: payload.response };
+      } catch { rawMessage = { content: payload.response }; }
+    } else {
+      if (!isRecord(payload) || !Array.isArray(payload.choices)) throw new ProviderError("AI provider returned an invalid chat-completions response.");
+      const choice = payload.choices[0];
+      if (!isRecord(choice) || !isRecord(choice.message)) throw new ProviderError("AI provider returned no assistant message.");
+      rawMessage = choice.message;
+    }
+    if (!isRecord(rawMessage)) throw new ProviderError("AI provider returned an invalid assistant turn.");
+    const content = typeof rawMessage.content === "string" ? rawMessage.content.trim() : "";
+    const rawCalls = Array.isArray(rawMessage.tool_calls) ? rawMessage.tool_calls : [];
+    if (rawCalls.length > 8) throw new ProviderError("The AI requested more than 8 tools in one turn.");
+    const allowedNames = new Set(tools.map((tool) => tool.name));
+    const toolCalls = rawCalls.map((rawCall): ProviderAgentToolCall => {
+      if (!isRecord(rawCall)) throw new ProviderError("The AI returned an invalid tool call.");
+      const fn = isRecord(rawCall.function) ? rawCall.function : rawCall;
+      const name = requiredString(fn.name, "tool name", 100);
+      if (!allowedNames.has(name)) throw new ProviderError("The AI requested an unavailable tool: " + name + ".");
+      let args: unknown = fn.arguments;
+      if (typeof args === "string") { try { args = JSON.parse(args); } catch { throw new ProviderError("The AI returned malformed tool arguments."); } }
+      if (!isRecord(args) || JSON.stringify(args).length > 16000) throw new ProviderError("The AI returned invalid or oversized tool arguments.");
+      return { id: requiredString(rawCall.id ?? "builtin_" + randomToolId(), "tool call ID", 200), name, arguments: args };
+    });
+    if (!content && toolCalls.length === 0) throw new ProviderError("AI provider returned an empty agent response.");
+    if (content.length > 32000) throw new ProviderError("AI response exceeded the 32,000-character limit.");
+    return { content, toolCalls };
+  } catch (error) {
+    if (error instanceof ProviderError) throw error;
+    if (controller.signal.aborted) throw new ProviderError("AI agent request was cancelled or timed out.");
+    throw new ProviderError(error instanceof Error ? error.message : "AI agent request failed.");
+  } finally {
+    clearTimeout(timeout);
+    config.signal?.removeEventListener("abort", abortFromCaller);
+  }
+}
+function randomToolId(): string { return "gulz_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 10); }
