@@ -158,7 +158,9 @@ When the selected model supports tool calling, GULZ can inspect the current work
 
 To update this installation later, run `gulz update` from an interactive terminal and answer `y` or `n`. GULZ runs a fast-forward-only Git update, installs only the CLI workspaces (including TypeScript development dependencies), rebuilds the CLI and refreshes the global link. It then asks whether you want to configure or change your AI provider/model. You can keep your current settings and change them later with the AI setup menu. It deliberately does not install the website's Wrangler/Workerd dependency. Close the current session and run `gulz` again. This updater is for source-checkout installations; published package updates are not available yet.
 
-Goals are stored locally in ~/.gulz/goals.json. Set GULZ_HOME to choose another data directory. The CLI validates stored records before use and refuses malformed data instead of silently overwriting it.
+## Local data and privacy
+
+GULZ stores its local data under `~/.gulz` by default; set `GULZ_HOME` to choose another data directory. Conversation history is stored in `conversation.json`, provider configuration in `provider.json`, paired VPS destinations/workspace roots in `remote-environments.json`, and local audit events in `audit.jsonl`. These files are created with owner-only permissions where supported. Provider keys are not encrypted by the current CLI; protect your device account and data directory. Internal work records remain an implementation detail and are not required for normal chat.
 
 ## Filesystem and diagnostic commands
 
@@ -194,7 +196,7 @@ On Termux or another host where the website's Wrangler/Workerd runtime is unavai
 - **macOS:** signed and notarized .dmg for Apple Silicon and Intel; Homebrew distribution may follow.
 - **Linux:** AppImage, .deb and .rpm, plus a desktop application.
 - **Android:** Termux CLI first; native Android app is a separate planned deliverable.
-- **VPS:** headless CLI installation; remote SSH orchestration is a later capability.
+- **VPS:** headless CLI installation and initial OpenSSH remote-agent pairing are available in the source preview; dedicated hosting workflows are still in development.
 - **Node.js developers:** global npm installation after @gulz/core and @gulz/cli are published.
 
 All release artifacts must be built for their target platform, tested, checksummed and cryptographically signed. Download buttons and package commands will be enabled only after those artifacts actually exist.
