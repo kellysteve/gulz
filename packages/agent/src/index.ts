@@ -34,7 +34,7 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
   let executed = 0;
   for (let round = 0; round < maxRounds; round += 1) {
     if (options.signal?.aborted) throw new AgentError("Agent run cancelled.");
-    const turn = await generateAgentTurn(options.provider, messages, options.tools.map((tool) => tool.definition));
+    const turn = await generateAgentTurn(options.provider, messages.slice(-30), options.tools.map((tool) => tool.definition));
     if (turn.toolCalls.length === 0) {
       messages.push({ role: "assistant", content: turn.content });
       return { messages: messages.slice(-30), reply: turn.content, toolCallsExecuted: executed, stoppedForApproval: false };
