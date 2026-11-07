@@ -119,3 +119,33 @@ test("caps a single user turn at eight-or-fewer total tool actions and returns a
     assert.equal(calls, 2);
   } finally { globalThis.fetch = originalFetch; }
 });
+
+test("redacts common credentials from tool output before sending it back to the provider", async () => {
+  const originalFetch = globalThis.fetch;
+  let providerToolResult = "";
+  let calls = 0;
+  globalThis.fetch = async (_url, options) => {
+    calls += 1;
+    const body = JSON.parse(String(options?.body));
+    if (calls === 1) return new Response(JSON.stringify({ choices: [{ message: {
+      content: "",
+      tool_calls: [{ id: "call_sensitive", type: "function", function: { name: "emit_sensitive", arguments: "{}" } }],
+    } }] }), { status: 200 });
+    providerToolResult = body.messages.find((message) => message.role === "tool")?.content ?? "";
+    return new Response(JSON.stringify({ choices: [{ message: { content: "I checked the output and redacted credential-like values." } }] }), { status: 200 });
+  };
+  try {
+    const result = await runAgent({
+      provider: { baseUrl: "https://provider.example/v1", apiKey: "test", model: "tool-model" },
+      messages: [{ role: "user", content: "Inspect this result." }],
+      tools: [{
+        definition: { name: "emit_sensitive", description: "Test-only output source", parameters: { type: "object", properties: {}, additionalProperties: false } },
+        requiresApproval: () => false,
+        execute: async () => ({ output: { content: "API_KEY=super-secret-value\\nAuthorization: Bearer abcdefghijklmnop\\nDATABASE_URL=postgres://user:db-password@db.example/app\\nsk-abcdefghijklmnopqrstuvwx1234" } }),
+      }],
+    });
+    assert.match(result.reply, /redacted/);
+    assert.match(providerToolResult, /\\[REDACTED\\]/);
+    assert.doesNotMatch(providerToolResult, /super-secret-value|abcdefghijklmnop|db-password|sk-abcdefghijklmnopqrstuvwx1234/);
+  } finally { globalThis.fetch = originalFetch; }
+});
