@@ -489,7 +489,7 @@ export interface ApprovedCommandResult {
   durationMs: number;
   processSucceeded: boolean;
 }
-const forbiddenExecutables = new Set(["sh", "bash", "dash", "zsh", "fish", "csh", "tcsh", "cmd", "cmd.exe", "powershell", "pwsh", "busybox", "ssh", "scp", "sftp", "env", "xargs"]);
+const forbiddenExecutables = new Set(["sh", "bash", "dash", "zsh", "fish", "csh", "tcsh", "cmd", "cmd.exe", "powershell", "pwsh", "busybox", "ssh", "scp", "sftp", "env", "xargs", "su"]);
 const inlineCodeFlags = new Set(["-c", "-e", "-r", "--command", "-command", "-encodedcommand", "--eval", "-eval"]);
 
 /**
@@ -520,6 +520,13 @@ export async function executeApprovedCommand(
   }
   const effectiveCommand = command.toLowerCase() === "sudo" ? (args[1]?.split(/[\\/]/).pop()?.toLowerCase() ?? "") : command.toLowerCase();
   const effectiveArgs = command.toLowerCase() === "sudo" ? args.slice(2) : args;
+  const recursiveFlag = effectiveArgs.some((arg) => arg === "--recursive" || (arg.startsWith("-") && arg.includes("r")));
+  const forceFlag = effectiveArgs.some((arg) => arg === "--force" || (arg.startsWith("-") && arg.includes("f")));
+  if ((effectiveCommand === "rm" && recursiveFlag && forceFlag && effectiveArgs.some((arg) => arg === "/" || arg === "/*")) ||
+      (effectiveCommand === "dd" && effectiveArgs.some((arg) => arg.toLowerCase().startsWith("of=/dev/"))) ||
+      effectiveCommand.startsWith("mkfs") || ["fdisk", "sfdisk", "parted", "wipefs"].includes(effectiveCommand)) {
+    throw new ExecutionError("This disk or root-filesystem operation is blocked by the critical-operation policy.");
+  }
   if (effectiveCommand === "find" && effectiveArgs.some((arg) => ["-exec", "-execdir"].includes(arg.toLowerCase()))) {
     throw new ExecutionError("find -exec is blocked because it can launch unreviewed nested commands.");
   }
