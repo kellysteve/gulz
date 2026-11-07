@@ -25,3 +25,13 @@ test("agent does not execute a proposed write when approval is denied", async ()
     assert.equal(result.toolCallsExecuted, 0);
   } finally { globalThis.fetch = originalFetch; }
 });
+
+test("mutating tool implementation cannot be called without approval context", async () => {
+  const tools = createLocalAgentTools(process.cwd());
+  const writeTool = tools.find((tool) => tool.definition.name === "write_file");
+  assert.ok(writeTool);
+  await assert.rejects(
+    writeTool.execute({ path: "agent-should-not-write.txt", content: "blocked" }, {}),
+    /explicit user approval/,
+  );
+});
