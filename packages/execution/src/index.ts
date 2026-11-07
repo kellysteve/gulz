@@ -513,13 +513,26 @@ export async function executeApprovedCommand(
   if (args.some((arg) => inlineCodeFlags.has(arg.toLowerCase()))) {
     throw new ExecutionError("Inline shell or interpreter code is not supported. Use a project file or a dedicated GULZ tool instead.");
   }
-  if (command.toLowerCase() === "sudo") {
+  let effectiveCommand = command.toLowerCase();
+  let effectiveArgs = args;
+  if (effectiveCommand === "sudo") {
     if (args[0] !== "-n") throw new ExecutionError("sudo must use non-interactive mode (-n). GULZ will not collect or forward administrator passwords.");
-    const delegated = typeof args[1] === "string" ? args[1].split(/[\\/]/).pop()?.toLowerCase() : undefined;
+    const valueOptions = new Set(["-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt", "-C", "--chdir", "-T", "--command-timeout"]);
+    let targetIndex = 0;
+    while (targetIndex < args.length) {
+      const option = args[targetIndex]!;
+      if (option === "--") { targetIndex += 1; break; }
+      if (option.startsWith("-")) {
+        targetIndex += valueOptions.has(option) ? 2 : 1;
+        continue;
+      }
+      break;
+    }
+    const delegated = args[targetIndex]?.split(/[\\/]/).pop()?.toLowerCase();
     if (!delegated || forbiddenExecutables.has(delegated)) throw new ExecutionError("sudo cannot be used to launch a shell, interpreter wrapper or remote-login program.");
+    effectiveCommand = delegated;
+    effectiveArgs = args.slice(targetIndex + 1);
   }
-  const effectiveCommand = command.toLowerCase() === "sudo" ? (args[1]?.split(/[\\/]/).pop()?.toLowerCase() ?? "") : command.toLowerCase();
-  const effectiveArgs = command.toLowerCase() === "sudo" ? args.slice(2) : args;
   const recursiveFlag = effectiveArgs.some((arg) => arg === "--recursive" || (arg.startsWith("-") && arg.includes("r")));
   const forceFlag = effectiveArgs.some((arg) => arg === "--force" || (arg.startsWith("-") && arg.includes("f")));
   if ((effectiveCommand === "rm" && recursiveFlag && forceFlag && effectiveArgs.some((arg) => arg === "/" || arg === "/*")) ||
