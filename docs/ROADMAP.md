@@ -1,79 +1,95 @@
 # GULZ development roadmap
 
-This roadmap distinguishes source changes from verified, user-tested capabilities. A feature is not complete for release until its tests, platform behavior, security review and documentation are verified.
+This roadmap separates source implementation from tested/released capability. A feature is not complete until builds, platform behavior, security review and user-facing documentation are verified.
 
-## Product direction\n\nGULZ is presented as a general AI assistant and supervised agent, not a goal manager. Users speak naturally; goals, plans and task records are internal implementation details and should not be pushed into the everyday interface. Preferred product line: **Tell it. Get it done.**\n\n## Current milestone — continuous CLI assistant
+## Product direction
 
-- [x] Add `gulz chat` as a continuous interactive conversation.
-- [x] Keep recent conversation context across turns.
-- [x] Persist up to 40 recent messages in the private local GULZ data directory.
-- [x] Add `/clear` and `/exit` controls.
-- [x] Support built-in GULZ AI and OpenAI-compatible chat-completions providers.
-- [x] Make chat the first interactive-menu action.\n- [x] Remove repeated provider-consent prompts from chat after the user has configured a provider.\n- [x] Simplify chat output so restored conversation and assistant replies are shown directly.
-- [x] Keep conversational responses separate from machine-operation authorization.
-- [x] Add provider and CLI help tests.
-- [ ] Run provider, CLI and TypeScript tests on a supported development host.
-- [ ] Build and test the latest source on Android Termux.
-- [ ] Verify real built-in provider conversations, history restoration and clearing.
+GULZ is a provider-independent AI agent with a conversation-first experience. Users describe outcomes naturally. The AI provider supplies reasoning; GULZ supplies the Agent Engine, Tools & Integrations, Environment Manager, execution policy and verification. Goals and task records are internal implementation details.
 
-## Next milestone — one assistant for chat and execution
+## Implemented in source — initial local agent foundation
 
-- [ ] Let the assistant recognize when a message is a question, a follow-up, or a request to perform work.
-- [ ] For work requests, generate internal goals and task plans without asking users to manage IDs.
-- [ ] Present concise action summaries and ask for approval only where policy requires it.
-- [ ] Execute approved operations through the shared local execution engine.
-- [ ] Return verified operation results to the same conversation.
-- [ ] Support clarifying questions, cancellation, pause and resume from chat.
-- [ ] Keep normal conversation free of unnecessary goal/task records.
-- [ ] Add multiple named conversations, create/rename/archive/delete controls and per-conversation history.
+- [x] Add OpenAI-compatible model tool/function calling and structured JSON tool-call fallback for the built-in provider.
+- [x] Add a shared bounded agent loop with a registered tool catalogue, cancellation support, context limits and tool-result handoff.
+- [x] Connect continuous CLI chat to the local agent engine.
+- [x] Add read-only local environment detection for Termux, Linux, macOS, Windows, package managers and developer tools.
+- [x] Add local workspace inspection, directory listing and bounded UTF-8 file reading.
+- [x] Add approved directory creation and file writes with backup behavior.
+- [x] Add an explicitly approved direct-program runner with no shell, bounded output/time and restrictions on shell interpreters and inline interpreter code.
+- [x] Require approval for every mutating operation and direct program invocation; deny when no approval callback exists.
+- [x] Add agent, provider and environment package tests in source.
+- [x] Add the new packages to CLI installation and build scripts.
+- [x] Remove goal-management controls from the everyday interactive menu and help output; retain legacy records/commands internally for compatibility.
 
-## Execution capabilities
+## Required verification for the current source
 
-- [ ] Expand the allowlisted command catalogue with explicit operation contracts and risk levels.
-- [ ] Add safe project dependency installation with package-manager detection, previews and approval.
-- [ ] Add project scaffolding and common development workflows.
-- [ ] Add test/build execution with bounded output, timeout, cancellation and verified results.
-- [ ] Improve recovery from partial operations and interrupted processes.
-- [ ] Add explicit workspace selection and authorized-root management.
-- [ ] Add SSH/VPS adapter, host-key verification, scoped credentials and per-host approvals.
-- [ ] Add connected-service adapters only when each integration has clear permissions and audit records.
+- [ ] Run the complete workspace test and typecheck suite on a supported development host.
+- [ ] Build and test the latest CLI on Android Termux.
+- [ ] Verify tool calling with at least one OpenAI-compatible model that supports function calling.
+- [ ] Verify the built-in provider's structured tool-call behavior against the live provider.
+- [ ] Verify read-only inspection, approved file writes/backups and denied approvals on a disposable workspace.
+- [ ] Verify Termux pkg and Linux package-manager commands with explicit approval, including failure handling.
+- [ ] Review command-runner threat model, timeouts, cancellation, output caps and privilege boundaries.
 
-## Provider and memory improvements
+## Remote VPS agent — next major milestone
 
-- [ ] Add provider/model discovery where APIs support it.
-- [ ] Add model capability metadata and graceful fallback.
-- [ ] Add safe provider switching without losing conversations.
-- [ ] Add optional user-controlled memory with inspect, edit and delete controls.
-- [ ] Move provider secrets to a stronger encrypted or OS-backed secret store.
-- [ ] Add request cancellation and streaming where providers support it.
+- [ ] Implement the remote agent runtime and stdio protocol.
+- [ ] Add an SSH transport using the system OpenSSH client, strict host-key checking and no shell-string interpolation.
+- [ ] Require the user to install or bootstrap the remote agent explicitly on each VPS.
+- [ ] Pair local GULZ with remote environments; store no SSH private keys in GULZ or provider prompts.
+- [ ] Add remote-side independent tool registry, path scopes, approvals, audit, cancellation and output limits.
+- [ ] Support remote environment detection and safe package installation.
+- [ ] Add VPS diagnostics, package setup, service management and deployment verification.
+- [ ] Add secure templates for API hosting, website hosting, databases, reverse proxies, TLS and backups.
+- [ ] Add health checks for deployed websites/APIs and never equate process exit code zero with service health.
+
+## Local environment and developer workflows
+
+- [ ] Add platform-specific package-manager adapters and package-name validation.
+- [ ] Add project setup and scaffolding for Node.js, Python and common web stacks.
+- [ ] Add dependency installation, build/test, process management and recovery workflows.
+- [ ] Add explicit workspace selection and multiple authorized local roots.
+- [ ] Add safe configuration editing, backup and rollback for service setup.
+- [ ] Add cancellation and resumable execution for long-running jobs.
+
+## Tools and integrations
+
+- [ ] Add GitHub repository/issue/PR workflows with scoped OAuth permissions.
+- [ ] Add database and cloud-provider integrations with least-privilege credentials.
+- [ ] Add HTTP/API client tools with domain scopes, request limits and secret redaction.
+- [ ] Add file transfer and deployment adapters with checksums and rollback.
+- [ ] Add a plugin/capability manifest so new tools can be installed and reviewed safely.
+
+## Provider system
+
+- [ ] Add model capability discovery and clear tool-calling compatibility checks.
+- [ ] Add streaming responses and tool progress events.
+- [ ] Add provider switching without losing conversation history.
+- [ ] Add safe fallback when a model lacks function calling.
+- [ ] Move API keys to encrypted or OS-backed secret storage.
+- [ ] Add user-controlled memory with inspect, edit and delete controls.
 
 ## Workspace and interface
 
-- [ ] Build the actual GULZ workspace UI; the current website is an installation/marketing site, not an execution workspace.
-- [ ] Add a responsive conversation layout, sidebar, message composer and attachment flow.
-- [ ] Add conversation and project navigation.
-- [ ] Add a live activity panel for plans, approvals, operations and verified results.
-- [ ] Add provider/model settings, theme controls and accessibility improvements.
-- [ ] Connect the workspace to the same core, storage and execution policy as the CLI.
-- [ ] Add authenticated backend/session synchronization only after the trust and authorization model is designed.
+- [ ] Build the actual GULZ workspace UI; the current website remains an installation/marketing site.
+- [ ] Add responsive conversation layout, sidebar, message composer and attachments.
+- [ ] Add environment/connection manager for local devices and paired VPSs.
+- [ ] Add live activity, approvals, tool output and verification status.
+- [ ] Add provider/model settings, theme controls and accessibility.
+- [ ] Share the same Agent Engine and execution policy between CLI and workspace.
+- [ ] Add authenticated backend/session sync only after the remote trust model is ready.
 
 ## Reliability, security and distribution
 
-- [ ] Add integration tests for real task lifecycles and provider failure cases.
-- [ ] Add Termux, Linux, macOS and Windows compatibility checks.
-- [ ] Add threat-model review for generated commands, filesystem races, credentials and remote hosts.
-- [ ] Add robust storage migrations, backups and recovery.
+- [ ] Add integration tests for provider/tool lifecycles and partial failures.
+- [ ] Verify Termux, Linux, macOS and Windows compatibility.
+- [ ] Complete threat-model review for command execution, credentials, remote hosts and malicious projects.
+- [ ] Add storage migrations, encrypted secrets, backups and recovery.
 - [ ] Add signed update metadata, checksums and rollback.
 - [ ] Publish packages and signed installers only after reproducible builds and release verification.
-- [ ] Build desktop and native Android applications after the shared workspace and execution APIs stabilize.
+- [ ] Build desktop and native Android applications after the shared workspace stabilizes.
 
-## User verification required now
+## Current limitations
 
-1. Run `gulz update` in the existing source installation.
-2. Keep the current provider settings unless you intentionally want to change them. Provider setup is the one-time connection choice; chat should not ask again each session.
-3. Run `gulz chat`, approve sending messages to the configured provider, and send at least two related messages.
-4. Exit with `/exit`, run `gulz chat` again, and confirm the recent conversation is restored.
-5. Try `/clear` and confirm it removes the saved conversation.
-6. Share any errors and the output of `gulz doctor`.
+The local agent foundation is not yet a full autonomous VPS administrator. It cannot yet connect to remote hosts, configure a public API/website end-to-end, install a remote agent, manage system services through a dedicated adapter, or integrate cloud services. Direct commands require user approval and are not a hardened sandbox. The built-in provider's ability to issue tool calls still needs live verification.
 
-Do not treat the new chat mode as machine execution: it currently answers conversationally. Use `gulz do "..." ` for the existing supervised task-planning and execution path until chat-to-execution integration is completed.
+Do not advertise unimplemented remote execution, hosting automation, native apps or signed installers as available.
