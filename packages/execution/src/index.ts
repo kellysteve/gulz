@@ -489,7 +489,7 @@ export interface ApprovedCommandResult {
   durationMs: number;
   processSucceeded: boolean;
 }
-const forbiddenExecutables = new Set(["sh", "bash", "dash", "zsh", "fish", "csh", "tcsh", "cmd", "cmd.exe", "powershell", "pwsh", "busybox", "ssh", "scp", "sftp"]);
+const forbiddenExecutables = new Set(["sh", "bash", "dash", "zsh", "fish", "csh", "tcsh", "cmd", "cmd.exe", "powershell", "pwsh", "busybox", "ssh", "scp", "sftp", "env", "xargs"]);
 const inlineCodeFlags = new Set(["-c", "-e", "-r", "--command", "-command", "-encodedcommand", "--eval", "-eval"]);
 
 /**
@@ -513,8 +513,12 @@ export async function executeApprovedCommand(
   if (args.some((arg) => inlineCodeFlags.has(arg.toLowerCase()))) {
     throw new ExecutionError("Inline shell or interpreter code is not supported. Use a project file or a dedicated GULZ tool instead.");
   }
-  if (command.toLowerCase() === "sudo" && args[0] !== "-n") {
-    throw new ExecutionError("sudo must use non-interactive mode (-n). GULZ will not collect or forward administrator passwords.");
+  if (command.toLowerCase() === "sudo") {
+    if (args[0] !== "-n") throw new ExecutionError("sudo must use non-interactive mode (-n). GULZ will not collect or forward administrator passwords.");
+    if (typeof args[1] !== "string" || forbiddenExecutables.has(args[1].toLowerCase())) throw new ExecutionError("sudo cannot be used to launch a shell, interpreter wrapper or remote-login program.");
+  }
+  if (command.toLowerCase() === "find" && args.some((arg) => ["-exec", "-execdir"].includes(arg.toLowerCase()))) {
+    throw new ExecutionError("find -exec is blocked because it can launch unreviewed nested commands.");
   }
   if (options.signal?.aborted) throw new ExecutionError("Command was cancelled before it started.");
   const cwd = resolve(options.cwd);
@@ -527,6 +531,7 @@ export async function executeApprovedCommand(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const abort = () => controller.abort();
   options.signal?.addEventListener("abort", abort, { once: true });
+  if (options.signal?.aborted) abort();
   try {
     return await new Promise<ApprovedCommandResult>((resolveResult, rejectResult) => {
       if (controller.signal.aborted) {
