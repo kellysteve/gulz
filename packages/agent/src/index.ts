@@ -30,7 +30,9 @@ function approvalRisk(toolName: string, input: Record<string, unknown>): "modera
   const args = Array.isArray(input.args) ? input.args.filter((value): value is string => typeof value === "string").map((value) => value.toLowerCase()) : [];
   const effectiveCommand = command === "sudo" && args[0] === "-n" ? ((args[1] ?? "").split(/[\\/]/).pop() ?? "") : command;
   const effectiveArgs = command === "sudo" && args[0] === "-n" ? args.slice(2) : args;
-  const recursiveForce = effectiveArgs.some((value) => value.startsWith("-") && value.includes("r") && value.includes("f")) || effectiveArgs.includes("--recursive");
+  const recursiveFlag = effectiveArgs.some((value) => value === "--recursive" || (value.startsWith("-") && value.includes("r")));
+  const forceFlag = effectiveArgs.some((value) => value === "--force" || (value.startsWith("-") && value.includes("f")));
+  const recursiveForce = recursiveFlag && forceFlag;
   if ((effectiveCommand === "rm" && recursiveForce && effectiveArgs.some((value) => value === "/" || value === "/*")) ||
       (effectiveCommand === "dd" && effectiveArgs.some((value) => value.startsWith("of=/dev/")) || effectiveCommand.startsWith("mkfs"))) return "critical";
   if (["sudo", "su", "systemctl", "service", "reboot", "shutdown", "poweroff", "ufw", "iptables", "nft", "firewall-cmd", "chmod", "chown", "useradd", "userdel", "groupadd", "groupdel", "mount", "umount"].includes(command) ||
