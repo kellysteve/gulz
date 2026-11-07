@@ -554,6 +554,9 @@ export async function executeApprovedCommand(
         if (value !== undefined) safeEnv[key] = value;
       }
       safeEnv.GIT_TERMINAL_PROMPT = "0";
+      if (command.toLowerCase() === "apt-get" || (command.toLowerCase() === "sudo" && args.some((arg) => arg.toLowerCase() === "apt-get"))) {
+        safeEnv.DEBIAN_FRONTEND = "noninteractive";
+      }
       const child = spawn(command === "node" ? process.execPath : command, args, {
         cwd, shell: false, windowsHide: true, stdio: ["ignore", "pipe", "pipe"], env: safeEnv,
       });
