@@ -466,3 +466,23 @@ test("help documents continuous AI chat mode", async () => {
     assert.match(result.stdout, /chat\s+Open a continuous AI conversation/);
   });
 });
+
+test("exposes remote agent protocol capabilities without provider setup", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "agent", "--capabilities");
+    assert.equal(result.status, 0, result.stderr);
+    const capabilities = JSON.parse(result.stdout);
+    assert.equal(capabilities.protocolVersion, 1);
+    assert.ok(capabilities.tools.includes("inspect_environment"));
+    assert.ok(capabilities.tools.includes("run_command"));
+  });
+});
+
+test("lists saved remote environments without requiring an SSH connection", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "remote", "list");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /No VPS environments connected yet/);
+    assert.match(result.stdout, /gulz remote add/);
+  });
+});
