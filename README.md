@@ -12,7 +12,7 @@ GULZ is licensed under the **Apache License 2.0**. The GULZ name and branding re
 
 GULZ is in active development. The CLI connects continuous AI chat to a shared agent runtime. Compatible tool-calling models can inspect a local workspace, read files, create directories, write files with backups and run approved programs directly without a shell. The environment detector identifies Termux, operating systems, package managers and developer tools without executing commands or exposing environment secrets. This is an early local-agent foundation, not yet the complete VPS/hosting platform.
 
-Remote SSH/VPS orchestration, service deployment workflows, connected services, a web workspace, desktop/mobile apps, published packages, signed installers and release verification remain outstanding. Source changes are not considered platform-verified until builds and runtime tests pass.
+A source-level SSH-paired remote agent is now implemented. Full VPS provisioning and hosting workflows, connected services, a web workspace, desktop/mobile apps, published packages, signed installers and release verification remain outstanding; the remote transport and Termux runtime still need integration testing. Source changes are not considered platform-verified until builds and runtime tests pass.
 
 ## Install the GULZ CLI
 
@@ -45,16 +45,16 @@ The selected model provides reasoning. GULZ owns environment access, credentials
 ## Current implementation
 
 - **Providers:** OpenAI-compatible chat-completions and function/tool calling, with a structured JSON fallback for the built-in provider.
-- **Agent:** bounded tool orchestration, maximum round/tool-call limits, cancellation support and local tool registry.
+- **Agent:** bounded tool orchestration, maximum round/tool-call limits, cancellation support, local tool registry and namespaced remote tools.
 - **Environments:** read-only detection of Termux, OS, architecture, package managers and developer tools.
 - **Execution:** path-scoped inspection, listing and bounded UTF-8 reads; approved directory creation and file writes with backups; fixed diagnostic command runner; and a separate approved direct-program runner with no shell, bounded output/time and interpreter-inline-code restrictions.
-- **CLI:** continuous chat, private history, provider setup, local agent integration, per-action approval, audit history, legacy advanced planning/execution, repair and source update.
+- **Remote:** an on-demand stdio agent protocol and OpenSSH transport with strict host-key checking, SSH-agent/config reuse, named remote connections and explicit remote workspace roots. No SSH keys or passwords are stored by GULZ.
 
 Command completion is not proof that a website, API or service is healthy. GULZ must perform an appropriate follow-up check before reporting deployment or hosting as successful.
 
 ## Not yet implemented
 
-- A paired remote VPS agent and verified SSH transport.
+- Dedicated, tested workflows for VPS provisioning, API hosting, website hosting, databases, reverse proxies, TLS and backups.
 - End-to-end VPS provisioning, API hosting, website hosting, databases, reverse proxies, TLS and service monitoring workflows.
 - Dedicated package-manager adapters and richer environment-specific recovery.
 - Connected GitHub/cloud/database integrations.
@@ -75,6 +75,7 @@ packages/
   providers/    Provider adapters and model tool calling
   environments/OS, Termux and package-manager detection
   agent/        Shared tool-calling agent engine
+  remote/       Strict-host-key OpenSSH transport and remote agent protocol
 docs/           Product, architecture and platform documentation
 supabase/       Release infrastructure migrations
 ~~~
