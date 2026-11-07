@@ -26,12 +26,12 @@ export interface EnvironmentDetectionOptions {
 const packageManagerNames = ["pkg", "apt-get", "apt", "dnf", "yum", "pacman", "apk", "brew", "winget", "choco", "scoop"] as const;
 const developerToolNames = ["node", "npm", "pnpm", "yarn", "python", "python3", "pip", "pip3", "git", "docker", "podman", "systemctl", "ssh"] as const;
 
-async function hasExecutable(name: string, pathValue: string, pathext: string): Promise<boolean> {
-  const extensions = process.platform === "win32" ? ["", ...pathext.split(";").filter(Boolean)] : [""];
+async function hasExecutable(name: string, pathValue: string, pathext: string, platform: string): Promise<boolean> {
+  const extensions = platform === "win32" ? ["", ...pathext.split(";").filter(Boolean)] : [""];
   for (const directory of pathValue.split(delimiter).filter(Boolean)) {
     for (const extension of extensions) {
       try {
-        await access(join(directory, name + extension), constants.F_OK | (process.platform === "win32" ? 0 : constants.X_OK));
+        await access(join(directory, name + extension), constants.F_OK | (platform === "win32" ? 0 : constants.X_OK));
         return true;
       } catch {
         // Continue through PATH entries; do not execute candidate programs.
@@ -50,7 +50,7 @@ export async function detectEnvironment(options: EnvironmentDetectionOptions = {
   const pathValue = env.PATH ?? env.Path ?? "";
   const pathext = env.PATHEXT ?? ".EXE;.CMD;.BAT";
   const [packageManagers, developerTools] = await Promise.all([
-    Promise.all(packageManagerNames.map(async (name) => await hasExecutable(name, pathValue, pathext) ? name : null)),
+    Promise.all(packageManagerNames.map(async (name) => await hasExecutable(name, pathValue, pathext, currentPlatform) ? name : null)),
     Promise.all(developerToolNames.map(async (name) => await hasExecutable(name, pathValue, pathext) ? name : null)),
   ]);
   return {
