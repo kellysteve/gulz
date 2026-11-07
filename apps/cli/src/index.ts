@@ -126,7 +126,7 @@ function help(): void {
     "  delete <file>         Move a file to a private recoverable backup",
     "  read <path>           Read a file inside the current directory (256 KiB max)",
     "  write <path>          Write one line of text after explicit confirmation",
-    "  run <command> [args]  Run approved diagnostics or CLI build/test workflows",
+    "  run <command> [args]  Run a fixed allowlisted diagnostic command",
     "  restore <backup> <target>  Restore a saved backup after confirmation",
     "  --help, -h            Show this help",
     "  --version, -v         Show the installed version",
@@ -907,7 +907,8 @@ async function chatSession(): Promise<void> {
             return ["y", "yes"].includes(answer.trim().toLowerCase());
           },
           onToolResult: async (toolName, toolResult) => {
-            const ok = isRecord(toolResult) && toolResult.ok === true;
+            const output = isRecord(toolResult) && isRecord(toolResult.output) ? toolResult.output : {};
+            const ok = isRecord(toolResult) && toolResult.ok === true && output.processSucceeded !== false && output.verified !== false;
             await recordAudit("agent.tool", { toolName, outcome: ok ? "succeeded" : "not_completed" });
           },
         });
