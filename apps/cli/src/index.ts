@@ -117,23 +117,9 @@ function help(): void {
     "  provider test         Test the configured AI connection with a sample request",
     "  provider remove       Remove saved provider credentials",
     "  chat                  Open a continuous AI conversation with GULZ",
-    "  do <request>          Advanced compatibility command for supervised work",
-    "  plan <goal-id>        Generate a task plan with your configured AI provider",
-    "  execute <goal-id>     Execute a reviewed plan with per-operation approval",
-    "  resume <goal-id>      Resume paused or interrupted goal execution",
-    "  cancel <goal-id>      Cancel a goal after confirmation",
     "  update                Safely update GULZ from its source installation",
     "  repair                Reinstall CLI dependencies, rebuild and relink",
     "  uninstall             Remove the CLI and source checkout; preserve local data",
-    "  goal create <title>   Save a new goal locally (--description <text> optional)",
-    "  goals                 List saved goals",
-    "  goal show <id> [--json]  Show a saved goal and its plan",
-    "  goal edit <id>        Edit a goal title or description",
-    "  goal delete <id>      Delete a goal after confirmation",
-    "  goal task add <id> <title>  Add a checklist task to a goal",
-    "  goal task edit <goal> <task>  Edit a manual checklist task",
-    "  goal task delete <goal> <task>  Delete a manual checklist task",
-    "  goal task status <goal> <task> <status>  Change a task status",
     "  inspect <path>        Inspect a path inside the current directory",
     "  list [path]           List directory entries without following symlinks",
     "  mkdir <path>          Create directories after explicit approval",
@@ -660,8 +646,6 @@ async function doctor(): Promise<boolean> {
     await ensureDataHome();
     await access(dataHome, constants.R_OK | constants.W_OK);
     success("Local storage is ready");
-    const goals = await readGoals();
-    label("Saved goals", String(goals.length));
     try {
       const provider = await readProviderConfig();
       if (provider) success("AI provider configured · " + new URL(provider.baseUrl).host + " / " + provider.model);
