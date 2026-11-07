@@ -145,7 +145,7 @@ test("redacts common credentials from tool output before sending it back to the 
       }],
     });
     assert.match(result.reply, /redacted/);
-    assert.match(providerToolResult, /\\[REDACTED\\]/);
+    assert.ok(providerToolResult.includes("[REDACTED]"));
     assert.doesNotMatch(providerToolResult, /super-secret-value|abcdefghijklmnop|db-password|sk-abcdefghijklmnopqrstuvwx1234/);
   } finally { globalThis.fetch = originalFetch; }
 });
