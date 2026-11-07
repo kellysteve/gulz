@@ -90,7 +90,7 @@ function App() {
               <div className="terminal-input">› Build a portfolio website for me<span className="cursor"/></div>
               <div className="terminal-line"><span className="ok"><Check size={13}/></span> Request understood</div>
               <div className="terminal-line"><span className="ok"><Check size={13}/></span> Conversation context retained</div>
-              <div className="terminal-line"><span className="wait">◌</span> Task operations require approval</div>
+              <div className="terminal-line"><span className="wait">◌</span> Sensitive actions require approval</div>
               <div className="terminal-footer"><span><Bot size={13}/> CONTINUOUS AI CHAT</span><span>SUPERVISED MODE</span></div>
             </div>
           </div>
@@ -101,9 +101,9 @@ function App() {
         <section className="section" id="capabilities">
           <div className="section-kicker">BUILT FOR REAL WORK</div><h2>One interface. Many environments.</h2><p className="section-lead">From your phone's terminal to a remote VPS, GULZ is being designed to work where your projects and systems already live.</p>
           <div className="feature-grid">
-            <article className="feature-card"><div className="feature-icon"><Command/></div><h3>Machine operations</h3><p>The current CLI preview can inspect and read local files, write approved text changes with backups, and run a small allowlist of diagnostics.</p></article>
-            <article className="feature-card"><div className="feature-icon"><Bot/></div><h3>AI that gets work done</h3><p>Continuous AI chat is available in the CLI preview. Supervised task planning turns requests into internal goals and validated operations.</p></article>
-            <article className="feature-card"><div className="feature-icon"><Server/></div><h3>Remote management</h3><p>Planned: connect to authorized SSH and VPS environments through the same permission and approval system. Remote execution is not available yet.</p></article>
+            <article className="feature-card"><div className="feature-icon"><Command/></div><h3>Machine operations</h3><p>The local agent can inspect workspaces, read files, create folders, write approved changes with backups and run approved programs without a shell.</p></article>
+            <article className="feature-card"><div className="feature-icon"><Bot/></div><h3>AI that gets work done</h3><p>Choose an AI provider and chat naturally. The Agent Engine turns supported requests into tool calls, executes approved actions and returns results to the same conversation.</p></article>
+            <article className="feature-card"><div className="feature-icon"><Server/></div><h3>Remote management</h3><p>Remote VPS support is planned: a separately paired remote agent will manage authorized servers without giving the AI provider direct access to SSH credentials.</p></article>
           </div>
         </section>
 
@@ -111,9 +111,9 @@ function App() {
           <div className="section-kicker">HOW GULZ WORKS</div><h2>From intention to verified outcome.</h2>
           <div className="process-grid">
             <div><span className="process-number">01</span><h3>Tell GULZ what you need</h3><p>Describe the outcome you want in plain language.</p></div>
-            <div><span className="process-number">02</span><h3>Review the plan</h3><p>The planned AI layer inspects only authorized resources and prepares an actionable plan.</p></div>
-            <div><span className="process-number">03</span><h3>Approve sensitive work</h3><p>High-impact and destructive operations wait for your explicit approval.</p></div>
-            <div><span className="process-number">04</span><h3>Verify the result</h3><p>The execution layer verifies results and saves progress so work can recover after interruptions.</p></div>
+            <div><span className="process-number">02</span><h3>Review the plan</h3><p>The selected model reasons over your request and the tools available to GULZ. It can ask questions when details are missing.</p></div>
+            <div><span className="process-number">03</span><h3>Approve sensitive work</h3><p>File changes, package commands, privileged operations and other sensitive actions wait for your approval.</p></div>
+            <div><span className="process-number">04</span><h3>Verify the result</h3><p>GULZ returns actual tool results to the model and checks the outcome before reporting completion.</p></div>
           </div>
         </section>
 
@@ -129,7 +129,7 @@ function App() {
               <h4>One-command installer</h4>
               {active.id !== "windows" && <div className="install-one-click"><pre className="install-code"><code>{installCommand}</code></pre><button className="button button-primary" type="button" onClick={copyInstallCommand}><Copy size={15}/>{copiedInstall ? "Copied" : "Copy install command"}</button><p>Run this in your platform's terminal. The installer asks questions and requests confirmation before making changes.</p></div>}
               <h4>Platform commands</h4><pre className="install-code"><code>{active.commands.join("\n")}</code></pre><p className="install-note">{active.note} {active.id !== "termux" && <><a href="https://nodejs.org/en/download" target="_blank" rel="noreferrer">Get Node.js</a>. </>} {active.id === "termux" && <>Get Termux from <a href="https://f-droid.org/packages/com.termux/" target="_blank" rel="noreferrer">F-Droid</a> or the <a href="https://github.com/termux/termux-app/releases" target="_blank" rel="noreferrer">official releases</a>.</>}</p>
-              <p className="install-note"><b>Using and updating:</b> After setup, run <code>gulz</code> whenever you want to use GULZ; it does not need to stay open in the background. To update this developer preview later, run <code>gulz update</code>, review the repository path and type <code>UPDATE GULZ</code> to approve. It fast-forwards the source, installs only CLI dependencies and rebuilds itself. Close the session and run <code>gulz</code> again. Published package updates are not available yet.</p><h4>Step-by-step setup</h4><ol className="steps-list">{active.steps.map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}</ol>
+              <p className="install-note"><b>Using and updating:</b> After setup, run <code>gulz</code> whenever you want to use GULZ; it does not need to stay open in the background. To update this developer preview later, run <code>gulz update</code> and answer yes when prompted. It fast-forwards the source, installs the CLI dependencies and rebuilds itself. Close the session and run <code>gulz</code> again. Published package updates are not available yet.</p><h4>Step-by-step setup</h4><ol className="steps-list">{active.steps.map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}</ol>
               <div className="release-notice"><ShieldCheck size={17}/><p><b>This is an interactive source installer, not a stable release installer.</b><br/>The CLI is in early development. Native packages and signed downloads will only be listed after platform builds and security checks pass.</p></div>
               <p className="install-note"><a href="https://github.com/kellysteve/gulz/blob/main/docs/INSTALLATION.md" target="_blank" rel="noreferrer">Open the complete installation guide <ArrowUpRight size={13}/></a></p>
             </div>
