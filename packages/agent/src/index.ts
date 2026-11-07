@@ -133,6 +133,7 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
   let executed = 0;
   let handled = 0;
   let anyDenied = false;
+  const deniedOperations = new Set<string>();
   for (let round = 0; round < maxRounds; round += 1) {
     if (options.signal?.aborted) throw new AgentError("Agent run cancelled.");
     const turn = await generateAgentTurn({ ...options.provider, ...(options.signal ? { signal: options.signal } : {}) }, messages, options.tools.map((tool) => tool.definition));
@@ -154,13 +155,20 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
       if (!tool || !isRecord(call.arguments)) throw new AgentError("The model requested an invalid or unregistered tool.");
       let result: unknown;
       let approved = false;
+      const operationFingerprint = call.name + ":" + JSON.stringify(call.arguments);
       if (tool.requiresApproval(call.arguments)) {
-        const risk = approvalRisk(call.name, call.arguments);
-        if (risk === "critical") throw new AgentError("GULZ blocks this critical disk or root-filesystem command. Use a dedicated recovery procedure instead.");
-        approved = options.approve ? await options.approve({ toolName: call.name, description: tool.definition.description, arguments: call.arguments, risk }) : false;
-        if (!approved) {
-          result = { ok: false, status: "approval_denied", message: "The user did not approve this operation. Do not retry or attempt an equivalent action." };
+        if (deniedOperations.has(operationFingerprint)) {
+          result = { ok: false, status: "approval_denied", message: "The user already declined this exact operation in the current turn. Do not ask again or retry it." };
           anyDenied = true;
+        } else {
+          const risk = approvalRisk(call.name, call.arguments);
+          if (risk === "critical") throw new AgentError("GULZ blocks this critical disk or root-filesystem command. Use a dedicated recovery procedure instead.");
+          approved = options.approve ? await options.approve({ toolName: call.name, description: tool.definition.description, arguments: call.arguments, risk }) : false;
+          if (!approved) {
+            deniedOperations.add(operationFingerprint);
+            result = { ok: false, status: "approval_denied", message: "The user did not approve this operation. Do not retry or attempt an equivalent action." };
+            anyDenied = true;
+          }
         }
       }
       if (options.signal?.aborted) throw new AgentError("Agent run cancelled.");
