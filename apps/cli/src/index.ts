@@ -918,8 +918,7 @@ async function saveConversation(messages: ProviderChatMessage[]): Promise<void> 
 }
 
 async function runRemoteAgentStdio(): Promise<void> {
-  const tools = createLocalAgentTools(process.cwd());
-  const registry = new Map<string, (typeof tools)[number]>(tools.map((tool): [string, (typeof tools)[number]] => [tool.definition.name, tool]));
+  const initialWorkingDirectory = process.cwd();
   const rl = createInterface({ input: stdin, crlfDelay: Infinity, terminal: false });
   for await (const rawLine of rl) {
     const line = String(rawLine);
@@ -928,10 +927,19 @@ async function runRemoteAgentStdio(): Promise<void> {
       if (Buffer.byteLength(line, "utf8") > 300000) throw new Error("Remote request exceeds the 300 KB limit.");
       const request: unknown = JSON.parse(line);
       if (!isRecord(request) || request.protocolVersion !== 1 || !isNonEmptyString(request.requestId) ||
-          !isNonEmptyString(request.toolName) || !isRecord(request.arguments) || typeof request.approved !== "boolean") {
+          !isNonEmptyString(request.toolName) || !isRecord(request.arguments) || typeof request.approved !== "boolean" ||
+          (request.workspaceRoot !== undefined && !isNonEmptyString(request.workspaceRoot))) {
         throw new Error("Remote agent request has an invalid protocol shape.");
       }
       requestId = request.requestId;
+      const workspaceRoot = validateRemoteWorkspace(typeof request.workspaceRoot === "string" ? request.workspaceRoot : ".");
+      const requestedPath = workspaceRoot === "." ? initialWorkingDirectory : resolve(workspaceRoot);
+      const info = await lstat(requestedPath);
+      if (!info.isDirectory() || info.isSymbolicLink()) throw new Error("The configured remote workspace must be an existing, non-symlink directory.");
+      const canonicalPath = await realpath(requestedPath);
+      if (canonicalPath !== requestedPath) throw new Error("The configured remote workspace resolves through a symbolic link and was rejected.");
+      const tools = createLocalAgentTools(canonicalPath);
+      const registry = new Map<string, (typeof tools)[number]>(tools.map((tool): [string, (typeof tools)[number]] => [tool.definition.name, tool]));
       const tool = registry.get(request.toolName);
       if (!tool) throw new Error("Remote tool is not registered on this host.");
       if (tool.requiresApproval(request.arguments) && request.approved !== true) {
@@ -952,6 +960,7 @@ async function runRemoteAgentStdio(): Promise<void> {
     }
   }
 }
+
 
 async function chatSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) throw new Error("GULZ chat requires an interactive terminal.");
