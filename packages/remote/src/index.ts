@@ -100,7 +100,7 @@ export class OpenSshRemoteTransport {
       let stderrBytes = 0;
       let settled = false;
       let timer: ReturnType<typeof setTimeout>;
-      let onAbort = () => undefined;
+      let onAbort: () => void = () => {};
       const finishError = (error: Error) => {
         if (settled) return;
         settled = true;
