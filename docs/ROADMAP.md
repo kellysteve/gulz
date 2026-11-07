@@ -30,20 +30,23 @@ GULZ is a provider-independent AI agent with a conversation-first experience. Us
 - [ ] Verify Termux pkg and Linux package-manager commands with explicit approval, including failure handling.
 - [ ] Review command-runner threat model, timeouts, cancellation, output caps and privilege boundaries.
 
-## Remote VPS agent — next major milestone
+## Remote VPS agent — initial source implementation
 
-- [ ] Implement the remote agent runtime and stdio protocol.
-- [ ] Add an SSH transport using the system OpenSSH client, strict host-key checking and no shell-string interpolation.
-- [ ] Require the user to install or bootstrap the remote agent explicitly on each VPS.
-- [ ] Pair local GULZ with remote environments; store no SSH private keys in GULZ or provider prompts.
-- [ ] Add remote-side independent tool registry, path scopes, approvals, audit, cancellation and output limits.
-- [ ] Support remote environment detection and safe package installation.
+- [x] Implement the remote agent stdio protocol and capabilities handshake.
+- [x] Add an OpenSSH transport using the system client, strict host-key checking and fixed remote command entry points.
+- [x] Require the user to install/update GULZ explicitly on each VPS before pairing.
+- [x] Pair named remote environments using the user's SSH config/agent; GULZ does not store private keys or passwords.
+- [x] Add remote-side tool registry, explicit approval flag checks, workspace-root validation, audit events and bounded protocol output.
+- [x] Add remote environment inspection and per-connection workspace scopes.
+- [ ] Test the full pairing and tool lifecycle against real Termux/Linux/VPS hosts.
+- [ ] Add remote-specific package-manager adapters and service-management policy.
 - [ ] Add VPS diagnostics, package setup, service management and deployment verification.
 - [ ] Add secure templates for API hosting, website hosting, databases, reverse proxies, TLS and backups.
 - [ ] Add health checks for deployed websites/APIs and never equate process exit code zero with service health.
 
 ## Local environment and developer workflows
 
+- [x] Detect available package managers and developer tools without executing them.
 - [ ] Add platform-specific package-manager adapters and package-name validation.
 - [ ] Add project setup and scaffolding for Node.js, Python and common web stacks.
 - [ ] Add dependency installation, build/test, process management and recovery workflows.
@@ -90,6 +93,6 @@ GULZ is a provider-independent AI agent with a conversation-first experience. Us
 
 ## Current limitations
 
-The local agent foundation is not yet a full autonomous VPS administrator. It cannot yet connect to remote hosts, configure a public API/website end-to-end, install a remote agent, manage system services through a dedicated adapter, or integrate cloud services. Direct commands require user approval and are not a hardened sandbox. The built-in provider's ability to issue tool calls still needs live verification.
+The local agent and an initial paired OpenSSH remote agent are implemented in source, but real-host integration testing remains. GULZ can run approved direct programs on a paired host; dedicated end-to-end workflows for public API/website hosting, TLS, reverse proxies, databases and service monitoring are not yet implemented. Direct commands require user approval and are not a hardened sandbox. The built-in provider's ability to issue tool calls still needs live verification.
 
 Do not advertise unimplemented remote execution, hosting automation, native apps or signed installers as available.
