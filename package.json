@@ -9,17 +9,17 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace @gulz/website",
-    "build": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/execution && npm run build --workspace @gulz/providers && npm run build --workspace @gulz/agent && npm run build --workspace @gulz/cli && npm run build --workspace @gulz/website",
-    "typecheck": "npm run typecheck --workspace @gulz/core && npm run typecheck --workspace @gulz/execution && npm run typecheck --workspace @gulz/providers && npm run typecheck --workspace @gulz/agent && npm run typecheck --workspace @gulz/cli && npm run typecheck --workspace @gulz/website",
+    "build": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/execution && npm run build --workspace @gulz/providers && npm run build --workspace @gulz/environments && npm run build --workspace @gulz/agent && npm run build --workspace @gulz/cli && npm run build --workspace @gulz/website",
+    "typecheck": "npm run typecheck --workspace @gulz/core && npm run typecheck --workspace @gulz/execution && npm run typecheck --workspace @gulz/providers && npm run typecheck --workspace @gulz/environments && npm run typecheck --workspace @gulz/agent && npm run typecheck --workspace @gulz/cli && npm run typecheck --workspace @gulz/website",
     "dev:website": "npm run dev --workspace @gulz/website",
     "deploy:website": "npm run build --workspace @gulz/website && npx wrangler deploy --config apps/website/wrangler.toml",
     "build:core": "npm run build --workspace @gulz/core",
-    "build:cli": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/execution && npm run build --workspace @gulz/providers && npm run build --workspace @gulz/agent && npm run build --workspace @gulz/cli",
+    "build:cli": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/execution && npm run build --workspace @gulz/providers && npm run build --workspace @gulz/environments && npm run build --workspace @gulz/agent && npm run build --workspace @gulz/cli",
     "install:local": "npm run install:cli",
     "test": "npm run test:cli && npm run typecheck --workspace=@gulz/website",
     "build:execution": "npm run build --workspace @gulz/core && npm run build --workspace @gulz/execution",
     "install:cli": "node scripts/install-cli.mjs",
-    "test:cli": "npm run test --workspace=@gulz/core && npm run test --workspace=@gulz/execution && npm run test --workspace=@gulz/providers && npm run test --workspace=@gulz/agent && npm run test --workspace=@gulz/cli && npm run typecheck --workspace=@gulz/core && npm run typecheck --workspace=@gulz/execution && npm run typecheck --workspace=@gulz/providers && npm run typecheck --workspace=@gulz/agent && npm run typecheck --workspace=@gulz/cli"
+    "test:cli": "npm run test --workspace=@gulz/core && npm run test --workspace=@gulz/execution && npm run test --workspace=@gulz/providers && npm run test --workspace=@gulz/environments && npm run test --workspace=@gulz/agent && npm run test --workspace=@gulz/cli && npm run typecheck --workspace=@gulz/core && npm run typecheck --workspace=@gulz/execution && npm run typecheck --workspace=@gulz/providers && npm run typecheck --workspace=@gulz/environments && npm run typecheck --workspace=@gulz/agent && npm run typecheck --workspace=@gulz/cli"
   },
   "engines": {
     "node": ">=20.19.0"
