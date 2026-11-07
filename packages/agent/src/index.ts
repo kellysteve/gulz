@@ -80,12 +80,12 @@ function localOperation(kind: "inspect" | "list_directory" | "read_file" | "writ
   if (kind === "write_file") {
     const content = input.content;
     if (typeof content !== "string" || Buffer.byteLength(content, "utf8") > 262144) throw new AgentError("File content must be text no larger than 256 KiB.");
-    return executeLocalOperation(createPlannedOperation({ id: randomUUID(), kind, description, risk: "moderate", target: requiredText(input, "path"), content }), { rootDirectory, approved: true, ...(signal ? { signal } : {}) });
+    return executeLocalOperation(createPlannedOperation({ id: randomUUID(), kind, description, risk: "moderate", target: requiredText(input, "path"), content }), { rootDirectory, approved, ...(signal ? { signal } : {}) });
   }
   return executeLocalOperation(createPlannedOperation({
     id: randomUUID(), kind, description, risk: kind === "create_directory" ? "moderate" : "low",
     target: kind === "create_directory" ? requiredText(input, "path") : (typeof input.path === "string" ? input.path : "."),
-  }), { rootDirectory, approved: true, ...(signal ? { signal } : {}) });
+  }), { rootDirectory, approved, ...(signal ? { signal } : {}) });
 }
 
 /** Initial local tool catalogue. It intentionally does not expose arbitrary shell or package installation. */
