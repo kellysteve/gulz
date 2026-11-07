@@ -47,3 +47,43 @@ test("remote tools preserve namespacing and forward approval decisions to the re
   assert.equal(requests[0].toolName, "write_file");
   assert.equal(requests[0].approved, true);
 });
+
+test("classifies privileged commands as high impact and blocks critical disk commands", async () => {
+  const originalFetch = globalThis.fetch;
+  let approvalRisk;
+  globalThis.fetch = async (_url, options) => {
+    const body = JSON.parse(String(options?.body));
+    const last = body.messages[body.messages.length - 1];
+    if (last.role === "user") return new Response(JSON.stringify({ choices: [{ message: {
+      content: "",
+      tool_calls: [{ id: "call_sudo", type: "function", function: { name: "run_command", arguments: JSON.stringify({ command: "sudo", args: ["-n", "apt-get", "install", "-y", "nginx"] }) } }],
+    } }] }), { status: 200 });
+    return new Response(JSON.stringify({ choices: [{ message: { content: "I will wait for approval." } }] }), { status: 200 });
+  };
+  try {
+    const tools = createLocalAgentTools(process.cwd());
+    await runAgent({
+      provider: { baseUrl: "https://provider.example/v1", apiKey: "test", model: "tool-model" },
+      messages: [{ role: "user", content: "Install nginx." }],
+      tools,
+      approve: async (request) => { approvalRisk = request.risk; return false; },
+    });
+    assert.equal(approvalRisk, "high");
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("blocks recursive deletion of the root filesystem before requesting approval", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: {
+    content: "",
+    tool_calls: [{ id: "call_rm", type: "function", function: { name: "run_command", arguments: JSON.stringify({ command: "rm", args: ["-rf", "/"] }) } }],
+  } }] }), { status: 200 });
+  try {
+    await assert.rejects(runAgent({
+      provider: { baseUrl: "https://provider.example/v1", apiKey: "test", model: "tool-model" },
+      messages: [{ role: "user", content: "Delete everything." }],
+      tools: createLocalAgentTools(process.cwd()),
+      approve: async () => true,
+    }), /blocks this critical disk or root-filesystem command/);
+  } finally { globalThis.fetch = originalFetch; }
+});
