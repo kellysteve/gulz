@@ -46,7 +46,7 @@ function boundedToolResult(value: unknown): string {
 export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult> {
   if (!options || !Array.isArray(options.messages) || !Array.isArray(options.tools) || options.tools.length === 0) throw new AgentError("A conversation and at least one registered tool are required.");
   const maxRounds = Math.max(1, Math.min(options.maxRounds ?? 8, 12));
-  const registry = new Map(options.tools.map((tool) => [tool.definition.name, tool]));
+  const registry = new Map<string, AgentTool>(options.tools.map((tool): [string, AgentTool] => [tool.definition.name, tool]));
   if (registry.size !== options.tools.length) throw new AgentError("Agent tool names must be unique.");
   const messages = options.messages.slice(-30);
   let executed = 0;
