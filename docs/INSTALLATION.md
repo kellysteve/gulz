@@ -148,14 +148,13 @@ After building and linking the CLI:
 ~~~sh
 gulz --version
 gulz doctor
-gulz init
+gulz provider status
 gulz chat
-# For supervised task planning and execution, use:
-gulz do "Inspect this project and summarize its main folders"
-gulz goals
 ~~~
 
-Run `gulz` with no arguments whenever you want to open the interactive terminal session. Choose **Chat with GULZ** to keep sending messages without restarting the command. Recent conversation history is saved privately in `~/.gulz/conversation.json` (or your configured `GULZ_HOME`). Use `/clear` to erase it or `/exit` to leave chat. Chat replies are conversational and do not directly execute machine operations; use `gulz do "..."` for supervised task planning and execution. You do not need to repeat the installation commands each time; once linked, the `gulz` command is available from your terminal. Close the session with option 0.
+Run `gulz` with no arguments to open the interactive assistant. Connect the built-in provider or your own compatible provider once, then chat naturally. Recent conversation history is saved privately in `~/.gulz/conversation.json` (or your configured `GULZ_HOME`). Use `/clear` to clear it or `/exit` to leave.
+
+When the selected model supports tool calling, GULZ can inspect the current workspace, list directories, read non-secret text files, create directories, write files with backups and run explicitly approved programs. Program execution uses no shell; shell interpreters and inline code are blocked. Package-manager commands can be proposed by the AI and run only after you approve the exact command. Command output may be sent to your configured provider, so do not approve commands that print credentials or private data. The current tool set is a foundation, not yet the complete VPS hosting workflow.
 
 To update this installation later, run `gulz update` from an interactive terminal and answer `y` or `n`. GULZ runs a fast-forward-only Git update, installs only the CLI workspaces (including TypeScript development dependencies), rebuilds the CLI and refreshes the global link. It then asks whether you want to configure or change your AI provider/model. You can keep your current settings and change them later with the AI setup menu. It deliberately does not install the website's Wrangler/Workerd dependency. Close the current session and run `gulz` again. This updater is for source-checkout installations; published package updates are not available yet.
 
