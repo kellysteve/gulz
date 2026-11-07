@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { arch, homedir, platform, release } from "node:os";
-import { access, appendFile, chmod, lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { access, appendFile, chmod, lstat, mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { constants, existsSync, type Stats } from "node:fs";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,7 +13,7 @@ import { addGoalTask, createGoal, createPlannedOperation, operationRequiresAppro
 import { executeLocalOperation, type LocalExecutionResult } from "@gulz/execution";
 import { generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderChatMessage } from "@gulz/providers";
 import { createLocalAgentTools, createRemoteAgentTools, runAgent } from "@gulz/agent";
-import { OpenSshRemoteTransport, validateRemoteAlias, validateRemoteDestination } from "@gulz/remote";
+import { OpenSshRemoteTransport, validateRemoteAlias, validateRemoteDestination, validateRemoteWorkspace } from "@gulz/remote";
 
 const VERSION = "0.1.0";
 const dataHome = resolve(process.env.GULZ_HOME || join(homedir(), ".gulz"));
@@ -217,6 +217,7 @@ async function recordAudit(action: string, details: Record<string, string | numb
 interface RemoteEnvironmentRecord {
   name: string;
   destination: string;
+  workspace: string;
   addedAt: string;
 }
 
@@ -228,7 +229,7 @@ async function readRemoteEnvironments(): Promise<RemoteEnvironmentRecord[]> {
     await chmod(remoteEnvironmentsFile, 0o600);
     const parsed: unknown = JSON.parse(await readFile(remoteEnvironmentsFile, "utf8"));
     if (!Array.isArray(parsed) || parsed.length > 50 || !parsed.every((item) =>
-      isRecord(item) && isNonEmptyString(item.name) && isNonEmptyString(item.destination) && isTimestamp(item.addedAt))) {
+      isRecord(item) && isNonEmptyString(item.name) && isNonEmptyString(item.destination) && (item.workspace === undefined || isNonEmptyString(item.workspace)) && isTimestamp(item.addedAt))) {
       throw new Error("Saved remote environment settings are invalid. They were left untouched.");
     }
     const names = parsed.map((item) => (item as { name: string }).name);
@@ -236,6 +237,7 @@ async function readRemoteEnvironments(): Promise<RemoteEnvironmentRecord[]> {
     return parsed.map((item) => ({
       name: validateRemoteAlias((item as { name: string }).name),
       destination: validateRemoteDestination((item as { destination: string }).destination),
+      workspace: validateRemoteWorkspace(typeof (item as { workspace?: unknown }).workspace === "string" ? (item as { workspace: string }).workspace : "."),
       addedAt: (item as { addedAt: string }).addedAt,
     }));
   } catch (error) {
@@ -251,6 +253,7 @@ async function saveRemoteEnvironments(environments: RemoteEnvironmentRecord[]): 
   for (const item of environments) {
     validateRemoteAlias(item.name);
     validateRemoteDestination(item.destination);
+    validateRemoteWorkspace(item.workspace);
     if (!isTimestamp(item.addedAt)) throw new Error("Remote environment timestamp is invalid.");
   }
   await ensureDataHome();
@@ -955,7 +958,10 @@ async function chatSession(): Promise<void> {
   const config = await readProviderConfig();
   if (!config) throw new Error("AI is not configured. Run gulz provider builtin or choose AI setup from the GULZ menu.");
   const remoteEnvironments = await readRemoteEnvironments();
-  const remoteTransport = new OpenSshRemoteTransport(Object.fromEntries(remoteEnvironments.map((item) => [item.name, item.destination])));
+  const remoteTransport = new OpenSshRemoteTransport(
+    Object.fromEntries(remoteEnvironments.map((item) => [item.name, item.destination])),
+    Object.fromEntries(remoteEnvironments.map((item) => [item.name, item.workspace])),
+  );
   const agentTools = [
     ...createLocalAgentTools(process.cwd()),
     ...remoteEnvironments.flatMap((item) => createRemoteAgentTools(remoteTransport, item.name)),
