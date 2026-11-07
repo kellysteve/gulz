@@ -953,6 +953,11 @@ async function saveConversation(messages: ProviderChatMessage[]): Promise<void> 
 
 async function runRemoteAgentStdio(): Promise<void> {
   const initialWorkingDirectory = process.cwd();
+  const controller = new AbortController();
+  const onTerminate = () => controller.abort();
+  process.once("SIGHUP", onTerminate);
+  process.once("SIGTERM", onTerminate);
+  stdout.on("error", onTerminate);
   const rl = createInterface({ input: stdin, crlfDelay: Infinity, terminal: false });
   for await (const rawLine of rl) {
     const line = String(rawLine);
@@ -979,7 +984,7 @@ async function runRemoteAgentStdio(): Promise<void> {
       if (tool.requiresApproval(request.arguments) && request.approved !== true) {
         throw new Error("Remote policy denied this operation because the controller did not provide an approval.");
       }
-      const output = await tool.execute(request.arguments, { approved: request.approved });
+      const output = await tool.execute(request.arguments, { approved: request.approved, signal: controller.signal });
       await recordAudit("remote.agent.tool", {
         toolName: request.toolName,
         outcome: isRecord(output) && output.processSucceeded === false ? "process_failed" : isRecord(output) && output.verified === true ? "verified" : "returned",
@@ -994,7 +999,10 @@ async function runRemoteAgentStdio(): Promise<void> {
     }
   }
 }
-
+  process.off("SIGHUP", onTerminate);
+  process.off("SIGTERM", onTerminate);
+  stdout.off("error", onTerminate);
+}
 
 async function chatSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) throw new Error("GULZ chat requires an interactive terminal.");
@@ -1039,9 +1047,14 @@ async function chatSession(): Promise<void> {
         continue;
       }
       messages.push({ role: "user", content: input });
+      const turnController = new AbortController();
+      const cancelTurn = () => turnController.abort();
+      process.once("SIGINT", cancelTurn);
+      process.once("SIGTERM", cancelTurn);
       try {
         const result = await runAgent({
           provider: config,
+          signal: turnController.signal,
           messages: messages.slice(-30).map((message) => ({ role: message.role, content: message.content })),
           tools: agentTools,
           approve: async (request) => {
@@ -1070,6 +1083,9 @@ async function chatSession(): Promise<void> {
         messages.push({ role: "assistant", content: failureReply });
         await saveConversation(messages);
         warning(failureReply);
+      } finally {
+        process.off("SIGINT", cancelTurn);
+        process.off("SIGTERM", cancelTurn);
       }
     }
   } finally {
