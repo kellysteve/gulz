@@ -3,7 +3,7 @@ import { createPlannedOperation } from "@gulz/core";
 import { executeLocalOperation } from "@gulz/execution";
 import { generateAgentTurn, type OpenAICompatibleProviderConfig, type ProviderAgentMessage, type ProviderAgentToolDefinition } from "@gulz/providers";
 
-export interface AgentToolContext { signal?: AbortSignal; }
+export interface AgentToolContext { signal?: AbortSignal; approved?: boolean; }
 export interface AgentTool {
   definition: ProviderAgentToolDefinition;
   requiresApproval(input: Record<string, unknown>): boolean;
@@ -44,8 +44,9 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
       const tool = registry.get(call.name);
       if (!tool || !isRecord(call.arguments)) throw new AgentError("The model requested an invalid or unregistered tool.");
       let result: unknown;
+      let approved = false;
       if (tool.requiresApproval(call.arguments)) {
-        const approved = options.approve ? await options.approve({ toolName: call.name, description: tool.definition.description, arguments: call.arguments }) : false;
+        approved = options.approve ? await options.approve({ toolName: call.name, description: tool.definition.description, arguments: call.arguments }) : false;
         if (!approved) {
           result = { ok: false, status: "approval_denied", message: "The user did not approve this operation. Do not retry or attempt an equivalent action." };
           denied = true;
@@ -53,7 +54,7 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
       }
       if (result === undefined) {
         try {
-          result = { ok: true, output: await tool.execute(call.arguments, { ...(options.signal ? { signal: options.signal } : {}) }) };
+          result = { ok: true, output: await tool.execute(call.arguments, { approved, ...(options.signal ? { signal: options.signal } : {}) }) };
           executed += 1;
         } catch (error) { result = { ok: false, error: error instanceof Error ? error.message : "Tool execution failed." }; }
       }
@@ -70,11 +71,11 @@ function requiredText(input: Record<string, unknown>, key: string, max = 1000): 
   if (typeof value !== "string" || !value.trim() || value.length > max) throw new AgentError("Tool input requires a valid " + key + ".");
   return value.trim();
 }
-function localOperation(kind: "inspect" | "list_directory" | "read_file" | "write_file" | "create_directory" | "run_command", description: string, input: Record<string, unknown>, rootDirectory: string, signal?: AbortSignal) {
+function localOperation(kind: "inspect" | "list_directory" | "read_file" | "write_file" | "create_directory" | "run_command", description: string, input: Record<string, unknown>, rootDirectory: string, approved: boolean, signal?: AbortSignal) {
   if (kind === "run_command") {
     const command = requiredText(input, "command", 100);
     if (!Array.isArray(input.args) || input.args.length > 20 || !input.args.every((arg) => typeof arg === "string" && arg.length <= 1000)) throw new AgentError("Command arguments must be a bounded string array.");
-    return executeLocalOperation(createPlannedOperation({ id: randomUUID(), kind, description, risk: "moderate", target: ".", command, args: input.args as string[] }), { rootDirectory, approved: true, ...(signal ? { signal } : {}) });
+    return executeLocalOperation(createPlannedOperation({ id: randomUUID(), kind, description, risk: "moderate", target: ".", command, args: input.args as string[] }), { rootDirectory, approved, ...(signal ? { signal } : {}) });
   }
   if (kind === "write_file") {
     const content = input.content;
@@ -91,12 +92,12 @@ function localOperation(kind: "inspect" | "list_directory" | "read_file" | "writ
 export function createLocalAgentTools(rootDirectory: string): AgentTool[] {
   const pathSchema = { type: "object", properties: { path: { type: "string", description: "Relative path inside the current authorized workspace." } }, required: ["path"], additionalProperties: false };
   return [
-    { definition: { name: "inspect_path", description: "Inspect metadata for a file or directory inside the current workspace.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => localOperation("inspect", "Inspect a local workspace path", input, rootDirectory, context.signal) },
-    { definition: { name: "list_directory", description: "List entries in a directory inside the current workspace.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => localOperation("list_directory", "List a local workspace directory", input, rootDirectory, context.signal) },
-    { definition: { name: "read_file", description: "Read a bounded UTF-8 text file inside the current workspace.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => localOperation("read_file", "Read a local workspace file", input, rootDirectory, context.signal) },
-    { definition: { name: "create_directory", description: "Create a directory inside the current workspace. Requires user approval.", parameters: pathSchema }, requiresApproval: () => true, execute: (input, context) => localOperation("create_directory", "Create a local workspace directory", input, rootDirectory, context.signal) },
-    { definition: { name: "write_file", description: "Create or replace a UTF-8 file inside the current workspace. Requires user approval; replaced files are backed up.", parameters: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"], additionalProperties: false } }, requiresApproval: () => true, execute: (input, context) => localOperation("write_file", "Write a local workspace file", input, rootDirectory, context.signal) },
-    { definition: { name: "run_diagnostic", description: "Run only GULZ's fixed safe diagnostic allowlist (Node version, selected Git status/log/diff commands, npm version and GULZ build/test scripts). No arbitrary shell or package installation.", parameters: { type: "object", properties: { command: { type: "string" }, args: { type: "array", items: { type: "string" } } }, required: ["command", "args"], additionalProperties: false } }, requiresApproval: () => true, execute: (input, context) => localOperation("run_command", "Run an allowlisted local diagnostic command", input, rootDirectory, context.signal) },
+    { definition: { name: "inspect_path", description: "Inspect metadata for a file or directory inside the current workspace.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => localOperation("inspect", "Inspect a local workspace path", input, rootDirectory, context.approved === true, context.signal) },
+    { definition: { name: "list_directory", description: "List entries in a directory inside the current workspace.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => localOperation("list_directory", "List a local workspace directory", input, rootDirectory, context.approved === true, context.signal) },
+    { definition: { name: "read_file", description: "Read a bounded UTF-8 text file inside the current workspace.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => localOperation("read_file", "Read a local workspace file", input, rootDirectory, context.approved === true, context.signal) },
+    { definition: { name: "create_directory", description: "Create a directory inside the current workspace. Requires user approval.", parameters: pathSchema }, requiresApproval: () => true, execute: (input, context) => localOperation("create_directory", "Create a local workspace directory", input, rootDirectory, context.approved === true, context.signal) },
+    { definition: { name: "write_file", description: "Create or replace a UTF-8 file inside the current workspace. Requires user approval; replaced files are backed up.", parameters: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"], additionalProperties: false } }, requiresApproval: () => true, execute: (input, context) => localOperation("write_file", "Write a local workspace file", input, rootDirectory, context.approved === true, context.signal) },
+    { definition: { name: "run_diagnostic", description: "Run only GULZ's fixed safe diagnostic allowlist (Node version, selected Git status/log/diff commands, npm version and GULZ build/test scripts). No arbitrary shell or package installation.", parameters: { type: "object", properties: { command: { type: "string" }, args: { type: "array", items: { type: "string" } } }, required: ["command", "args"], additionalProperties: false } }, requiresApproval: () => true, execute: (input, context) => localOperation("run_command", "Run an allowlisted local diagnostic command", input, rootDirectory, context.approved === true, context.signal) },
   ];
 }
 
