@@ -12,7 +12,8 @@ import { stdin, stdout } from "node:process";
 import { addGoalTask, createGoal, createPlannedOperation, operationRequiresApproval, transitionGoal, transitionTask, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
 import { executeLocalOperation, type LocalExecutionResult } from "@gulz/execution";
 import { generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderChatMessage } from "@gulz/providers";
-import { createLocalAgentTools, runAgent } from "@gulz/agent";
+import { createLocalAgentTools, createRemoteAgentTools, runAgent } from "@gulz/agent";
+import { OpenSshRemoteTransport, validateRemoteAlias, validateRemoteDestination } from "@gulz/remote";
 
 const VERSION = "0.1.0";
 const dataHome = resolve(process.env.GULZ_HOME || join(homedir(), ".gulz"));
@@ -21,6 +22,7 @@ const goalsLockFile = join(dataHome, "goals.lock");
 const auditFile = join(dataHome, "audit.jsonl");
 const providerFile = join(dataHome, "provider.json");
 const conversationFile = join(dataHome, "conversation.json");
+const remoteEnvironmentsFile = join(dataHome, "remote-environments.json");
 const executionLockFile = join(dataHome, "execution.lock");
 
 const isInteractive = Boolean(stdout.isTTY && process.env.NO_COLOR === undefined && process.env.TERM !== "dumb");
