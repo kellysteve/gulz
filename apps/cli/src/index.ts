@@ -950,10 +950,16 @@ async function chatSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) throw new Error("GULZ chat requires an interactive terminal.");
   const config = await readProviderConfig();
   if (!config) throw new Error("AI is not configured. Run gulz provider builtin or choose AI setup from the GULZ menu.");
+  const remoteEnvironments = await readRemoteEnvironments();
+  const remoteTransport = new OpenSshRemoteTransport(Object.fromEntries(remoteEnvironments.map((item) => [item.name, item.destination])));
+  const agentTools = [
+    ...createLocalAgentTools(process.cwd()),
+    ...remoteEnvironments.flatMap((item) => createRemoteAgentTools(remoteTransport, item.name)),
+  ];
   const rl = createInterface({ input: stdin, output: stdout });
   try {
     title("GULZ AI");
-    console.log("Chat naturally. GULZ can inspect your current workspace and use available tools. Changes and commands require approval. Type /clear to erase history or /exit to leave.");
+    console.log("Chat naturally. GULZ can work in this workspace and on your " + remoteEnvironments.length + " connected VPS environment(s). Changes and commands require approval. Type /clear to erase history or /exit to leave.");
     const messages = await readConversation();
     if (messages.length) {
       for (const message of messages.slice(-12)) {
@@ -984,11 +990,12 @@ async function chatSession(): Promise<void> {
         const result = await runAgent({
           provider: config,
           messages: messages.slice(-30).map((message) => ({ role: message.role, content: message.content })),
-          tools: createLocalAgentTools(process.cwd()),
+          tools: agentTools,
           approve: async (request) => {
             title("GULZ ACTION REQUEST");
             console.log(request.description);
             console.log("Tool: " + request.toolName);
+            if (typeof request.arguments.command === "string") console.log("$ " + request.arguments.command + " " + (Array.isArray(request.arguments.args) ? request.arguments.args.join(" ") : ""));
             console.log("Details: " + JSON.stringify(request.arguments, null, 2));
             warning("This action can change files or run a command in the current workspace.");
             const answer = await rl.question("Allow GULZ to continue? (y/N): ");
