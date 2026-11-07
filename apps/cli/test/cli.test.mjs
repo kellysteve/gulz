@@ -184,10 +184,11 @@ test("requires a title when creating a goal", async () => {
   });
 });
 
-test("shows the AI-first natural-language task command", async () => {
+test("shows the conversation-first assistant and remote connection commands", async () => {
   const help = invoke(process.cwd(), "--help");
   assert.equal(help.status, 0, help.stderr);
-  assert.match(help.stdout, /do <request>/);
+  assert.match(help.stdout, /chat\s+Open a continuous AI conversation/);
+  assert.match(help.stdout, /remote add <name>/);
   assert.match(help.stdout, /AI provider/);
 });
 
