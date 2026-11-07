@@ -1019,8 +1019,11 @@ async function chatSession(): Promise<void> {
         await saveConversation(messages);
         console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + "\n" + answer);
       } catch (error) {
-        messages.pop();
-        warning(error instanceof Error ? error.message : String(error));
+        const message = error instanceof Error ? error.message : String(error);
+        const failureReply = "I couldn't finish that request: " + message;
+        messages.push({ role: "assistant", content: failureReply });
+        await saveConversation(messages);
+        warning(failureReply);
       }
     }
   } finally {
