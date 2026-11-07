@@ -32,6 +32,27 @@ When the selected model supports tool calling, GULZ can use its registered local
 
 Tool availability depends on the selected model and provider. If a model cannot produce tool calls, it can still answer conversationally. The built-in provider uses a structured JSON tool-call convention; compatibility must be verified against the live service and model.
 
+## Pair a VPS
+
+Install or update the GULZ CLI on the VPS as the normal SSH user. From the local device, connect once with OpenSSH and verify the server fingerprint yourself:
+
+~~~sh
+ssh user@host
+gulz update
+gulz agent --capabilities
+exit
+~~~
+
+Then pair it locally (the workspace must already exist):
+
+~~~sh
+gulz remote add production user@host /var/www/my-project
+gulz remote test production
+gulz chat
+~~~
+
+Omit the workspace argument to use the remote SSH user's starting directory. You can also use an SSH config alias instead of user@host. GULZ requires strict host-key verification, reuses your SSH config/agent and does not store private keys or passwords. The remote agent is invoked on demand for each tool call. The current remote tool set can inspect the selected workspace, read non-secret files, make approved changes and run approved programs. Full API/website hosting workflows and real-host integration tests are still in development. See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the complete procedure.
+
 ## Product architecture
 
 - **AI Assistant:** natural conversation, context and final explanations.
