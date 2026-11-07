@@ -20,7 +20,7 @@ GULZ is an early-development project. Do not assume source-level safeguards have
 Current source safeguards include:
 
 - File tools scoped to an explicitly selected local or remote workspace, with path traversal and symlink checks.
-- Known credential directories and likely secret files blocked from file-read tool context sent to the AI provider.
+- Known credential directories and likely secret files blocked from file-read tool context sent to the AI provider; common API-key, token, bearer, private-key and credential patterns are redacted from tool output before provider context.
 - Mutating file operations and all direct program execution require explicit approval.
 - Direct programs are launched without a shell, with bounded arguments, output and execution time; shell interpreters, inline interpreter-code flags and several command wrappers are blocked.
 - Critical root-filesystem deletion and disk-format/write commands are blocked at the execution boundary.
@@ -35,7 +35,7 @@ Known limitations:
 - The remote approval flag is supplied by the authenticated local controller; the remote host does not independently authenticate the human approval.
 - Provider API keys are stored in a local configuration file with filesystem permissions, not encryption or OS-backed secret storage.
 - Approved programs can still have broad side effects beyond the workspace. GULZ is not a hardened sandbox.
-- Secret-file name filtering is not a complete secret scanner. Command output can expose secrets if approved.
+- Secret-file name filtering and pattern redaction are not complete secret scanners. Unknown formats and command output can still expose secrets if approved.
 - The remote agent and transport have not yet completed real-host integration testing or an independent security review.
 - Full VPS provisioning, hosting, service-management workflows, signed updates and production release verification are still in development.
 
