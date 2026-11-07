@@ -10,7 +10,7 @@ export interface AgentTool {
   requiresApproval(input: Record<string, unknown>): boolean;
   execute(input: Record<string, unknown>, context: AgentToolContext): Promise<unknown>;
 }
-export interface AgentApprovalRequest { toolName: string; description: string; arguments: Record<string, unknown>; }
+export interface AgentApprovalRequest { toolName: string; description: string; arguments: Record<string, unknown>; risk: "moderate" | "high" | "critical"; }
 export interface AgentRunOptions {
   provider: OpenAICompatibleProviderConfig;
   messages: ProviderAgentMessage[];
@@ -23,6 +23,19 @@ export interface AgentRunOptions {
 export interface AgentRunResult { messages: ProviderAgentMessage[]; reply: string; toolCallsExecuted: number; stoppedForApproval: boolean; }
 export class AgentError extends Error { constructor(message: string) { super(message); this.name = "AgentError"; } }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
+function approvalRisk(toolName: string, input: Record<string, unknown>): "moderate" | "high" | "critical" {
+  const baseName = toolName.endsWith("_run_command") ? "run_command" : toolName;
+  if (baseName !== "run_command") return "moderate";
+  const command = typeof input.command === "string" ? input.command.toLowerCase() : "";
+  const args = Array.isArray(input.args) ? input.args.filter((value): value is string => typeof value === "string").map((value) => value.toLowerCase()) : [];
+  const joined = args.join(" ");
+  if ((command === "rm" && /(^|\\s)\\/(\\s|$)/.test(joined) && /(^|\\s)-[^\\s]*r[^\\s]*f|--recursive/.test(joined)) ||
+      (command === "dd" && args.some((value) => /^of=\\/dev\\//.test(value)) || command.startsWith("mkfs"))) return "critical";
+  if (["sudo", "su", "systemctl", "service", "reboot", "shutdown", "poweroff", "ufw", "iptables", "nft", "firewall-cmd", "chmod", "chown", "useradd", "userdel", "groupadd", "groupdel", "mount", "umount"].includes(command) ||
+      /(^|\\s)--(force|delete|purge|recursive)(\\s|$)/.test(joined) || /(^|\\s)-[^\\s]*r[^\\s]*f/.test(joined)) return "high";
+  return "moderate";
+}
+
 function boundedToolResult(value: unknown): string {
   let serialized = JSON.stringify(value);
   if (serialized.length <= 30000) return serialized;
@@ -65,7 +78,9 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
       let result: unknown;
       let approved = false;
       if (tool.requiresApproval(call.arguments)) {
-        approved = options.approve ? await options.approve({ toolName: call.name, description: tool.definition.description, arguments: call.arguments }) : false;
+        const risk = approvalRisk(call.name, call.arguments);
+        if (risk === "critical") throw new AgentError("GULZ blocks this critical disk or root-filesystem command. Use a dedicated recovery procedure instead.");
+        approved = options.approve ? await options.approve({ toolName: call.name, description: tool.definition.description, arguments: call.arguments, risk }) : false;
         if (!approved) {
           result = { ok: false, status: "approval_denied", message: "The user did not approve this operation. Do not retry or attempt an equivalent action." };
           denied = true;
