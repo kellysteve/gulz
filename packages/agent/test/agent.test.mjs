@@ -141,7 +141,7 @@ test("redacts common credentials from tool output before sending it back to the 
       tools: [{
         definition: { name: "emit_sensitive", description: "Test-only output source", parameters: { type: "object", properties: {}, additionalProperties: false } },
         requiresApproval: () => false,
-        execute: async () => ({ output: { content: "API_KEY=super-secret-value\\nAuthorization: Bearer abcdefghijklmnop\\nDATABASE_URL=postgres://user:db-password@db.example/app\\nsk-abcdefghijklmnopqrstuvwx1234" } }),
+        execute: async () => ({ output: { content: ["API_KEY=super-secret-value", "Authorization: Bearer abcdefghijklmnop", "DATABASE_URL=postgres://user:db-password@db.example/app", "sk-abcdefghijklmnopqrstuvwx1234"].join(String.fromCharCode(10)) } }),
       }],
     });
     assert.match(result.reply, /redacted/);
