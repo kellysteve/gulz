@@ -138,9 +138,10 @@ function help(): void {
     "  --version, -v         Show the installed version",
     "",
     "Data is stored locally in ~/.gulz (or GULZ_HOME if configured).",
-    "Filesystem commands are confined to the current working directory.",
+    "Agent file tools are confined to the current working directory; approved programs may affect wider system state.",
     "Writes require interactive approval and preserve replaced files as backups.",
-    "Arbitrary shell commands, package installs, deletes and network operations are not available.",
+    "The AI agent can run approved programs without a shell; shell interpreters and inline code are blocked.",
+    "Package managers may run after approval. Direct SSH commands are blocked; use paired remote environments.",
   ].join("\n"));
 }
 
