@@ -18,6 +18,7 @@ export interface AgentRunOptions {
   approve?: (request: AgentApprovalRequest) => Promise<boolean>;
   signal?: AbortSignal;
   maxRounds?: number;
+  maxToolCalls?: number;
   onToolResult?: (toolName: string, result: unknown) => void | Promise<void>;
 }
 export interface AgentRunResult { messages: ProviderAgentMessage[]; reply: string; toolCallsExecuted: number; stoppedForApproval: boolean; }
@@ -64,21 +65,32 @@ function boundedToolResult(value: unknown): string {
 export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult> {
   if (!options || !Array.isArray(options.messages) || !Array.isArray(options.tools) || options.tools.length === 0) throw new AgentError("A conversation and at least one registered tool are required.");
   const maxRounds = Math.max(1, Math.min(options.maxRounds ?? 12, 12));
+  const maxToolCalls = Math.max(1, Math.min(options.maxToolCalls ?? 8, 8));
+  const historyBudget = Math.max(1, 30 - (maxToolCalls * 2 + 2));
   const registry = new Map<string, AgentTool>(options.tools.map((tool): [string, AgentTool] => [tool.definition.name, tool]));
   if (registry.size !== options.tools.length) throw new AgentError("Agent tool names must be unique.");
-  const messages = options.messages.slice(-30);
+  const messages = options.messages.slice(-historyBudget);
   let executed = 0;
+  let handled = 0;
   let anyDenied = false;
   for (let round = 0; round < maxRounds; round += 1) {
     if (options.signal?.aborted) throw new AgentError("Agent run cancelled.");
-    const turn = await generateAgentTurn({ ...options.provider, ...(options.signal ? { signal: options.signal } : {}) }, messages.slice(-30), options.tools.map((tool) => tool.definition));
+    const turn = await generateAgentTurn({ ...options.provider, ...(options.signal ? { signal: options.signal } : {}) }, messages, options.tools.map((tool) => tool.definition));
     if (turn.toolCalls.length === 0) {
       messages.push({ role: "assistant", content: turn.content });
-      return { messages: messages.slice(-30), reply: turn.content, toolCallsExecuted: executed, stoppedForApproval: anyDenied };
+      return { messages, reply: turn.content, toolCallsExecuted: executed, stoppedForApproval: anyDenied };
+    }
+    const remaining = maxToolCalls - handled;
+    if (remaining <= 0) {
+      const reply = "I reached the safe action limit for this turn. The completed tool operations are recorded. Ask me to continue and I'll carry on from the latest results.";
+      messages.push({ role: "assistant", content: reply });
+      return { messages, reply, toolCallsExecuted: executed, stoppedForApproval: anyDenied };
     }
     messages.push({ role: "assistant", content: turn.content, toolCalls: turn.toolCalls });
     let denied = false;
-    for (const call of turn.toolCalls) {
+    const callsToRun = turn.toolCalls.slice(0, remaining);
+    for (const call of callsToRun) {
+      handled += 1;
       const tool = registry.get(call.name);
       if (!tool || !isRecord(call.arguments)) throw new AgentError("The model requested an invalid or unregistered tool.");
       let result: unknown;
@@ -104,6 +116,12 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
       messages.push({ role: "tool", toolCallId: call.id, content: boundedToolResult(result) });
     }
     if (denied) messages.push({ role: "user", content: "One or more operations were not approved. Continue only with safe, non-equivalent alternatives or explain what remains." });
+    if (turn.toolCalls.length > remaining) {
+      const reply = "I completed the approved actions available in this turn, but reached the safe action limit. Ask me to continue and I'll carry on from the latest results.";
+      messages.push({ role: "assistant", content: reply });
+      return { messages, reply, toolCallsExecuted: executed, stoppedForApproval: anyDenied };
+    }
+    if (handled >= maxToolCalls) messages.push({ role: "user", content: "The action budget for this turn is used. Summarize the completed work and explain what remains; do not request more tools." });
   }
   throw new AgentError("GULZ reached the maximum agent round limit. Any completed operations are recorded; ask it to continue if more work remains.");
 }
