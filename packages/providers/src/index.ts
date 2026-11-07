@@ -171,6 +171,7 @@ export async function generateChatReply(
   const timeout = setTimeout(() => controller.abort(), Math.max(1000, Math.min(config.timeoutMs ?? 60000, 120000)));
   const abortFromCaller = () => controller.abort();
   config.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  if (config.signal?.aborted) abortFromCaller();
   try {
     const system = "You are GULZ, a capable, honest and practical AI assistant. Help the user think, learn and get work done. Keep conversation context. Never claim to have inspected files, run commands, changed a machine or completed an action unless a separate authorized execution tool has actually done so. AI responses are not permission to perform operations. If a request requires machine changes, explain that the user can ask GULZ to prepare an execution plan; never invent tool results.";
     let response: Response;
