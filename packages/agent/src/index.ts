@@ -54,6 +54,54 @@ function approvalRisk(toolName: string, input: Record<string, unknown>): "modera
   return "moderate";
 }
 
+function redactSensitiveText(input: string): { text: string; count: number } {
+  let count = 0;
+  let text = input;
+  const replace = (pattern: RegExp, replacement: string | ((...args: string[]) => string)) => {
+    text = text.replace(pattern, (...args: string[]) => {
+      count += 1;
+      return typeof replacement === "string" ? replacement : replacement(...args);
+    });
+  };
+  replace(/-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/g, "[REDACTED PRIVATE KEY]");
+  replace(/\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g, "[REDACTED AWS KEY]");
+  replace(/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g, "[REDACTED GITHUB TOKEN]");
+  replace(/\bsk-[A-Za-z0-9_-]{24,}\b/g, "[REDACTED API KEY]");
+  replace(/\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g, "[REDACTED SLACK TOKEN]");
+  replace(/\bAIza[0-9A-Za-z_-]{30,}\b/g, "[REDACTED API KEY]");
+  replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{16,}/gi, "Bearer [REDACTED]");
+  replace(/((?:api[_-]?key|secret(?:[_-]?access[_-]?key)?|password|passwd|token|access[_-]?token|refresh[_-]?token|private[_-]?key|client[_-]?secret|database_url|redis_url|mongo(?:db)?_url)\s*[:=]\s*["']?)[^\s"'\x60,;]+/gi, (_match, prefix) => prefix + "[REDACTED]");
+  replace(/(:\/\/[^:/\s]+:)[^@/\s]+(@)/g, (_match, prefix, suffix) => prefix + "[REDACTED]" + suffix);
+  return { text, count };
+}
+
+function sanitizeToolResult(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const result: Record<string, unknown> = { ...value };
+  let redacted = 0;
+  if (isRecord(value.output)) {
+    const output: Record<string, unknown> = { ...value.output };
+    for (const key of ["content", "stdout", "stderr"]) {
+      if (typeof output[key] === "string") {
+        const safe = redactSensitiveText(output[key] as string);
+        output[key] = safe.text;
+        redacted += safe.count;
+      }
+    }
+    if (redacted > 0) output.sensitiveValuesRedacted = redacted;
+    result.output = output;
+  }
+  for (const key of ["stdout", "stderr", "message", "error"]) {
+    if (typeof result[key] === "string") {
+      const safe = redactSensitiveText(result[key] as string);
+      result[key] = safe.text;
+      redacted += safe.count;
+    }
+  }
+  if (redacted > 0) result.sensitiveValuesRedacted = redacted;
+  return result;
+}
+
 function boundedToolResult(value: unknown): string {
   let serialized = JSON.stringify(value) ?? "null";
   if (serialized.length <= 30000) return serialized;
@@ -122,8 +170,9 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
           executed += 1;
         } catch (error) { result = { ok: false, error: error instanceof Error ? error.message : "Tool execution failed." }; }
       }
-      await options.onToolResult?.(call.name, result);
-      messages.push({ role: "tool", toolCallId: call.id, content: boundedToolResult(result) });
+      const safeResult = sanitizeToolResult(result);
+      await options.onToolResult?.(call.name, safeResult);
+      messages.push({ role: "tool", toolCallId: call.id, content: boundedToolResult(safeResult) });
     }
     if (turn.toolCalls.length > remaining) {
       const reply = "I completed the approved actions available in this turn, but reached the safe action limit. Ask me to continue and I'll carry on from the latest results.";
