@@ -120,7 +120,7 @@ function help(): void {
     "  provider remove       Remove saved provider credentials",
     "  chat                  Open a continuous AI conversation with GULZ",
     "  remote list           List saved VPS connections",
-    "  remote add <name> <user@host>  Pair a VPS with GULZ over SSH",
+    "  remote add <name> <user@host> [workspace]  Pair a VPS over SSH",
     "  remote test <name>    Test a saved VPS connection",
     "  remote remove <name> Remove a saved VPS connection",
     "  update                Safely update GULZ from its source installation",
