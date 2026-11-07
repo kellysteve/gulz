@@ -705,7 +705,7 @@ async function updateInstallation(): Promise<void> {
     title("UPDATE GULZ");
     console.log("Repository: " + installDirectory);
     console.log("GULZ will download the latest CLI source, rebuild it and refresh the command.");
-    console.log("Your saved goals, files and AI provider settings will be preserved.");
+    console.log("Your saved conversations, provider settings and local data will be preserved.");
     const confirmation = await rl.question("Continue with the update? (y/N): ");
     if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Update cancelled."); return; }
   } finally { rl.close(); }
@@ -763,165 +763,78 @@ async function updateInstallation(): Promise<void> {
 async function interactiveSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) {
     help();
-    console.log("\nTip: run `gulz` in a terminal to open the interactive session.");
+    console.log("\nTip: run gulz in a terminal to open the interactive assistant.");
     return;
   }
-
   const rl = createInterface({ input: stdin, output: stdout });
   const ask = async (question: string): Promise<string> => (await rl.question(question)).trim();
   const showMenu = (): void => {
     console.log("\n" + paint("GULZ", ansi.bold, ansi.cyan) + paint("  YOUR AI, READY TO WORK.", ansi.bold));
     console.log(paint("Tell GULZ what you need. Keep chatting naturally.", ansi.dim));
-    console.log("\n  " + paint("1.", ansi.cyan) + " Chat with GULZ (continuous conversation)");
-    console.log("  " + paint("2.", ansi.cyan) + " View saved work and progress");
-    console.log("  " + paint("3.", ansi.cyan) + " System check");
-    console.log("  " + paint("4.", ansi.cyan) + " Command reference");
+    console.log("\n  " + paint("1.", ansi.cyan) + " Chat with GULZ");
+    console.log("  " + paint("2.", ansi.cyan) + " System check");
+    console.log("  " + paint("3.", ansi.cyan) + " AI provider settings");
+    console.log("  " + paint("4.", ansi.cyan) + " Recent activity");
     console.log("  " + paint("5.", ansi.cyan) + " Update GULZ");
-    console.log("  " + paint("6.", ansi.cyan) + " Recent activity");
-    console.log("  " + paint("7.", ansi.cyan) + " Set up AI (built-in or your own provider)");
-    console.log("  " + paint("8.", ansi.cyan) + " Advanced: manual planning");
-    console.log("  " + paint("9.", ansi.cyan) + " Advanced: create a work item");
+    console.log("  " + paint("6.", ansi.cyan) + " Help");
     console.log("  " + paint("0.", ansi.dim) + " Exit");
   };
-
+  const runCli = async (args: string[]): Promise<number | null> => {
+    rl.close();
+    const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), ...args], { stdio: "inherit", env: process.env });
+    if (result.error) throw result.error;
+    return result.status;
+  };
   try {
     title("WELCOME TO GULZ");
     console.log("Your conversations and local settings are saved on this device in " + paint(dataHome, ansi.cyan));
     const configuredProvider = await readProviderConfig().catch(() => null);
-    if (configuredProvider) warning("AI is ready. Chat with GULZ to ask questions or request work in your current workspace.");
-    else warning("AI is not set up yet. Choose option 7 to enable built-in GULZ AI or connect your own provider.");
+    if (configuredProvider) warning("AI is ready. Chat naturally; GULZ can use the tools available in your environment.");
+    else warning("AI is not set up yet. Choose option 3 to connect built-in GULZ AI or your own provider.");
     while (true) {
       showMenu();
       const choice = await ask("\nChoose an option: ");
-      if (choice === "0" || choice.toLowerCase() === "exit" || choice.toLowerCase() === "quit" || choice.toLowerCase() === "q") {
-        success("See you next time. Your saved conversations and work remain on this device.");
+      if (choice === "0" || ["exit", "quit", "q"].includes(choice.toLowerCase())) {
+        success("See you next time. Your conversations and settings remain on this device.");
         break;
       }
-      if (choice === "9" || choice.toLowerCase() === "create") {
-        const title = await ask("What goal do you want to save? ");
-        if (!title) { console.log("No goal entered; nothing was saved."); continue; }
-        const description = await ask("Describe the goal (optional): ");
-        const goal = await withGoalsLock(async () => {
-          const goals = await readGoals();
-          const created = createGoal({ id: randomUUID(), title, description });
-          await saveGoals([...goals, created]);
-          await recordAudit("goal.created", { goalId: created.id, title: created.title });
-          return created;
-        });
-        console.log("\nGoal saved successfully.");
-        console.log("Title:  " + goal.title);
-        console.log("ID:     " + goal.id);
-        console.log("Status: draft");
-        warning("This goal is saved. No task plan has been generated or executed.");
-        continue;
+      if (choice === "1" || choice.toLowerCase() === "chat") {
+        await runCli(["chat"]);
+        return await interactiveSession();
       }
-      if (choice === "2" || choice.toLowerCase() === "goals" || choice.toLowerCase() === "view") {
-        const goals = await readGoals();
-        if (!goals.length) {
-          console.log("No saved work yet. Start a conversation with GULZ or use the advanced controls to create a work item.");
-          continue;
-        }
-        console.log("\nSaved work:");
-        goals.forEach((goal, index) => {
-          console.log("  " + (index + 1) + ". " + goal.title + "  [" + goal.status + "]");
-          console.log("     ID: " + goal.id);
-        });
-        const selected = await ask("\nEnter a goal number or ID to view details (Enter to return): ");
-        if (!selected) continue;
-        const index = Number(selected);
-        const goal = Number.isInteger(index) && index >= 1 && index <= goals.length ? goals[index - 1] : goals.find((item) => item.id === selected);
-        if (!goal) {
-          console.log("That goal was not found. Your saved data was not changed.");
-          continue;
-        }
-        console.log("\nGOAL DETAILS");
-        console.log("Title:       " + goal.title);
-        console.log("ID:          " + goal.id);
-        console.log("Status:      " + goal.status);
-        console.log("Description: " + (goal.description || "Not added yet"));
-        console.log("Created:     " + goal.createdAt);
-        console.log("Updated:     " + goal.updatedAt);
-        console.log("Tasks:       " + goal.tasks.length);
-        for (const task of goal.tasks) {
-          console.log("  - [" + task.status + "] " + task.title);
-          for (const operation of task.operations) {
-            console.log("      " + operation.kind + " · " + operation.risk.toUpperCase() + " · " + operation.description);
-            if (operation.target) console.log("        Target: " + operation.target);
-            if (operation.commandPreview) console.log("        Command: " + operation.commandPreview);
-            if (operation.kind === "write_file" && operation.content !== undefined) {
-              console.log("        Content: " + Buffer.byteLength(operation.content, "utf8") + " bytes");
-              console.log("        " + (operation.content.length > 240 ? operation.content.slice(0, 240) + "…" : operation.content));
-            }
-          }
-        }
-        if (goal.tasks.length === 0) warning("No task plan has been generated for this goal.");
-        const action = await ask("\nEnter E to execute this plan, R to resume it, or press Enter to return: ");
-        if (action.toLowerCase() === "e" || action.toLowerCase() === "r") {
-          rl.close();
-          await runGoalExecution(goal.id, action.toLowerCase() === "r");
-          return await interactiveSession();
-        }
-        continue;
-      }
-      if (choice === "3" || choice.toLowerCase() === "doctor") {
+      if (choice === "2" || choice.toLowerCase() === "doctor") {
         await doctor();
         continue;
+      }
+      if (choice === "3" || choice.toLowerCase() === "provider" || choice.toLowerCase() === "settings") {
+        console.log("\n  1) Built-in GULZ AI");
+        console.log("  2) Connect my own AI provider / model");
+        console.log("  3) Test current AI connection");
+        console.log("  4) View provider status");
+        console.log("  5) Remove provider settings");
+        console.log("  0) Back");
+        const setupChoice = await ask("Choose an option: ");
+        if (setupChoice === "0" || !setupChoice) continue;
+        const action = setupChoice === "1" ? "builtin" : setupChoice === "2" ? "configure" : setupChoice === "3" ? "test" : setupChoice === "4" ? "status" : setupChoice === "5" ? "remove" : "";
+        if (!action) { warning("Choose 1, 2, 3, 4, 5 or 0."); continue; }
+        const result = await runCli(["provider", action]);
+        if (result === 0 && (action === "builtin" || action === "configure")) await runCli(["provider", "test"]);
+        return await interactiveSession();
+      }
+      if (choice === "4" || ["activity", "audit"].includes(choice.toLowerCase())) {
+        await runCli(["audit"]);
+        return await interactiveSession();
       }
       if (choice === "5" || choice.toLowerCase() === "update") {
         rl.close();
         await updateInstallation();
         return;
       }
-      if (choice === "7" || choice.toLowerCase() === "provider") {
-        console.log("\n  1) Built-in GULZ AI (recommended)");
-        console.log("  2) Use my own OpenAI-compatible provider");
-        console.log("  3) Test the current AI connection");
-        console.log("  0) Back");
-        const setupChoice = await ask("Choose an AI setup option: ");
-        if (setupChoice === "0" || !setupChoice) continue;
-        const action = setupChoice === "1" ? "builtin" : setupChoice === "2" ? "configure" : setupChoice === "3" ? "test" : "";
-        if (!action) { warning("Choose 1, 2, 3 or 0."); continue; }
-        rl.close();
-        const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "provider", action], { stdio: "inherit", env: process.env });
-        if (result.error) throw result.error;
-        if (result.status === 0 && (action === "builtin" || action === "configure")) {
-          const testResult = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "provider", "test"], { stdio: "inherit", env: process.env });
-          if (testResult.error) throw testResult.error;
-        }
-        return await interactiveSession();
-      }
-      if (choice === "1" || choice.toLowerCase() === "chat") {
-        rl.close();
-        const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "chat"], { stdio: "inherit", env: process.env });
-        if (result.error) throw result.error;
-        return await interactiveSession();
-      }
-      if (choice === "8" || choice.toLowerCase() === "plan") {
-        const drafts = (await readGoals()).filter((goal) => goal.status === "draft" && goal.tasks.length === 0);
-        if (!drafts.length) { warning("Create a new draft goal before requesting an AI plan."); continue; }
-        console.log("\nDraft goals available for planning:");
-        drafts.forEach((goal, index) => console.log("  " + (index + 1) + ". " + goal.title + "  (" + goal.id + ")"));
-        const selected = await ask("Choose a goal number or press Enter to return: ");
-        if (!selected) continue;
-        const index = Number(selected);
-        const goal = Number.isInteger(index) && index >= 1 && index <= drafts.length ? drafts[index - 1] : drafts.find((item) => item.id === selected);
-        if (!goal) { warning("That draft goal was not found."); continue; }
-        rl.close();
-        const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "plan", goal.id], { stdio: "inherit", env: process.env });
-        if (result.error) throw result.error;
-        return await interactiveSession();
-      }
-      if (choice === "6" || choice.toLowerCase() === "audit" || choice.toLowerCase() === "activity") {
-        const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "audit"], { stdio: "inherit", env: process.env });
-        if (result.error) throw result.error;
-        if (result.status !== 0) warning("Could not display recent activity.");
-        continue;
-      }
-      if (choice === "4" || choice.toLowerCase() === "help") {
+      if (choice === "6" || choice.toLowerCase() === "help") {
         help();
         continue;
       }
-      console.log("I didn't recognise that option. Choose 1, 2, 3, 4, 5, 6, 7, 8, 9 or 0.");
+      warning("Choose 1, 2, 3, 4, 5, 6 or 0.");
     }
   } finally {
     rl.close();
