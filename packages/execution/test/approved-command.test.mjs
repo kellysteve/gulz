@@ -14,6 +14,8 @@ test("rejects shell interpreters and inline code execution", async () => {
   await assert.rejects(executeApprovedCommand("node", ["-e", "process.exit(0)"], { cwd: process.cwd(), approved: true }), /Inline shell or interpreter code/);
   await assert.rejects(executeApprovedCommand("sudo", ["apt-get", "install", "nginx"], { cwd: process.cwd(), approved: true }), /non-interactive mode/);
   await assert.rejects(executeApprovedCommand("sudo", ["-n", "/bin/bash", "script.sh"], { cwd: process.cwd(), approved: true }), /cannot be used to launch a shell/);
+  await assert.rejects(executeApprovedCommand("python", ["-c", "print(1)"], { cwd: process.cwd(), approved: true }), /Inline interpreter code/);
+  await assert.rejects(executeApprovedCommand("node", ["-p", "1 + 1"], { cwd: process.cwd(), approved: true }), /Inline interpreter code/);
   await assert.rejects(executeApprovedCommand("sudo", ["-n", "-u", "root", "/usr/bin/bash", "script.sh"], { cwd: process.cwd(), approved: true }), /cannot be used to launch a shell/);
   await assert.rejects(executeApprovedCommand("sudo", ["-n", "-u", "root", "/bin/rm", "-rf", "/"], { cwd: process.cwd(), approved: true }), /critical-operation policy/);
   await assert.rejects(executeApprovedCommand("sudo", ["-n", "/bin/rm", "-r", "-f", "/"], { cwd: process.cwd(), approved: true }), /critical-operation policy/);
