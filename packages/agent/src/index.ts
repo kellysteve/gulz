@@ -28,11 +28,11 @@ function approvalRisk(toolName: string, input: Record<string, unknown>): "modera
   if (baseName !== "run_command") return "moderate";
   const command = typeof input.command === "string" ? input.command.toLowerCase() : "";
   const args = Array.isArray(input.args) ? input.args.filter((value): value is string => typeof value === "string").map((value) => value.toLowerCase()) : [];
-  const joined = args.join(" ");
-  if ((command === "rm" && /(^|\\s)\\/(\\s|$)/.test(joined) && /(^|\\s)-[^\\s]*r[^\\s]*f|--recursive/.test(joined)) ||
-      (command === "dd" && args.some((value) => /^of=\\/dev\\//.test(value)) || command.startsWith("mkfs"))) return "critical";
+  const recursiveForce = args.some((value) => value.startsWith("-") && value.includes("r") && value.includes("f")) || args.includes("--recursive");
+  if ((command === "rm" && recursiveForce && args.some((value) => value === "/" || value === "/*")) ||
+      (command === "dd" && args.some((value) => value.startsWith("of=/dev/")) || command.startsWith("mkfs"))) return "critical";
   if (["sudo", "su", "systemctl", "service", "reboot", "shutdown", "poweroff", "ufw", "iptables", "nft", "firewall-cmd", "chmod", "chown", "useradd", "userdel", "groupadd", "groupdel", "mount", "umount"].includes(command) ||
-      /(^|\\s)--(force|delete|purge|recursive)(\\s|$)/.test(joined) || /(^|\\s)-[^\\s]*r[^\\s]*f/.test(joined)) return "high";
+      args.some((value) => ["--force", "--delete", "--purge", "--recursive"].includes(value)) || recursiveForce) return "high";
   return "moderate";
 }
 
