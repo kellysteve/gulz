@@ -6,6 +6,7 @@ test("validates simple remote names and SSH destinations", () => {
   assert.equal(validateRemoteAlias("production"), "production");
   assert.equal(validateRemoteDestination("deploy@example.com"), "deploy@example.com");
   assert.equal(validateRemoteDestination("my-vps"), "my-vps");
+  assert.equal(validateRemoteDestination("prod_vps"), "prod_vps");
 });
 
 test("rejects shell fragments, flags and invalid remote aliases", () => {
