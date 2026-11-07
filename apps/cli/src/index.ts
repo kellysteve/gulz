@@ -916,7 +916,7 @@ async function saveConversation(messages: ProviderChatMessage[]): Promise<void> 
 
 async function runRemoteAgentStdio(): Promise<void> {
   const tools = createLocalAgentTools(process.cwd());
-  const registry = new Map(tools.map((tool) => [tool.definition.name, tool]));
+  const registry = new Map<string, (typeof tools)[number]>(tools.map((tool): [string, (typeof tools)[number]] => [tool.definition.name, tool]));
   const rl = createInterface({ input: stdin, crlfDelay: Infinity, terminal: false });
   for await (const rawLine of rl) {
     const line = String(rawLine);
