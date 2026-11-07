@@ -99,7 +99,7 @@ function App() {
         <section className="trust-strip"><span><Zap size={16}/> Work that gets done</span><span><ShieldCheck size={16}/> Permission-aware by design</span><span><Terminal size={16}/> Local-first execution</span></section>
 
         <section className="section" id="capabilities">
-          <div className="section-kicker">BUILT FOR REAL WORK</div><h2>One interface. Many environments.</h2><p className="section-lead">From your phone's terminal to a remote VPS, GULZ is being designed to work where your projects and systems already live.</p>
+          <div className="section-kicker">BUILT FOR REAL WORK</div><h2>One interface. Many environments.</h2><p className="section-lead">From your phone's terminal to a remote VPS, GULZ works where your projects and systems already live.</p>
           <div className="feature-grid">
             <article className="feature-card"><div className="feature-icon"><Command/></div><h3>Machine operations</h3><p>The local agent can inspect workspaces, read files, create folders, write approved changes with backups and run approved programs without a shell.</p></article>
             <article className="feature-card"><div className="feature-icon"><Bot/></div><h3>AI that gets work done</h3><p>Choose an AI provider and chat naturally. The Agent Engine turns supported requests into tool calls, executes approved actions and returns results to the same conversation.</p></article>
@@ -111,7 +111,7 @@ function App() {
           <div className="section-kicker">HOW GULZ WORKS</div><h2>From intention to verified outcome.</h2>
           <div className="process-grid">
             <div><span className="process-number">01</span><h3>Tell GULZ what you need</h3><p>Describe the outcome you want in plain language.</p></div>
-            <div><span className="process-number">02</span><h3>Review the plan</h3><p>The selected model reasons over your request and the tools available to GULZ. It can ask questions when details are missing.</p></div>
+            <div><span className="process-number">02</span><h3>Understand what is needed</h3><p>The selected model reasons over your request and the tools available to GULZ. It can ask questions when details are missing.</p></div>
             <div><span className="process-number">03</span><h3>Approve sensitive work</h3><p>File changes, package commands, privileged operations and other sensitive actions wait for your approval.</p></div>
             <div><span className="process-number">04</span><h3>Verify the result</h3><p>GULZ returns actual tool results to the model and checks the outcome before reporting completion.</p></div>
           </div>
