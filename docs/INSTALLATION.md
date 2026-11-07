@@ -178,7 +178,7 @@ gulz run git diff --stat
 
 File paths are confined to the current working directory; absolute paths, traversal and symbolic links are rejected. Reads and writes are limited to 256 KiB by default. Writes and restores show the target and ask for a simple yes/no confirmation. Replaced files are preserved as owner-only backups.
 
-The run command is not a general shell. It accepts only the fixed diagnostic allowlist documented in the CLI reference, starts processes without a shell, strips inherited command-override environment variables, caps combined output at 64 KiB and requires an explicit yes/no approval. Package installs, arbitrary shell commands, deletes, permission changes and remote execution are not available.
+The standalone `gulz run` diagnostic command remains a fixed allowlist. Chat uses a separate agent tool to run explicitly approved direct programs without a shell; this can invoke package managers and system utilities, with high-impact actions clearly flagged. Shell interpreters, inline interpreter code, direct SSH commands and several command wrappers are blocked. Critical disk/root-filesystem operations are blocked. The agent tool starts programs in the selected workspace, but an approved program can affect wider system state. Remote program execution is available only through a separately paired VPS agent.
 
 ## Run the automated checks
 
