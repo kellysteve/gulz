@@ -51,10 +51,10 @@ test("remote tools preserve namespacing and forward approval decisions to the re
 test("classifies privileged commands as high impact and blocks critical disk commands", async () => {
   const originalFetch = globalThis.fetch;
   let approvalRisk;
-  globalThis.fetch = async (_url, options) => {
-    const body = JSON.parse(String(options?.body));
-    const last = body.messages[body.messages.length - 1];
-    if (last.role === "user") return new Response(JSON.stringify({ choices: [{ message: {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    if (calls === 1) return new Response(JSON.stringify({ choices: [{ message: {
       content: "",
       tool_calls: [{ id: "call_sudo", type: "function", function: { name: "run_command", arguments: JSON.stringify({ command: "sudo", args: ["-n", "apt-get", "install", "-y", "nginx"] }) } }],
     } }] }), { status: 200 });
