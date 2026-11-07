@@ -43,10 +43,10 @@ export class OpenSshRemoteTransport {
   private readonly destinations: Record<string, string>;
   private readonly workspaces: Record<string, string>;
   constructor(destinations: Record<string, string>, workspaces: Record<string, string> = {}) {
-    this.destinations = Object.fromEntries(Object.entries(destinations).map(([alias, destination]) => [
+    this.destinations = Object.fromEntries(Object.entries(destinations).map(([alias, destination]): [string, string] => [
       validateRemoteAlias(alias), validateRemoteDestination(destination),
     ]));
-    this.workspaces = Object.fromEntries(Object.entries(workspaces).map(([alias, workspace]) => [validateRemoteAlias(alias), validateRemoteWorkspace(workspace)]));
+    this.workspaces = Object.fromEntries(Object.entries(workspaces).map(([alias, workspace]): [string, string] => [validateRemoteAlias(alias), validateRemoteWorkspace(workspace)]));
   }
   async testDestination(destination: string): Promise<RemoteCapabilities> {
     const safeDestination = validateRemoteDestination(destination);
