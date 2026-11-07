@@ -964,7 +964,7 @@ async function runRemoteAgentStdio(): Promise<void> {
       const line = String(rawLine);
       let requestId = "";
       try {
-        if (Buffer.byteLength(line, "utf8") > 300000) throw new Error("Remote request exceeds the 300 KB limit.");
+        if (Buffer.byteLength(line, "utf8") > 1700000) throw new Error("Remote request exceeds the 1.7 MB protocol limit.");
         const request: unknown = JSON.parse(line);
         if (!isRecord(request) || request.protocolVersion !== 1 || !isNonEmptyString(request.requestId) ||
             !isNonEmptyString(request.toolName) || !isRecord(request.arguments) || typeof request.approved !== "boolean" ||
