@@ -391,7 +391,7 @@ export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, 
       if (!allowedNames.has(name)) throw new ProviderError("The AI requested an unavailable tool: " + name + ".");
       let args: unknown = fn.arguments;
       if (typeof args === "string") { try { args = JSON.parse(args); } catch { throw new ProviderError("The AI returned malformed tool arguments."); } }
-      if (!isRecord(args) || JSON.stringify(args).length > 16000) throw new ProviderError("The AI returned invalid or oversized tool arguments.");
+      if (!isRecord(args) || JSON.stringify(args).length > 280000) throw new ProviderError("The AI returned invalid or oversized tool arguments.");
       return { id: requiredString(rawCall.id ?? "builtin_" + randomToolId(), "tool call ID", 200), name, arguments: args };
     });
     if (!content && toolCalls.length === 0) throw new ProviderError("AI provider returned an empty agent response.");
