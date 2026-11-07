@@ -932,7 +932,7 @@ async function readConversation(): Promise<ProviderChatMessage[]> {
     const parsed: unknown = JSON.parse(await readFile(conversationFile, "utf8"));
     if (!Array.isArray(parsed) || parsed.length > 40 || !parsed.every((item) =>
       isRecord(item) && (item.role === "user" || item.role === "assistant") &&
-      typeof item.content === "string" && item.content.length > 0 && item.content.length <= 8000)) {
+      typeof item.content === "string" && item.content.length > 0 && item.content.length <= 32000)) {
       throw new Error("Saved conversation is invalid. It was left untouched.");
     }
     return parsed as ProviderChatMessage[];
