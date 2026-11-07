@@ -149,3 +149,27 @@ test("redacts common credentials from tool output before sending it back to the 
     assert.doesNotMatch(providerToolResult, /super-secret-value|abcdefghijklmnop|db-password|sk-abcdefghijklmnopqrstuvwx1234/);
   } finally { globalThis.fetch = originalFetch; }
 });
+
+test("does not ask again for the same operation after the user declines it", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  let approvals = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    if (calls <= 2) return new Response(JSON.stringify({ choices: [{ message: {
+      content: "",
+      tool_calls: [{ id: "call_repeat_" + calls, type: "function", function: { name: "run_command", arguments: JSON.stringify({ command: "sudo", args: ["-n", "apt-get", "install", "-y", "nginx"] }) } }],
+    } }] }), { status: 200 });
+    return new Response(JSON.stringify({ choices: [{ message: { content: "I will not retry the declined install." } }] }), { status: 200 });
+  };
+  try {
+    const result = await runAgent({
+      provider: { baseUrl: "https://provider.example/v1", apiKey: "test", model: "tool-model" },
+      messages: [{ role: "user", content: "Install nginx." }],
+      tools: createLocalAgentTools(process.cwd()),
+      approve: async () => { approvals += 1; return false; },
+    });
+    assert.equal(approvals, 1);
+    assert.equal(result.stoppedForApproval, true);
+  } finally { globalThis.fetch = originalFetch; }
+});
