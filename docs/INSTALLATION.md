@@ -133,7 +133,7 @@ gulz remote test production
 gulz chat
 ~~~
 
-The last argument to `remote add` is an optional existing absolute POSIX workspace path on the VPS. Omit it to use the SSH user's home directory. GULZ checks that the directory exists and is not a symlink. SSH config aliases are supported, so you can use `production` instead of `user@host` if your local SSH config defines it.
+The last argument to `remote add` is an optional existing absolute POSIX workspace path on the VPS. The current CLI supports up to four paired VPS environments. Omit it to use the SSH user's home directory. GULZ checks that the directory exists and is not a symlink. SSH config aliases are supported, so you can use `production` instead of `user@host` if your local SSH config defines it.
 
 GULZ uses OpenSSH with `BatchMode=yes` and `StrictHostKeyChecking=yes`. It never accepts unknown or changed host keys automatically, never enables agent forwarding, and does not store SSH private keys or passwords. If the host key is not known locally, connect manually, verify the fingerprint and retry. Each remote tool call opens an on-demand SSH process; there is no public control port or always-running remote daemon.
 
