@@ -130,12 +130,21 @@ function localOperation(kind: "inspect" | "list_directory" | "read_file" | "writ
   if (kind === "write_file") {
     const content = input.content;
     if (typeof content !== "string" || Buffer.byteLength(content, "utf8") > 262144) throw new AgentError("File content must be text no larger than 256 KiB.");
-    return executeLocalOperation(createPlannedOperation({ id: randomUUID(), kind, description, risk: "moderate", target: requiredText(input, "path"), content }), { rootDirectory, approved, ...(signal ? { signal } : {}) });
+    return executeLocalOperation(createPlannedOperation({ id: randomUUID(), kind: "write_file", description, risk: "moderate", target: requiredText(input, "path"), content }), { rootDirectory, approved, ...(signal ? { signal } : {}) });
   }
-  return executeLocalOperation(createPlannedOperation({
-    id: randomUUID(), kind, description, risk: kind === "create_directory" ? "moderate" : "low",
-    target: kind === "create_directory" ? requiredText(input, "path") : (typeof input.path === "string" ? input.path : "."),
-  }), { rootDirectory, approved, ...(signal ? { signal } : {}) });
+  if (kind === "create_directory") {
+    return executeLocalOperation(createPlannedOperation({ id: randomUUID(), kind: "create_directory", description, risk: "moderate", target: requiredText(input, "path") }), { rootDirectory, approved, ...(signal ? { signal } : {}) });
+  }
+  if (kind === "inspect") {
+    return executeLocalOperation(createPlannedOperation({ id: randomUUID(), kind: "inspect", description, risk: "low", target: typeof input.path === "string" ? input.path : "." }), { rootDirectory, approved, ...(signal ? { signal } : {}) });
+  }
+  if (kind === "list_directory") {
+    return executeLocalOperation(createPlannedOperation({ id: randomUUID(), kind: "list_directory", description, risk: "low", target: typeof input.path === "string" ? input.path : "." }), { rootDirectory, approved, ...(signal ? { signal } : {}) });
+  }
+  if (kind === "read_file") {
+    return executeLocalOperation(createPlannedOperation({ id: randomUUID(), kind: "read_file", description, risk: "low", target: requiredText(input, "path") }), { rootDirectory, approved, ...(signal ? { signal } : {}) });
+  }
+  throw new AgentError("Unsupported local agent operation.");
 }
 
 /** Initial local catalogue. Every command is approved and executed without a shell. */
