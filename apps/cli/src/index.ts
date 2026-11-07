@@ -119,6 +119,10 @@ function help(): void {
     "  provider test         Test the configured AI connection with a sample request",
     "  provider remove       Remove saved provider credentials",
     "  chat                  Open a continuous AI conversation with GULZ",
+    "  remote list           List saved VPS connections",
+    "  remote add <name> <user@host>  Pair a VPS with GULZ over SSH",
+    "  remote test <name>    Test a saved VPS connection",
+    "  remote remove <name> Remove a saved VPS connection",
     "  update                Safely update GULZ from its source installation",
     "  repair                Reinstall CLI dependencies, rebuild and relink",
     "  uninstall             Remove the CLI and source checkout; preserve local data",
@@ -1259,6 +1263,20 @@ async function main(): Promise<void> {
     }
     console.error("Usage: gulz provider [builtin|configure|status|remove]");
     process.exitCode = 2;
+    return;
+  }
+  if (command === "remote") {
+    await remoteCommand(args);
+    return;
+  }
+  if (command === "agent" && args[0] === "--capabilities") {
+    if (args.length !== 1) { console.error("Usage: gulz agent --capabilities"); process.exitCode = 2; return; }
+    console.log(JSON.stringify({ protocolVersion: 1, version: VERSION, tools: createLocalAgentTools(process.cwd()).map((tool) => tool.definition.name) }));
+    return;
+  }
+  if (command === "agent" && args[0] === "--stdio") {
+    if (args.length !== 1) { console.error("Usage: gulz agent --stdio"); process.exitCode = 2; return; }
+    await runRemoteAgentStdio();
     return;
   }
   if (command === "chat") {
