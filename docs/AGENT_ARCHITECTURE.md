@@ -38,7 +38,7 @@ The current local catalogue does not install packages, run arbitrary shell comma
 
 The local agent runs as the ordinary user and is confined to an explicitly selected workspace root. It should not be run with administrator/root privileges.
 
-A future remote agent will be installed and started on the user's VPS or other remote host. The local GULZ controller will pair with that agent and send scoped tool requests. The remote agent must independently enforce its own operation policy, workspace roots, approvals, host identity, audit log, timeouts and cancellation. The AI provider must never receive SSH private keys, passwords, host tokens or unrestricted server access.
+The remote agent is installed on the user's VPS or other remote host as the GULZ CLI. The local controller pairs with it using the system OpenSSH client and sends scoped tool requests over an on-demand stdio session. The remote CLI must be available in the non-interactive SSH PATH. The remote agent must independently enforce its own operation policy, workspace roots, approvals, host identity, audit log, timeouts and cancellation. The AI provider must never receive SSH private keys, passwords, host tokens or unrestricted server access.
 
 Remote connection requirements before release:
 
@@ -51,7 +51,7 @@ Remote connection requirements before release:
 - Auditable command and file operations with cancellation and recovery.
 - Safe bootstrap, update, rollback and removal procedures.
 
-The current RemoteAgentTransport is an interface boundary only; it is not an SSH implementation or a running remote daemon.
+The current OpenSSH transport and remote stdio protocol are implemented in source. They are not a long-running public daemon: each tool call opens a fresh SSH process. Host-key verification, workspace scoping and a second remote-side approval check are implemented; full remote provisioning workflows and real VPS integration tests remain outstanding.
 
 ## Provider and secret boundary
 
