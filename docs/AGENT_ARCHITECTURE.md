@@ -38,16 +38,16 @@ The current local catalogue does not install packages, run arbitrary shell comma
 
 The local agent runs as the ordinary user and is confined to an explicitly selected workspace root. It should not be run with administrator/root privileges.
 
-The remote agent is installed on the user's VPS or other remote host as the GULZ CLI. The local controller pairs with it using the system OpenSSH client and sends scoped tool requests over an on-demand stdio session. The remote CLI must be available in the non-interactive SSH PATH. The remote agent must independently enforce its own operation policy, workspace roots, approvals, host identity, audit log, timeouts and cancellation. The AI provider must never receive SSH private keys, passwords, host tokens or unrestricted server access.
+The remote agent is installed on the user's VPS or other remote host as the GULZ CLI. The local controller pairs with it using the system OpenSSH client and sends scoped tool requests over an on-demand stdio session. The remote CLI must be available in the non-interactive SSH PATH. The remote agent revalidates the registered tool, configured workspace root and controller-provided approval flag, and records its own audit event. This is a second policy check, not an independent authentication of the human approval. The AI provider must never receive SSH private keys, passwords, host tokens or unrestricted server access.
 
 Remote connection requirements before release:
 
-- Explicit pairing initiated by the user, with a short-lived one-time pairing secret.
+- A stronger pairing handshake with short-lived, revocable pairing credentials; current source pairing relies on the user's SSH authentication and known_hosts database.
 - Verified server identity and encrypted transport; no silent host-key acceptance.
 - Per-environment, revocable, least-privilege credentials.
 - No public unauthenticated control port.
 - Per-host capability and path scopes, rate limits, operation timeouts and output limits.
-- Independent remote-side approval enforcement for privileged, destructive, package, firewall, service, user and public-network changes.
+- Independent remote-side verification of human approval for privileged, destructive, package, firewall, service, user and public-network changes; the current implementation only checks the approval flag sent over authenticated SSH.
 - Auditable command and file operations with cancellation and recovery.
 - Safe bootstrap, update, rollback and removal procedures.
 
