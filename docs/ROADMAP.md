@@ -38,6 +38,7 @@ GULZ is a provider-independent AI agent with a conversation-first experience. Us
 - [x] Pair named remote environments using the user's SSH config/agent; GULZ does not store private keys or passwords.
 - [x] Add remote-side tool registry, explicit approval flag checks, workspace-root validation, audit events and bounded protocol output.
 - [x] Add remote environment inspection and per-connection workspace scopes.
+- [x] Add an interactive CLI menu for adding, testing and removing VPS connections.
 - [ ] Test the full pairing and tool lifecycle against real Termux/Linux/VPS hosts.
 - [ ] Add remote-specific package-manager adapters and service-management policy.
 - [ ] Add VPS diagnostics, package setup, service management and deployment verification.
