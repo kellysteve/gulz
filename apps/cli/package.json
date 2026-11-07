@@ -15,7 +15,8 @@
     "@gulz/core": "0.1.0",
     "@gulz/execution": "0.1.0",
     "@gulz/providers": "0.1.0",
-    "@gulz/agent": "0.1.0"
+    "@gulz/agent": "0.1.0",
+    "@gulz/remote": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
