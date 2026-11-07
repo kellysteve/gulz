@@ -29,8 +29,20 @@ function approvalRisk(toolName: string, input: Record<string, unknown>): "modera
   if (baseName !== "run_command") return "moderate";
   const command = typeof input.command === "string" ? input.command.toLowerCase() : "";
   const args = Array.isArray(input.args) ? input.args.filter((value): value is string => typeof value === "string").map((value) => value.toLowerCase()) : [];
-  const effectiveCommand = command === "sudo" && args[0] === "-n" ? ((args[1] ?? "").split(/[\\/]/).pop() ?? "") : command;
-  const effectiveArgs = command === "sudo" && args[0] === "-n" ? args.slice(2) : args;
+  let effectiveCommand = command;
+  let effectiveArgs = args;
+  if (command === "sudo" && args[0] === "-n") {
+    const valueOptions = new Set(["-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt", "-C", "--chdir", "-T", "--command-timeout"]);
+    let targetIndex = 0;
+    while (targetIndex < args.length) {
+      const option = args[targetIndex]!;
+      if (option === "--") { targetIndex += 1; break; }
+      if (option.startsWith("-")) { targetIndex += valueOptions.has(option) ? 2 : 1; continue; }
+      break;
+    }
+    effectiveCommand = (args[targetIndex] ?? "").split(/[\\/]/).pop() ?? "";
+    effectiveArgs = args.slice(targetIndex + 1);
+  }
   const recursiveFlag = effectiveArgs.some((value) => value === "--recursive" || (value.startsWith("-") && value.includes("r")));
   const forceFlag = effectiveArgs.some((value) => value === "--force" || (value.startsWith("-") && value.includes("f")));
   const recursiveForce = recursiveFlag && forceFlag;
