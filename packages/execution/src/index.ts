@@ -470,3 +470,120 @@ export async function executeLocalOperation(
     options.signal?.removeEventListener("abort", abort);
   }
 }
+
+
+export interface ApprovedCommandOptions {
+  cwd: string;
+  approved?: boolean;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  maxOutputBytes?: number;
+}
+export interface ApprovedCommandResult {
+  command: string;
+  args: string[];
+  cwd: string;
+  exitCode: number | null;
+  stdout: string;
+  stderr: string;
+  durationMs: number;
+  processSucceeded: boolean;
+}
+const forbiddenExecutables = new Set(["sh", "bash", "dash", "zsh", "fish", "csh", "tcsh", "cmd", "cmd.exe", "powershell", "pwsh", "busybox"]);
+const inlineCodeFlags = new Set(["-c", "-e", "-r", "--command", "-command", "-encodedcommand", "--eval", "-eval"]);
+
+/**
+ * Executes one explicitly approved program without a shell. This is the
+ * supervised escape hatch for package managers and environment setup. It
+ * does not make command output proof that the requested service is healthy.
+ */
+export async function executeApprovedCommand(
+  command: string,
+  args: string[],
+  options: ApprovedCommandOptions,
+): Promise<ApprovedCommandResult> {
+  if (options.approved !== true) throw new ExecutionError("This command requires explicit user approval.");
+  if (typeof command !== "string" || !/^[A-Za-z0-9._+-]{1,100}$/.test(command) || forbiddenExecutables.has(command.toLowerCase())) {
+    throw new ExecutionError("Command must be a program name, not a shell or shell interpreter.");
+  }
+  if (!Array.isArray(args) || args.length > 50 || !args.every((arg) => typeof arg === "string" && arg.length <= 4000) ||
+      Buffer.byteLength(JSON.stringify(args), "utf8") > 32000) {
+    throw new ExecutionError("Command arguments are invalid or exceed the configured limits.");
+  }
+  if (args.some((arg) => inlineCodeFlags.has(arg.toLowerCase()))) {
+    throw new ExecutionError("Inline shell or interpreter code is not supported. Use a project file or a dedicated GULZ tool instead.");
+  }
+  if (command.toLowerCase() === "sudo" && args[0] !== "-n") {
+    throw new ExecutionError("sudo must use non-interactive mode (-n). GULZ will not collect or forward administrator passwords.");
+  }
+  const cwd = resolve(options.cwd);
+  const cwdInfo = await lstat(cwd).catch(() => null);
+  if (!cwdInfo?.isDirectory() || cwdInfo.isSymbolicLink()) throw new ExecutionError("Command working directory must be an existing, non-symlink directory.");
+  const timeoutMs = Math.max(1000, Math.min(options.timeoutMs ?? 120000, 900000));
+  const maxOutputBytes = Math.max(1024, Math.min(options.maxOutputBytes ?? 512 * 1024, 1024 * 1024));
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const abort = () => controller.abort();
+  options.signal?.addEventListener("abort", abort, { once: true });
+  try {
+    return await new Promise<ApprovedCommandResult>((resolveResult, rejectResult) => {
+      if (controller.signal.aborted) {
+        rejectResult(new ExecutionError("Command was cancelled or timed out."));
+        return;
+      }
+      const safeEnv: NodeJS.ProcessEnv = {};
+      for (const key of ["PATH", "Path", "PATHEXT", "SystemRoot", "WINDIR", "HOME", "USERPROFILE", "TMP", "TEMP", "TMPDIR", "PREFIX", "LANG", "LC_ALL"]) {
+        const value = process.env[key];
+        if (value !== undefined) safeEnv[key] = value;
+      }
+      safeEnv.GIT_TERMINAL_PROMPT = "0";
+      const child = spawn(command === "node" ? process.execPath : command, args, {
+        cwd, shell: false, windowsHide: true, stdio: ["ignore", "pipe", "pipe"], env: safeEnv,
+      });
+      const stdoutChunks: Buffer[] = [];
+      const stderrChunks: Buffer[] = [];
+      let outputBytes = 0;
+      let settled = false;
+      const finishError = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        child.kill();
+        rejectResult(error);
+      };
+      const collect = (bucket: Buffer[]) => (chunk: Buffer | string) => {
+        const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        outputBytes += bytes.byteLength;
+        if (outputBytes > maxOutputBytes) {
+          finishError(new ExecutionError("Command output exceeded the " + maxOutputBytes + "-byte limit."));
+          return;
+        }
+        bucket.push(bytes);
+      };
+      const onAbort = () => finishError(new ExecutionError("Command was cancelled or timed out."));
+      controller.signal.addEventListener("abort", onAbort, { once: true });
+      child.stdout.on("data", collect(stdoutChunks));
+      child.stderr.on("data", collect(stderrChunks));
+      child.once("error", (error) => finishError(new ExecutionError("Unable to start command: " + error.message)));
+      child.once("close", (code) => {
+        controller.signal.removeEventListener("abort", onAbort);
+        if (settled) return;
+        settled = true;
+        resolveResult({
+          command: [command, ...args].join(" "),
+          args: [...args],
+          cwd,
+          exitCode: code,
+          stdout: Buffer.concat(stdoutChunks).toString("utf8"),
+          stderr: Buffer.concat(stderrChunks).toString("utf8"),
+          durationMs: Date.now() - startedAt,
+          processSucceeded: code === 0,
+        });
+      });
+      if (controller.signal.aborted) onAbort();
+    });
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener("abort", abort);
+  }
+}
