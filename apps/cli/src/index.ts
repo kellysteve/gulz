@@ -11,7 +11,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { addGoalTask, createGoal, createPlannedOperation, operationRequiresApproval, transitionGoal, transitionTask, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
 import { executeLocalOperation, type LocalExecutionResult } from "@gulz/execution";
-import { generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderChatMessage } from "@gulz/providers";
+import { generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderAgentMessage } from "@gulz/providers";
 import { createLocalAgentTools, createRemoteAgentTools, runAgent } from "@gulz/agent";
 import { OpenSshRemoteTransport, validateRemoteAlias, validateRemoteDestination, validateRemoteWorkspace } from "@gulz/remote";
 
@@ -923,37 +923,53 @@ async function interactiveSession(): Promise<void> {
 }
 
 
-async function readConversation(): Promise<ProviderChatMessage[]> {
+async function readConversation(): Promise<ProviderAgentMessage[]> {
   await ensureDataHome();
   try {
     const info = await lstat(conversationFile);
     if (!info.isFile() || info.isSymbolicLink()) throw new Error("Conversation storage must be a regular file, not a symbolic link.");
     await chmod(conversationFile, 0o600);
     const parsed: unknown = JSON.parse(await readFile(conversationFile, "utf8"));
-    if (!Array.isArray(parsed) || parsed.length > 40 || !parsed.every((item) =>
-      isRecord(item) && (item.role === "user" || item.role === "assistant") &&
-      typeof item.content === "string" && item.content.length > 0 && item.content.length <= 8000)) {
+    if (!Array.isArray(parsed) || parsed.length > 40 || !parsed.every((item) => {
+      if (!isRecord(item) || !["user", "assistant", "tool"].includes(String(item.role)) ||
+          typeof item.content !== "string" || item.content.length > 32000) return false;
+      if (item.role === "user" && item.content.length === 0) return false;
+      if (item.role === "tool" && !isNonEmptyString(item.toolCallId)) return false;
+      if (item.toolCalls !== undefined) {
+        if (item.role !== "assistant" || !Array.isArray(item.toolCalls) || item.toolCalls.length > 8 ||
+            !item.toolCalls.every((call) => isRecord(call) && isNonEmptyString(call.id) && isNonEmptyString(call.name) &&
+              isRecord(call.arguments) && JSON.stringify(call.arguments).length <= 280000)) return false;
+      }
+      return true;
+    })) {
       throw new Error("Saved conversation is invalid. It was left untouched.");
     }
-    return parsed as ProviderChatMessage[];
+    return parsed as ProviderAgentMessage[];
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
   }
 }
 
-async function saveConversation(messages: ProviderChatMessage[]): Promise<void> {
+async function saveConversation(messages: ProviderAgentMessage[]): Promise<void> {
   await ensureDataHome();
-  const bounded = messages.slice(-40);
+  let bounded = messages.slice(-30);
+  let serialized = JSON.stringify(bounded, null, 2) + "\n";
+  while (Buffer.byteLength(serialized, "utf8") > 2 * 1024 * 1024 && bounded.length > 2) {
+    bounded = bounded.slice(1);
+    serialized = JSON.stringify(bounded, null, 2) + "\n";
+  }
+  if (Buffer.byteLength(serialized, "utf8") > 2 * 1024 * 1024) throw new Error("The latest agent conversation is too large to save safely.");
   const temporary = join(dataHome, "conversation." + randomUUID() + ".tmp");
   try {
-    await writeFile(temporary, JSON.stringify(bounded, null, 2) + "\n", { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await writeFile(temporary, serialized, { encoding: "utf8", mode: 0o600, flag: "wx" });
     await rename(temporary, conversationFile);
     await chmod(conversationFile, 0o600);
   } finally {
     await rm(temporary, { force: true }).catch(() => undefined);
   }
 }
+
 
 async function runRemoteAgentStdio(): Promise<void> {
   const initialWorkingDirectory = process.cwd();
@@ -1031,7 +1047,7 @@ async function chatSession(): Promise<void> {
     console.log("Chat naturally. GULZ can work in this workspace and on your " + remoteEnvironments.length + " connected VPS environment(s). Changes and commands require approval. Type /clear to erase history or /exit to leave.");
     const messages = await readConversation();
     if (messages.length) {
-      for (const message of messages.slice(-12)) {
+      for (const message of messages.filter((item) => (item.role === "user" || item.role === "assistant") && item.content.length > 0).slice(-12)) {
         const speaker = message.role === "user" ? "You" : "GULZ";
         const color = message.role === "user" ? ansi.green : ansi.cyan;
         console.log("\n" + paint(speaker, color, ansi.bold) + "\n" + message.content);
@@ -1063,7 +1079,7 @@ async function chatSession(): Promise<void> {
         const result = await runAgent({
           provider: config,
           signal: turnController.signal,
-          messages: messages.slice(-30).map((message) => ({ role: message.role, content: message.content })),
+          messages: messages.slice(-30),
           tools: agentTools,
           approve: async (request) => {
             title("GULZ ACTION REQUEST");
@@ -1084,7 +1100,7 @@ async function chatSession(): Promise<void> {
           },
         });
         const answer = result.reply || "The requested tool operations finished, but the AI did not provide a final explanation.";
-        messages.push({ role: "assistant", content: answer });
+        messages.splice(0, messages.length, ...result.messages);
         await saveConversation(messages);
         console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + "\n" + answer);
       } catch (error) {
