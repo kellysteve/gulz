@@ -28,7 +28,7 @@ export function validateRemoteWorkspace(workspace: string): string {
   return workspace;
 }
 export function validateRemoteDestination(destination: string): string {
-  if (typeof destination !== "string" || !/^(?:[A-Za-z0-9._-]+@)?[A-Za-z0-9][A-Za-z0-9.-]*$/.test(destination) || destination.startsWith("-")) {
+  if (typeof destination !== "string" || !/^(?:[A-Za-z0-9._-]+@)?[A-Za-z0-9][A-Za-z0-9._-]*$/.test(destination) || destination.startsWith("-")) {
     throw new RemoteTransportError("Remote destination must be a host or user@host, or an SSH config alias. Ports and command strings are not accepted; configure them in your SSH config.");
   }
   return destination;
