@@ -28,7 +28,7 @@ function approvalRisk(toolName: string, input: Record<string, unknown>): "modera
   if (baseName !== "run_command") return "moderate";
   const command = typeof input.command === "string" ? input.command.toLowerCase() : "";
   const args = Array.isArray(input.args) ? input.args.filter((value): value is string => typeof value === "string").map((value) => value.toLowerCase()) : [];
-  const effectiveCommand = command === "sudo" && args[0] === "-n" ? (args[1] ?? "") : command;
+  const effectiveCommand = command === "sudo" && args[0] === "-n" ? ((args[1] ?? "").split(/[\\/]/).pop() ?? "") : command;
   const effectiveArgs = command === "sudo" && args[0] === "-n" ? args.slice(2) : args;
   const recursiveForce = effectiveArgs.some((value) => value.startsWith("-") && value.includes("r") && value.includes("f")) || effectiveArgs.includes("--recursive");
   if ((effectiveCommand === "rm" && recursiveForce && effectiveArgs.some((value) => value === "/" || value === "/*")) ||
