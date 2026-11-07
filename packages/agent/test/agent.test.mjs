@@ -4,7 +4,7 @@ import { createLocalAgentTools, runAgent } from "../dist/index.js";
 
 test("local tool catalogue exposes only bounded workspace capabilities", () => {
   const tools = createLocalAgentTools(process.cwd());
-  assert.deepEqual(tools.map((tool) => tool.definition.name), ["inspect_path", "list_directory", "read_file", "create_directory", "write_file", "run_command"]);
+  assert.deepEqual(tools.map((tool) => tool.definition.name), ["inspect_environment", "inspect_path", "list_directory", "read_file", "create_directory", "write_file", "run_command"]);
   assert.equal(tools.find((tool) => tool.definition.name === "write_file")?.requiresApproval({ path: "x", content: "y" }), true);
   assert.equal(tools.find((tool) => tool.definition.name === "read_file")?.requiresApproval({ path: "README.md" }), false);
 });
