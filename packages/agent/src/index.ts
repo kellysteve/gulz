@@ -70,7 +70,7 @@ function redactSensitiveText(input: string): { text: string; count: number } {
   replace(/\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g, "[REDACTED SLACK TOKEN]");
   replace(/\bAIza[0-9A-Za-z_-]{30,}\b/g, "[REDACTED API KEY]");
   replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{16,}/gi, "Bearer [REDACTED]");
-  replace(/((?:api[_-]?key|service[_-]?role[_-]?key|signing[_-]?key|encryption[_-]?key|auth[_-]?key|secret(?:[_-]?(?:access[_-]?)?key)?|password|passwd|token|access[_-]?token|refresh[_-]?token|private[_-]?key|client[_-]?secret|database_url|redis_url|mongo(?:db)?_url)\s*[:=]\s*["']?)[^\s"'\x60,;]+/gi, (_match, prefix) => prefix + "[REDACTED]");
+  replace(/((?:api[_-]?key|service[_-]?role[_-]?key|signing[_-]?key|encryption[_-]?key|auth[_-]?key|access[_-]?key|secret(?:[_-]?(?:access[_-]?)?key)?|password|passwd|token|access[_-]?token|refresh[_-]?token|private[_-]?key|client[_-]?secret|database_url|redis_url|mongo(?:db)?_url)\s*[:=]\s*["']?)[^\s"'\x60,;]+/gi, (_match, prefix) => prefix + "[REDACTED]");
   replace(/(:\/\/[^:/\s]+:)[^@/\s]+(@)/g, (_match, prefix, suffix) => prefix + "[REDACTED]" + suffix);
   return { text, count };
 }
