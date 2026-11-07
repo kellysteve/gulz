@@ -210,6 +210,56 @@ async function recordAudit(action: string, details: Record<string, string | numb
 }
 
 
+interface RemoteEnvironmentRecord {
+  name: string;
+  destination: string;
+  addedAt: string;
+}
+
+async function readRemoteEnvironments(): Promise<RemoteEnvironmentRecord[]> {
+  await ensureDataHome();
+  try {
+    const info = await lstat(remoteEnvironmentsFile);
+    if (!info.isFile() || info.isSymbolicLink()) throw new Error("Remote environment settings must be a regular file, not a symbolic link.");
+    await chmod(remoteEnvironmentsFile, 0o600);
+    const parsed: unknown = JSON.parse(await readFile(remoteEnvironmentsFile, "utf8"));
+    if (!Array.isArray(parsed) || parsed.length > 50 || !parsed.every((item) =>
+      isRecord(item) && isNonEmptyString(item.name) && isNonEmptyString(item.destination) && isTimestamp(item.addedAt))) {
+      throw new Error("Saved remote environment settings are invalid. They were left untouched.");
+    }
+    const names = parsed.map((item) => (item as { name: string }).name);
+    if (new Set(names).size !== names.length) throw new Error("Saved remote environment names contain duplicates.");
+    return parsed.map((item) => ({
+      name: validateRemoteAlias((item as { name: string }).name),
+      destination: validateRemoteDestination((item as { destination: string }).destination),
+      addedAt: (item as { addedAt: string }).addedAt,
+    }));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function saveRemoteEnvironments(environments: RemoteEnvironmentRecord[]): Promise<void> {
+  if (environments.length > 50 || new Set(environments.map((item) => item.name)).size !== environments.length) {
+    throw new Error("Remote environment list is invalid or contains duplicate names.");
+  }
+  for (const item of environments) {
+    validateRemoteAlias(item.name);
+    validateRemoteDestination(item.destination);
+    if (!isTimestamp(item.addedAt)) throw new Error("Remote environment timestamp is invalid.");
+  }
+  await ensureDataHome();
+  const temporary = join(dataHome, "remote-environments." + randomUUID() + ".tmp");
+  try {
+    await writeFile(temporary, JSON.stringify(environments, null, 2) + "\n", { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await rename(temporary, remoteEnvironmentsFile);
+    await chmod(remoteEnvironmentsFile, 0o600);
+  } finally {
+    await rm(temporary, { force: true }).catch(() => undefined);
+  }
+}
+
 interface StoredProviderConfig {
   baseUrl: string;
   model: string;
