@@ -106,18 +106,41 @@ gulz doctor
 
 Confirm Node.js is 20.19 or newer. A signed Windows desktop installer and WinGet package are planned, not published.
 
-## VPS and headless servers
+## VPS and remote agent pairing
 
-Connect to a Linux VPS with your own SSH account. Install Node.js 20.19+ and curl, then run the interactive installer as your normal user:
+GULZ has an initial on-demand remote agent over the system OpenSSH client. Install the latest GULZ CLI on the VPS first, as the normal SSH user that will own the workspace:
 
 ~~~sh
 curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
+gulz update
 ~~~
 
-The installer detects Linux, asks for an install folder and confirmation, builds and links the CLI, then asks whether to use built-in GULZ AI, connect your own OpenAI-compatible provider/model, or configure AI later. The selected connection is tested with a generic request. You can change the provider or model later.
+From the local device where you run GULZ, connect manually once and verify the SSH host fingerprint yourself:
 
-The current CLI runs on the server where it is installed. GULZ does not yet provide remote SSH orchestration or manage other machines automatically. Do not run the CLI as root unless a future, explicitly documented operation requires it.
+~~~sh
+ssh user@host
+# Verify the fingerprint against your VPS provider or trusted server record.
+gulz --version
+gulz agent --capabilities
+exit
+~~~
 
+Make sure the `gulz` executable is available in non-interactive SSH sessions (the environment used by remote commands). Then pair the VPS from your local device:
+
+~~~sh
+gulz remote add production user@host /var/www/my-project
+gulz remote test production
+gulz chat
+~~~
+
+The last argument to `remote add` is an optional existing absolute POSIX workspace path on the VPS. Omit it to use the SSH user's home directory. GULZ checks that the directory exists and is not a symlink. SSH config aliases are supported, so you can use `production` instead of `user@host` if your local SSH config defines it.
+
+GULZ uses OpenSSH with `BatchMode=yes` and `StrictHostKeyChecking=yes`. It never accepts unknown or changed host keys automatically, never enables agent forwarding, and does not store SSH private keys or passwords. If the host key is not known locally, connect manually, verify the fingerprint and retry. Each remote tool call opens an on-demand SSH process; there is no public control port or always-running remote daemon.
+
+The remote agent exposes the current bounded tools for environment inspection, workspace files and explicitly approved direct programs. The AI provider receives the remote tool results, not SSH credentials. Before any file change or command, the local CLI shows the requested action and asks for approval. Command output may be sent to the configured AI provider as context. Do not approve commands that print credentials or private data. Shell interpreters and inline interpreter code are blocked. Privileged commands must use non-interactive `sudo -n`; GULZ will not collect or forward administrator passwords. If the VPS does not allow passwordless sudo for a specific operation, that privileged step must be handled manually.
+
+This is an initial remote execution foundation, not a complete one-click hosting platform. Dedicated workflows for provisioning an API or website, configuring TLS/reverse proxies, managing databases and verifying public service health are still in development.
+ 
 ## First local workflow
 
 After building and linking the CLI:
