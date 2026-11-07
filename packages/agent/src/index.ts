@@ -28,11 +28,14 @@ function approvalRisk(toolName: string, input: Record<string, unknown>): "modera
   if (baseName !== "run_command") return "moderate";
   const command = typeof input.command === "string" ? input.command.toLowerCase() : "";
   const args = Array.isArray(input.args) ? input.args.filter((value): value is string => typeof value === "string").map((value) => value.toLowerCase()) : [];
-  const recursiveForce = args.some((value) => value.startsWith("-") && value.includes("r") && value.includes("f")) || args.includes("--recursive");
-  if ((command === "rm" && recursiveForce && args.some((value) => value === "/" || value === "/*")) ||
-      (command === "dd" && args.some((value) => value.startsWith("of=/dev/")) || command.startsWith("mkfs"))) return "critical";
+  const effectiveCommand = command === "sudo" && args[0] === "-n" ? (args[1] ?? "") : command;
+  const effectiveArgs = command === "sudo" && args[0] === "-n" ? args.slice(2) : args;
+  const recursiveForce = effectiveArgs.some((value) => value.startsWith("-") && value.includes("r") && value.includes("f")) || effectiveArgs.includes("--recursive");
+  if ((effectiveCommand === "rm" && recursiveForce && effectiveArgs.some((value) => value === "/" || value === "/*")) ||
+      (effectiveCommand === "dd" && effectiveArgs.some((value) => value.startsWith("of=/dev/")) || effectiveCommand.startsWith("mkfs"))) return "critical";
   if (["sudo", "su", "systemctl", "service", "reboot", "shutdown", "poweroff", "ufw", "iptables", "nft", "firewall-cmd", "chmod", "chown", "useradd", "userdel", "groupadd", "groupdel", "mount", "umount"].includes(command) ||
-      args.some((value) => ["--force", "--delete", "--purge", "--recursive"].includes(value)) || recursiveForce) return "high";
+      ["sudo", "su", "systemctl", "service", "reboot", "shutdown", "poweroff", "ufw", "iptables", "nft", "firewall-cmd", "chmod", "chown", "useradd", "userdel", "groupadd", "groupdel", "mount", "umount"].includes(effectiveCommand) ||
+      effectiveArgs.some((value) => ["--force", "--delete", "--purge", "--recursive"].includes(value)) || recursiveForce) return "high";
   return "moderate";
 }
 
