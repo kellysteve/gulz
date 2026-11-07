@@ -1054,15 +1054,16 @@ async function remoteCommand(args: string[]): Promise<void> {
     }
     title("CONNECTED VPS ENVIRONMENTS");
     for (const environment of environments) {
-      console.log("  " + environment.name + "  ·  " + environment.destination);
+      console.log("  " + environment.name + "  ·  " + environment.destination + "  ·  " + environment.workspace);
     }
     console.log("\nThe remote host must have a compatible GULZ CLI installed and its SSH host key verified.");
     return;
   }
   if (action === "add") {
-    if (values.length !== 2) { console.error("Usage: gulz remote add <name> <user@host-or-ssh-alias>"); process.exitCode = 2; return; }
+    if (values.length < 2 || values.length > 3) { console.error("Usage: gulz remote add <name> <user@host-or-ssh-alias> [remote-workspace]"); process.exitCode = 2; return; }
     const name = validateRemoteAlias(values[0]!);
     const destination = validateRemoteDestination(values[1]!);
+    const workspace = validateRemoteWorkspace(values[2] ?? ".");
     const environments = await readRemoteEnvironments();
     if (environments.some((item) => item.name === name)) throw new Error("A remote environment with that name already exists. Remove it first or choose another name.");
     if (!stdin.isTTY || !stdout.isTTY) throw new Error("Adding a remote environment requires an interactive terminal.");
@@ -1075,12 +1076,16 @@ async function remoteCommand(args: string[]): Promise<void> {
       warning("Strict host-key verification is enabled. GULZ will never automatically accept an unknown or changed host key.");
       const confirmation = await rl.question("Check this VPS over SSH? (y/N): ");
       if (!["y", "yes"].includes(confirmation.trim().toLowerCase())) { console.log("Connection cancelled."); return; }
-      const capabilities = await new OpenSshRemoteTransport({}).testDestination(destination);
+      const transport = new OpenSshRemoteTransport({ [name]: destination }, { [name]: workspace });
+      const capabilities = await transport.testDestination(destination);
+      const environmentInfo = await transport.invoke({ environmentId: name, toolName: "inspect_environment", arguments: {}, approved: false });
       console.log("Remote GULZ version: " + capabilities.version);
+      console.log("Remote workspace: " + workspace);
+      console.log("Environment: " + JSON.stringify(environmentInfo));
       console.log("Remote tools: " + capabilities.tools.join(", "));
       const save = await rl.question("Save this VPS connection for GULZ chat? (y/N): ");
       if (!["y", "yes"].includes(save.trim().toLowerCase())) { console.log("Connection was tested but not saved."); return; }
-      await saveRemoteEnvironments([...environments, { name, destination, addedAt: new Date().toISOString() }]);
+      await saveRemoteEnvironments([...environments, { name, destination, workspace, addedAt: new Date().toISOString() }]);
       await recordAudit("remote.environment_added", { name, destination });
       success("VPS connection saved. Its tools will be available in gulz chat.");
     } finally { rl.close(); }
@@ -1091,8 +1096,12 @@ async function remoteCommand(args: string[]): Promise<void> {
     const environments = await readRemoteEnvironments();
     const environment = environments.find((item) => item.name === values[0]);
     if (!environment) throw new Error("Remote environment not found.");
-    const capabilities = await new OpenSshRemoteTransport({}).testDestination(environment.destination);
+    const transport = new OpenSshRemoteTransport({ [environment.name]: environment.destination }, { [environment.name]: environment.workspace });
+    const capabilities = await transport.testDestination(environment.destination);
+    const environmentInfo = await transport.invoke({ environmentId: environment.name, toolName: "inspect_environment", arguments: {}, approved: false });
     success("Remote GULZ agent is reachable · version " + capabilities.version);
+    label("Workspace", environment.workspace);
+    label("Environment", JSON.stringify(environmentInfo));
     label("Tools", capabilities.tools.join(", "));
     return;
   }
