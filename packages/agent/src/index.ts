@@ -43,7 +43,7 @@ function approvalRisk(toolName: string, input: Record<string, unknown>): "modera
 }
 
 function boundedToolResult(value: unknown): string {
-  let serialized = JSON.stringify(value);
+  let serialized = JSON.stringify(value) ?? "null";
   if (serialized.length <= 30000) return serialized;
   if (isRecord(value) && isRecord(value.output)) {
     const output: Record<string, unknown> = { ...value.output };
@@ -54,7 +54,7 @@ function boundedToolResult(value: unknown): string {
         truncated = true;
       }
     }
-    serialized = JSON.stringify({ ...value, output: { ...output, ...(truncated ? { outputTruncated: true } : {}) } });
+    serialized = JSON.stringify({ ...value, output: { ...output, ...(truncated ? { outputTruncated: true } : {}) } }) ?? "null";
     if (serialized.length <= 30000) return serialized;
   }
   return JSON.stringify({ ok: false, outputTruncated: true, message: "The tool returned too much data to include in AI context. Ask for a smaller or more specific result." });
