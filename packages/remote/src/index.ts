@@ -22,7 +22,7 @@ export function validateRemoteAlias(alias: string): string {
 }
 export function validateRemoteWorkspace(workspace: string): string {
   if (workspace === ".") return workspace;
-  if (typeof workspace !== "string" || workspace.length > 1024 || workspace.includes("\\0") || !workspace.startsWith("/") || workspace.split("/").includes("..")) {
+  if (typeof workspace !== "string" || workspace.length > 1024 || workspace.includes("\0") || !workspace.startsWith("/") || workspace.split("/").includes("..")) {
     throw new RemoteTransportError("Remote workspace must be . or a clean absolute POSIX path on the remote host.");
   }
   return workspace;
