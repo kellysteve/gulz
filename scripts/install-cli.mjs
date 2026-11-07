@@ -11,6 +11,7 @@ const workspaces = [
   ["@gulz/core", "packages/core/package.json"],
   ["@gulz/execution", "packages/execution/package.json"],
   ["@gulz/providers", "packages/providers/package.json"],
+  ["@gulz/agent", "packages/agent/package.json"],
   ["@gulz/cli", "apps/cli/package.json"],
 ];
 const marker = join(root, "node_modules", ".gulz-cli-install.json");
@@ -78,6 +79,7 @@ async function main() {
     join(root, "node_modules", "@gulz", "core"),
     join(root, "node_modules", "@gulz", "execution"),
     join(root, "node_modules", "@gulz", "providers"),
+    join(root, "node_modules", "@gulz", "agent"),
     join(root, "node_modules", "@gulz", "cli"),
   ];
   let dependenciesReady = true;
@@ -90,12 +92,13 @@ async function main() {
   } else {
     console.log("Installing the CLI workspaces and required build tools (first install or dependency change)...");
     console.log("Source: " + root);
-    console.log("Workspace layout verified: core, execution, providers and CLI.");
+    console.log("Workspace layout verified: core, execution, providers, agent and CLI.");
     run(npm, [
       "install",
       "--workspace=@gulz/core",
       "--workspace=@gulz/execution",
       "--workspace=@gulz/providers",
+      "--workspace=@gulz/agent",
       "--workspace=@gulz/cli",
       "--include-workspace-root=false",
       "--include=dev",
