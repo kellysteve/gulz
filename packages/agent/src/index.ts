@@ -78,7 +78,7 @@ function assertSafeReadablePath(path: string): void {
     throw new AgentError("GULZ will not send files from known credential directories to the AI provider. Copy a redacted example into the workspace if you need help.");
   }
   if (blockedFiles.has(basename) || (basename.startsWith(".env") && !safeEnvExamples.has(basename)) ||
-      /\\.(pem|key|p12|pfx|keystore|jks)$/.test(basename) || /(secret|credential|password|token)/.test(basename)) {
+      /\.(pem|key|p12|pfx|keystore|jks)$/.test(basename) || /(secret|credential|password|token)/.test(basename)) {
     throw new AgentError("GULZ will not send a likely secret or credential file to the AI provider. Create a redacted copy if you need help.");
   }
 }
