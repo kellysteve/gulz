@@ -20,6 +20,13 @@ export function validateRemoteAlias(alias: string): string {
   if (typeof alias !== "string" || !/^[a-z][a-z0-9_-]{1,31}$/.test(alias)) throw new RemoteTransportError("Remote name must start with a lowercase letter and contain only lowercase letters, numbers, hyphens or underscores (2–32 characters).");
   return alias;
 }
+export function validateRemoteWorkspace(workspace: string): string {
+  if (workspace === ".") return workspace;
+  if (typeof workspace !== "string" || workspace.length > 1024 || workspace.includes("\\0") || !workspace.startsWith("/") || workspace.split("/").includes("..")) {
+    throw new RemoteTransportError("Remote workspace must be . or a clean absolute POSIX path on the remote host.");
+  }
+  return workspace;
+}
 export function validateRemoteDestination(destination: string): string {
   if (typeof destination !== "string" || !/^(?:[A-Za-z0-9._-]+@)?[A-Za-z0-9][A-Za-z0-9.-]*$/.test(destination) || destination.startsWith("-")) {
     throw new RemoteTransportError("Remote destination must be a host or user@host, or an SSH config alias. Ports and command strings are not accepted; configure them in your SSH config.");
@@ -34,10 +41,12 @@ export function validateRemoteDestination(destination: string): string {
  */
 export class OpenSshRemoteTransport {
   private readonly destinations: Record<string, string>;
-  constructor(destinations: Record<string, string>) {
+  private readonly workspaces: Record<string, string>;
+  constructor(destinations: Record<string, string>, workspaces: Record<string, string> = {}) {
     this.destinations = Object.fromEntries(Object.entries(destinations).map(([alias, destination]) => [
       validateRemoteAlias(alias), validateRemoteDestination(destination),
     ]));
+    this.workspaces = Object.fromEntries(Object.entries(workspaces).map(([alias, workspace]) => [validateRemoteAlias(alias), validateRemoteWorkspace(workspace)]));
   }
   async testDestination(destination: string): Promise<RemoteCapabilities> {
     const safeDestination = validateRemoteDestination(destination);
@@ -61,6 +70,7 @@ export class OpenSshRemoteTransport {
       toolName: request.toolName,
       arguments: request.arguments,
       approved: request.approved === true,
+      workspaceRoot: this.workspaces[request.environmentId] ?? ".",
     });
     if (Buffer.byteLength(body, "utf8") > 300000) throw new RemoteTransportError("Remote tool request exceeds the 300 KB protocol limit.");
     const output = await this.runSsh(destination, "gulz agent --stdio", body, 120000, request.signal);
