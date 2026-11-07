@@ -33,7 +33,7 @@ GULZ is a provider-independent AI agent. The selected model supplies reasoning; 
 6. The execution adapter performs the operation and returns bounded structured results.
 7. Results return to the model for a natural-language explanation. Audit records are kept locally.
 
-The agent loop is bounded to at most 12 model rounds, 8 tool calls per response, bounded message/argument sizes and AbortSignal cancellation. The model cannot authorize its own proposed tool calls.
+The agent loop is bounded to at most 12 model rounds, 8 tool calls per response and 8 total tool actions per user turn, bounded message/argument sizes and AbortSignal cancellation. The model cannot authorize its own proposed tool calls.
 
 ## Current local capabilities
 
