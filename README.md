@@ -10,7 +10,7 @@ GULZ is licensed under the **Apache License 2.0**. You can use, study, modify an
 
 ## Project status
 
-GULZ is in active development. The CLI currently supports local work/task management, a continuous AI chat mode with locally saved conversation history, OpenAI-compatible AI planning, supervised local execution, recovery and source updates. An interactive Bash source installer is available for Termux, Linux, macOS and VPS hosts, alongside a PowerShell source-build guide for Windows. These install the CLI from source; they are not packaged binary releases. Remote SSH orchestration, connected services, native installers, desktop/Android apps, published npm packages and signed release downloads remain outstanding.
+GULZ is in active development. The CLI now connects continuous AI chat to a shared, bounded agent runtime. OpenAI-compatible tool-calling models can use supervised local workspace tools; provider configuration and conversation history remain local. An interactive Bash source installer is available for Termux, Linux, macOS and VPS hosts, alongside a PowerShell source-build guide for Windows. These install the CLI from source; they are not packaged binary releases. Remote SSH orchestration, connected services, native installers, desktop/Android apps, published npm packages and signed release downloads remain outstanding.
 
 ## Install the GULZ CLI
 
@@ -31,8 +31,8 @@ After installation and AI provider setup, run `gulz chat` to open a continuous c
 GULZ is being built around three connected interfaces backed by one shared core:
 
 - **Terminal:** direct commands and power-user control.
-- **AI assistant:** continuous natural-language conversations, planning and guided operations. Recent chat history is saved locally; chat responses do not themselves execute machine operations.
-- **Task workspace:** plans, approvals, activity, results and resumable work.
+- **AI assistant:** continuous natural-language conversations connected to the shared agent engine and its registered tools.
+- **Agent activity:** internal plans, approvals, tool calls, results and resumable work without requiring users to manage task IDs.
 
 All interfaces must use the same execution policy. No interface may bypass permission checks.
 
@@ -50,7 +50,7 @@ All interfaces must use the same execution policy. No interface may bypass permi
 
 - **Core:** internal work/task records, guarded lifecycle transitions and risk-derived approval decisions.
 - **Execution:** bounded path inspection, directory listing/creation, UTF-8 reads/writes, high-risk reversible file deletion with private backups/restore, and a fixed allowlist of diagnostics plus approved CLI build/test workflows. The command runner uses no shell, a sanitized environment, bounded output/time and interactive approval.
-- **CLI:** local goal/task management, private activity history, provider configuration, continuous AI chat with local conversation persistence, AI-assisted planning, supervised execution, per-operation approval, durable checkpoints, pause/resume/cancel, repair, update and uninstall are implemented in source. Runtime verification is still pending.
+- **CLI:** provider configuration, continuous conversation persistence, local agent tool orchestration, per-tool approvals, audit history, legacy advanced planning/execution, repair, update and uninstall are implemented in source. Build and Termux runtime verification are still pending.
 - **Distribution:** npm package metadata and platform-specific source-build instructions are prepared. Packages have not been published and native installers are not available.
 - **Website:** installation centre and platform roadmap are in the source repository; deployment of the latest changes is still required.
 - **Not yet implemented:** remote SSH orchestration, connected-service adapters, arbitrary shell/package installation, desktop app, native installers, signed release downloads and signed automatic updates. Permanent/recursive deletion remains unavailable; the only delete operation moves a small regular file into a recoverable backup.
@@ -64,7 +64,8 @@ apps/
 packages/
   core/      Goal and task orchestration
   execution/ Permission-aware local execution engine
-  providers/  OpenAI-compatible chat and structured planning adapter
+  providers/ OpenAI-compatible chat, structured planning and tool-calling adapter
+  agent/     Shared provider-driven agent loop and supervised local tool registry
   storage/   Local persistence and remote storage adapters (planned)
   updater/   Verified update client (planned)
 docs/        Product, architecture and platform documentation
@@ -77,7 +78,7 @@ supabase/    Database migrations for release infrastructure
 - **Linux:** CLI source build now; AppImage, .deb, .rpm and desktop app planned.
 - **macOS:** CLI source build now; signed .dmg and Homebrew route planned.
 - **Windows:** PowerShell source build now; signed desktop installer and WinGet route planned.
-- **VPS:** headless CLI source build; SSH-based remote orchestration planned.
+- **VPS:** headless CLI source build; a separately installed and paired remote agent is planned, not yet available.
 - **Desktop:** one task workspace using the same local execution policy as the CLI. No desktop binary is available yet.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for remaining development and verification work. See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the interactive Bash installer, platform-specific setup and exact release status. Public release gates are tracked in [docs/PUBLIC_RELEASE_CHECKLIST.md](docs/PUBLIC_RELEASE_CHECKLIST.md). The desktop product direction and release requirements are in [docs/DESKTOP_APP.md](docs/DESKTOP_APP.md).
