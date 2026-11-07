@@ -1015,8 +1015,8 @@ async function chatSession(): Promise<void> {
   if (!config) throw new Error("AI is not configured. Run gulz provider builtin or choose AI setup from the GULZ menu.");
   const remoteEnvironments = await readRemoteEnvironments();
   const remoteTransport = new OpenSshRemoteTransport(
-    Object.fromEntries(remoteEnvironments.map((item) => [item.name, item.destination])),
-    Object.fromEntries(remoteEnvironments.map((item) => [item.name, item.workspace])),
+    Object.fromEntries(remoteEnvironments.map((item): [string, string] => [item.name, item.destination])),
+    Object.fromEntries(remoteEnvironments.map((item): [string, string] => [item.name, item.workspace])),
   );
   const agentTools = [
     ...createLocalAgentTools(process.cwd()),
