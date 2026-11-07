@@ -67,6 +67,22 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
   throw new AgentError("GULZ reached the maximum agent round limit. Completed operations were verified individually; ask it to continue if more work remains.");
 }
 
+function assertSafeReadablePath(path: string): void {
+  const normalized = path.replace(/\\/g, "/").toLowerCase();
+  const parts = normalized.split("/").filter(Boolean);
+  const basename = parts[parts.length - 1] ?? "";
+  const blockedDirectories = new Set([".ssh", ".aws", ".azure", ".gnupg", ".kube", ".docker", ".git"]);
+  const blockedFiles = new Set([".npmrc", ".pypirc", ".netrc", ".git-credentials", "credentials", "credentials.json", "service-account.json", "id_rsa", "id_ed25519", "id_ecdsa"]);
+  const safeEnvExamples = new Set([".env.example", ".env.sample", ".env.template", ".env.dist"]);
+  if (parts.some((part) => blockedDirectories.has(part)) || parts.some((part, index) => part === ".config" && ["gcloud", "gh"].includes(parts[index + 1] ?? ""))) {
+    throw new AgentError("GULZ will not send files from known credential directories to the AI provider. Copy a redacted example into the workspace if you need help.");
+  }
+  if (blockedFiles.has(basename) || (basename.startsWith(".env") && !safeEnvExamples.has(basename)) ||
+      /\\.(pem|key|p12|pfx|keystore|jks)$/.test(basename) || /(secret|credential|password|token)/.test(basename)) {
+    throw new AgentError("GULZ will not send a likely secret or credential file to the AI provider. Create a redacted copy if you need help.");
+  }
+}
+
 function requiredText(input: Record<string, unknown>, key: string, max = 1000): string {
   const value = input[key];
   if (typeof value !== "string" || !value.trim() || value.length > max) throw new AgentError("Tool input requires a valid " + key + ".");
@@ -96,7 +112,7 @@ export function createLocalAgentTools(rootDirectory: string): AgentTool[] {
     { definition: { name: "inspect_environment", description: "Detect the current operating system, Termux status, available package managers and developer tools without running commands or exposing secrets.", parameters: { type: "object", properties: {}, additionalProperties: false } }, requiresApproval: () => false, execute: async () => detectEnvironment() },
     { definition: { name: "inspect_path", description: "Inspect metadata for a file or directory inside the current workspace.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => localOperation("inspect", "Inspect a local workspace path", input, rootDirectory, context.approved === true, context.signal) },
     { definition: { name: "list_directory", description: "List entries in a directory inside the current workspace.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => localOperation("list_directory", "List a local workspace directory", input, rootDirectory, context.approved === true, context.signal) },
-    { definition: { name: "read_file", description: "Read a bounded UTF-8 text file inside the current workspace.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => localOperation("read_file", "Read a local workspace file", input, rootDirectory, context.approved === true, context.signal) },
+    { definition: { name: "read_file", description: "Read a bounded UTF-8 text file inside the current workspace. Known credential files and secret directories are blocked from being sent to the AI provider.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => { const path = requiredText(input, "path"); assertSafeReadablePath(path); return localOperation("read_file", "Read a local workspace file", { ...input, path }, rootDirectory, context.approved === true, context.signal); } },
     { definition: { name: "create_directory", description: "Create a directory inside the current workspace. Requires user approval.", parameters: pathSchema }, requiresApproval: () => true, execute: (input, context) => localOperation("create_directory", "Create a local workspace directory", input, rootDirectory, context.approved === true, context.signal) },
     { definition: { name: "write_file", description: "Create or replace a UTF-8 file inside the current workspace. Requires user approval; replaced files are backed up.", parameters: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"], additionalProperties: false } }, requiresApproval: () => true, execute: (input, context) => localOperation("write_file", "Write a local workspace file", input, rootDirectory, context.approved === true, context.signal) },
     { definition: { name: "run_command", description: "Run a program directly without a shell inside the current workspace. Can install packages or configure software, but every command requires approval. Shell interpreters and inline code execution are blocked.", parameters: { type: "object", properties: { command: { type: "string" }, args: { type: "array", maxItems: 50, items: { type: "string", maxLength: 4000 } } }, required: ["command", "args"], additionalProperties: false } }, requiresApproval: () => true, execute: (input, context) => localOperation("run_command", "Run an explicitly approved local program", input, rootDirectory, context.approved === true, context.signal) },
