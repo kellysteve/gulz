@@ -55,7 +55,6 @@ Command completion is not proof that a website, API or service is healthy. GULZ 
 ## Not yet implemented
 
 - Dedicated, tested workflows for VPS provisioning, API hosting, website hosting, databases, reverse proxies, TLS and backups.
-- End-to-end VPS provisioning, API hosting, website hosting, databases, reverse proxies, TLS and service monitoring workflows.
 - Dedicated package-manager adapters and richer environment-specific recovery.
 - Connected GitHub/cloud/database integrations.
 - Multi-conversation workspace UI, authenticated sync, desktop and native Android apps.
@@ -82,7 +81,7 @@ supabase/       Release infrastructure migrations
 
 ## Security
 
-Run GULZ without administrator privileges. Never commit API keys, signing keys, SSH credentials, access tokens or user data. Provider keys remain local and must not be included in model prompts or tool results. Mutating commands require the user's approval; remote operations will require a separately paired remote agent with independent policy enforcement. See [SECURITY.md](SECURITY.md).
+Run GULZ without administrator privileges. Never commit API keys, signing keys, SSH credentials, access tokens or user data. Provider keys remain local and must not be included in model prompts or tool results. Mutating commands require the user's approval. Remote operations require a separately paired VPS agent with independent workspace and approval checks. See [SECURITY.md](SECURITY.md).
 
 ## License
 
