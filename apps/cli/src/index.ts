@@ -11,7 +11,8 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { addGoalTask, createGoal, createPlannedOperation, operationRequiresApproval, transitionGoal, transitionTask, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
 import { executeLocalOperation, type LocalExecutionResult } from "@gulz/execution";
-import { generateChatReply, generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderChatMessage } from "@gulz/providers";
+import { generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderChatMessage } from "@gulz/providers";
+import { createLocalAgentTools, runAgent } from "@gulz/agent";
 
 const VERSION = "0.1.0";
 const dataHome = resolve(process.env.GULZ_HOME || join(homedir(), ".gulz"));
@@ -116,7 +117,7 @@ function help(): void {
     "  provider test         Test the configured AI connection with a sample request",
     "  provider remove       Remove saved provider credentials",
     "  chat                  Open a continuous AI conversation with GULZ",
-    "  do <request>          Ask GULZ to plan and execute a specific task",
+    "  do <request>          Advanced compatibility command for supervised work",
     "  plan <goal-id>        Generate a task plan with your configured AI provider",
     "  execute <goal-id>     Execute a reviewed plan with per-operation approval",
     "  resume <goal-id>      Resume paused or interrupted goal execution",
@@ -785,9 +786,9 @@ async function interactiveSession(): Promise<void> {
 
   try {
     title("WELCOME TO GULZ");
-    console.log("Your conversations and work are saved on this device in " + paint(dataHome, ansi.cyan));
+    console.log("Your conversations and local settings are saved on this device in " + paint(dataHome, ansi.cyan));
     const configuredProvider = await readProviderConfig().catch(() => null);
-    if (configuredProvider) warning("AI is ready. Open chat and keep sending messages; use gulz do when you want GULZ to prepare an executable task plan.");
+    if (configuredProvider) warning("AI is ready. Chat with GULZ to ask questions or request work in your current workspace.");
     else warning("AI is not set up yet. Choose option 7 to enable built-in GULZ AI or connect your own provider.");
     while (true) {
       showMenu();
@@ -967,7 +968,7 @@ async function chatSession(): Promise<void> {
   const rl = createInterface({ input: stdin, output: stdout });
   try {
     title("GULZ AI");
-    console.log("Chat naturally. Your conversation is saved on this device. Type /clear to erase it or /exit to leave.");
+    console.log("Chat naturally. GULZ can inspect your current workspace and use available tools. Changes and commands require approval. Type /clear to erase history or /exit to leave.");
     const messages = await readConversation();
     if (messages.length) {
       for (const message of messages.slice(-12)) {
@@ -995,7 +996,25 @@ async function chatSession(): Promise<void> {
       }
       messages.push({ role: "user", content: input });
       try {
-        const answer = await generateChatReply(config, messages.slice(-40));
+        const result = await runAgent({
+          provider: config,
+          messages: messages.slice(-30).map((message) => ({ role: message.role, content: message.content })),
+          tools: createLocalAgentTools(process.cwd()),
+          approve: async (request) => {
+            title("GULZ ACTION REQUEST");
+            console.log(request.description);
+            console.log("Tool: " + request.toolName);
+            console.log("Details: " + JSON.stringify(request.arguments, null, 2));
+            warning("This action can change files or run a command in the current workspace.");
+            const answer = await rl.question("Allow GULZ to continue? (y/N): ");
+            return ["y", "yes"].includes(answer.trim().toLowerCase());
+          },
+          onToolResult: async (toolName, toolResult) => {
+            const ok = isRecord(toolResult) && toolResult.ok === true;
+            await recordAudit("agent.tool", { toolName, outcome: ok ? "succeeded" : "not_completed" });
+          },
+        });
+        const answer = result.reply || "The requested tool operations finished, but the AI did not provide a final explanation.";
         messages.push({ role: "assistant", content: answer });
         await saveConversation(messages);
         console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + "\n" + answer);
