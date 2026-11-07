@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createPlannedOperation } from "@gulz/core";
 import { executeApprovedCommand, executeLocalOperation } from "@gulz/execution";
+import { detectEnvironment } from "@gulz/environments";
 import { generateAgentTurn, type OpenAICompatibleProviderConfig, type ProviderAgentMessage, type ProviderAgentToolDefinition } from "@gulz/providers";
 
 export interface AgentToolContext { signal?: AbortSignal; approved?: boolean; }
@@ -92,6 +93,7 @@ function localOperation(kind: "inspect" | "list_directory" | "read_file" | "writ
 export function createLocalAgentTools(rootDirectory: string): AgentTool[] {
   const pathSchema = { type: "object", properties: { path: { type: "string", description: "Relative path inside the current authorized workspace." } }, required: ["path"], additionalProperties: false };
   return [
+    { definition: { name: "inspect_environment", description: "Detect the current operating system, Termux status, available package managers and developer tools without running commands or exposing secrets.", parameters: { type: "object", properties: {}, additionalProperties: false } }, requiresApproval: () => false, execute: async () => detectEnvironment() },
     { definition: { name: "inspect_path", description: "Inspect metadata for a file or directory inside the current workspace.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => localOperation("inspect", "Inspect a local workspace path", input, rootDirectory, context.approved === true, context.signal) },
     { definition: { name: "list_directory", description: "List entries in a directory inside the current workspace.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => localOperation("list_directory", "List a local workspace directory", input, rootDirectory, context.approved === true, context.signal) },
     { definition: { name: "read_file", description: "Read a bounded UTF-8 text file inside the current workspace.", parameters: pathSchema }, requiresApproval: () => false, execute: (input, context) => localOperation("read_file", "Read a local workspace file", input, rootDirectory, context.approved === true, context.signal) },
