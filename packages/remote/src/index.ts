@@ -73,7 +73,6 @@ export class OpenSshRemoteTransport {
     return response.output;
   }
   private async runSsh(destination: string, remoteCommand: string, input?: string, timeoutMs = 120000, signal?: AbortSignal): Promise<{ stdout: string; stderr: string }> {
-    if (signal?.aborted) throw new RemoteTransportError("Remote operation was cancelled before it started.");
     if (signal?.aborted) throw new RemoteTransportError("SSH operation was cancelled before it started.");
     return await new Promise((resolveResult, rejectResult) => {
       const safeEnv: NodeJS.ProcessEnv = {};
@@ -100,7 +99,8 @@ export class OpenSshRemoteTransport {
       let stdoutBytes = 0;
       let stderrBytes = 0;
       let settled = false;
-      const timer = setTimeout(() => finishError(new RemoteTransportError("SSH operation timed out.")), timeoutMs);
+      let timer: ReturnType<typeof setTimeout>;
+      let onAbort = () => undefined;
       const finishError = (error: Error) => {
         if (settled) return;
         settled = true;
@@ -109,14 +109,18 @@ export class OpenSshRemoteTransport {
         child.kill();
         rejectResult(error);
       };
-      const onAbort = () => finishError(new RemoteTransportError("SSH operation was cancelled."));
+      onAbort = () => finishError(new RemoteTransportError("SSH operation was cancelled."));
+      timer = setTimeout(() => finishError(new RemoteTransportError("SSH operation timed out.")), timeoutMs);
       signal?.addEventListener("abort", onAbort, { once: true });
       const collect = (bucket: Buffer[], limit: number, stream: "stdout" | "stderr") => (chunk: Buffer | string) => {
         const data = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
         if (stream === "stdout") stdoutBytes += data.byteLength;
         else stderrBytes += data.byteLength;
         const count = stream === "stdout" ? stdoutBytes : stderrBytes;
-        if (count > limit) { finishError(new RemoteTransportError("SSH response exceeded the configured output limit.")); return; }
+        if (count > limit) {
+          finishError(new RemoteTransportError("SSH response exceeded the configured output limit."));
+          return;
+        }
         bucket.push(data);
       };
       child.stdout.on("data", collect(stdout, 700000, "stdout"));
