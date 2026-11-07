@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createLocalAgentTools, runAgent } from "../dist/index.js";
+import { createLocalAgentTools, createRemoteAgentTools, runAgent } from "../dist/index.js";
 
 test("local tool catalogue exposes only bounded workspace capabilities", () => {
   const tools = createLocalAgentTools(process.cwd());
@@ -34,4 +34,16 @@ test("mutating tool implementation cannot be called without approval context", a
     writeTool.execute({ path: "agent-should-not-write.txt", content: "blocked" }, {}),
     /explicit user approval/,
   );
+});
+
+test("remote tools preserve namespacing and forward approval decisions to the remote policy", async () => {
+  const requests = [];
+  const tools = createRemoteAgentTools({ invoke: async (request) => { requests.push(request); return { verified: true }; } }, "production");
+  const write = tools.find((tool) => tool.definition.name === "remote_production_write_file");
+  assert.ok(write);
+  assert.equal(write.requiresApproval({ path: "README.md", content: "x" }), true);
+  await write.execute({ path: "README.md", content: "x" }, { approved: true });
+  assert.equal(requests[0].environmentId, "production");
+  assert.equal(requests[0].toolName, "write_file");
+  assert.equal(requests[0].approved, true);
 });
