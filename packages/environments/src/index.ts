@@ -51,7 +51,7 @@ export async function detectEnvironment(options: EnvironmentDetectionOptions = {
   const pathext = env.PATHEXT ?? ".EXE;.CMD;.BAT";
   const [packageManagers, developerTools] = await Promise.all([
     Promise.all(packageManagerNames.map(async (name) => await hasExecutable(name, pathValue, pathext, currentPlatform) ? name : null)),
-    Promise.all(developerToolNames.map(async (name) => await hasExecutable(name, pathValue, pathext) ? name : null)),
+    Promise.all(developerToolNames.map(async (name) => await hasExecutable(name, pathValue, pathext, currentPlatform) ? name : null)),
   ]);
   return {
     kind,
