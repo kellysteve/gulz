@@ -229,7 +229,7 @@ async function readRemoteEnvironments(): Promise<RemoteEnvironmentRecord[]> {
     if (!info.isFile() || info.isSymbolicLink()) throw new Error("Remote environment settings must be a regular file, not a symbolic link.");
     await chmod(remoteEnvironmentsFile, 0o600);
     const parsed: unknown = JSON.parse(await readFile(remoteEnvironmentsFile, "utf8"));
-    if (!Array.isArray(parsed) || parsed.length > 50 || !parsed.every((item) =>
+    if (!Array.isArray(parsed) || parsed.length > 4 || !parsed.every((item) =>
       isRecord(item) && isNonEmptyString(item.name) && isNonEmptyString(item.destination) && (item.workspace === undefined || isNonEmptyString(item.workspace)) && isTimestamp(item.addedAt))) {
       throw new Error("Saved remote environment settings are invalid. They were left untouched.");
     }
@@ -248,7 +248,7 @@ async function readRemoteEnvironments(): Promise<RemoteEnvironmentRecord[]> {
 }
 
 async function saveRemoteEnvironments(environments: RemoteEnvironmentRecord[]): Promise<void> {
-  if (environments.length > 50 || new Set(environments.map((item) => item.name)).size !== environments.length) {
+  if (environments.length > 4 || new Set(environments.map((item) => item.name)).size !== environments.length) {
     throw new Error("Remote environment list is invalid or contains duplicate names.");
   }
   for (const item of environments) {
@@ -1122,6 +1122,7 @@ async function remoteCommand(args: string[]): Promise<void> {
     const destination = validateRemoteDestination(values[1]!);
     const workspace = validateRemoteWorkspace(values[2] ?? ".");
     const environments = await readRemoteEnvironments();
+    if (environments.length >= 4) throw new Error("GULZ currently supports up to four paired VPS environments so the agent tool catalogue stays within provider limits.");
     if (environments.some((item) => item.name === name)) throw new Error("A remote environment with that name already exists. Remove it first or choose another name.");
     if (!stdin.isTTY || !stdout.isTTY) throw new Error("Adding a remote environment requires an interactive terminal.");
     const rl = createInterface({ input: stdin, output: stdout });
