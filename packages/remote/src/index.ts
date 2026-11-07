@@ -74,6 +74,7 @@ export class OpenSshRemoteTransport {
   }
   private async runSsh(destination: string, remoteCommand: string, input?: string, timeoutMs = 120000, signal?: AbortSignal): Promise<{ stdout: string; stderr: string }> {
     if (signal?.aborted) throw new RemoteTransportError("Remote operation was cancelled before it started.");
+    if (signal?.aborted) throw new RemoteTransportError("SSH operation was cancelled before it started.");
     return await new Promise((resolveResult, rejectResult) => {
       const safeEnv: NodeJS.ProcessEnv = {};
       for (const key of ["PATH", "Path", "PATHEXT", "SystemRoot", "WINDIR", "HOME", "USERPROFILE", "TMP", "TEMP", "TMPDIR", "SSH_AUTH_SOCK"]) {
@@ -96,25 +97,31 @@ export class OpenSshRemoteTransport {
       const child = spawn("ssh", args, { shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"], env: safeEnv });
       const stdout: Buffer[] = [];
       const stderr: Buffer[] = [];
-      let bytes = 0;
+      let stdoutBytes = 0;
+      let stderrBytes = 0;
       let settled = false;
+      const timer = setTimeout(() => finishError(new RemoteTransportError("SSH operation timed out.")), timeoutMs);
       const finishError = (error: Error) => {
         if (settled) return;
         settled = true;
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", onAbort);
         child.kill();
         rejectResult(error);
       };
-      const timer = setTimeout(() => finishError(new RemoteTransportError("SSH operation timed out.")), timeoutMs);
       const onAbort = () => finishError(new RemoteTransportError("SSH operation was cancelled."));
       signal?.addEventListener("abort", onAbort, { once: true });
-      const collect = (bucket: Buffer[], limit: number) => (chunk: Buffer | string) => {
+      const collect = (bucket: Buffer[], limit: number, stream: "stdout" | "stderr") => (chunk: Buffer | string) => {
         const data = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        bytes += data.byteLength;
-        if (bytes > limit) { finishError(new RemoteTransportError("SSH response exceeded the configured output limit.")); return; }
+        if (stream === "stdout") stdoutBytes += data.byteLength;
+        else stderrBytes += data.byteLength;
+        const count = stream === "stdout" ? stdoutBytes : stderrBytes;
+        if (count > limit) { finishError(new RemoteTransportError("SSH response exceeded the configured output limit.")); return; }
         bucket.push(data);
       };
-      child.stdout.on("data", collect(stdout, 320000));
-      child.stderr.on("data", collect(stderr, 64000));
+      child.stdout.on("data", collect(stdout, 700000, "stdout"));
+      child.stderr.on("data", collect(stderr, 64000, "stderr"));
+      child.stdin.on("error", (error) => finishError(new RemoteTransportError("Unable to send a request to OpenSSH: " + error.message)));
       child.once("error", (error) => finishError(new RemoteTransportError("Unable to start OpenSSH: " + error.message)));
       child.once("close", (code) => {
         clearTimeout(timer);
