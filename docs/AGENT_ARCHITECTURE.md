@@ -23,7 +23,7 @@ The user experience is conversation-first. Internal plans, operation records and
 6. The execution adapter performs the operation within its capability boundary and returns structured results.
 7. Results are sent back to the model. The model explains the outcome; GULZ records audit data and reports only verified results.
 
-Provider tool calls are proposals, not trusted instructions. The engine limits each run to at most 12 model rounds, at most 8 tool calls per response, bounded message sizes and AbortSignal cancellation.
+Provider tool calls are proposals, not trusted instructions. The engine limits each run to at most 12 model rounds, at most 8 tool calls in one provider response and at most 8 total tool actions per user turn, bounded message sizes and AbortSignal cancellation.
 
 ## Current implementation
 
