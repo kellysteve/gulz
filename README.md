@@ -2,107 +2,87 @@
 
 **Tell it. Get it done.**
 
-GULZ is an open-source AI assistant and supervised agent designed to help people get work done on local devices and authorized remote environments.
+GULZ is an open-source, provider-independent AI agent for helping people build, install, configure, host and manage technology through natural conversation.
 
 **A Gaxity product.**
 
-GULZ is licensed under the **Apache License 2.0**. You can use, study, modify and redistribute the software under the terms of that license. The GULZ name and branding are not granted for unrestricted use; see [TRADEMARKS.md](TRADEMARKS.md).
+GULZ is licensed under the **Apache License 2.0**. The GULZ name and branding remain subject to [TRADEMARKS.md](TRADEMARKS.md).
 
 ## Project status
 
-GULZ is in active development. The CLI now connects continuous AI chat to a shared, bounded agent runtime. OpenAI-compatible tool-calling models can use supervised local workspace tools; provider configuration and conversation history remain local. An interactive Bash source installer is available for Termux, Linux, macOS and VPS hosts, alongside a PowerShell source-build guide for Windows. These install the CLI from source; they are not packaged binary releases. Remote SSH orchestration, connected services, native installers, desktop/Android apps, published npm packages and signed release downloads remain outstanding.
+GULZ is in active development. The CLI connects continuous AI chat to a shared agent runtime. Compatible tool-calling models can inspect a local workspace, read files, create directories, write files with backups and run approved programs directly without a shell. The environment detector identifies Termux, operating systems, package managers and developer tools without executing commands or exposing environment secrets. This is an early local-agent foundation, not yet the complete VPS/hosting platform.
+
+Remote SSH/VPS orchestration, service deployment workflows, connected services, a web workspace, desktop/mobile apps, published packages, signed installers and release verification remain outstanding. Source changes are not considered platform-verified until builds and runtime tests pass.
 
 ## Install the GULZ CLI
 
-On Termux, Linux, macOS or a Linux VPS, install Node.js 20.19+ (Termux can install Node.js LTS through its package manager), then run the interactive installer:
+On Termux, Linux, macOS or a Linux VPS, install Node.js 20.19+ and run the interactive source installer:
 
 ~~~sh
 curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
 ~~~
 
-The installer detects the platform, asks where to install the source checkout, requests confirmation, then offers built-in GULZ AI, your own provider, or AI setup later. It tests the selected provider with a generic sample request (no saved goals or workspace files) before finishing. It installs only the CLI workspace dependencies, builds the CLI and links the `gulz` command. It installs only the CLI workspaces and their development dependencies (including TypeScript), deliberately skipping the website's Wrangler/Workerd dependency, which does not support Android's Termux environment. Run it as your normal user, not with `sudo`. Windows users should follow the PowerShell instructions in [docs/INSTALLATION.md](docs/INSTALLATION.md). This installs the GULZ command-line application from its source repository.
+The installer offers built-in GULZ AI, your own OpenAI-compatible provider, or provider setup later. It installs the CLI workspaces and their build dependencies while skipping the website's Wrangler/Workerd dependency for Termux compatibility. Run it as your normal user, not with sudo. Windows users should follow [docs/INSTALLATION.md](docs/INSTALLATION.md). This is a source installation, not a signed binary release.
 
-## Start chatting with GULZ
+## Start chatting
 
-After installation and AI provider setup, run `gulz chat` to open a continuous conversation. Send multiple messages without restarting the command; recent conversation history is saved privately under `~/.gulz/conversation.json` (or your configured `GULZ_HOME`). Use `/clear` to clear the saved conversation or `/exit` to return. Chat history is sent to the selected AI provider as context when you send a new message. Provider setup is the one-time choice to connect an AI service. After that, messages go straight to the selected provider; GULZ does not ask for permission again on every chat launch or message. Chat is currently conversational only and does not execute machine operations directly. Use `gulz do \"...\"` for the existing supervised task-planning and execution workflow.
+Run `gulz chat`. Send natural-language requests without restarting the session. Recent conversation history is saved privately under `~/.gulz/conversation.json` (or `GULZ_HOME`). Use `/clear` to clear it and `/exit` to leave. Once configured, messages are sent directly to the selected provider without repeated consent prompts.
 
-## Product experience
+When the selected model supports tool calling, GULZ can use its registered local tools. Read-only workspace inspection can proceed automatically. File changes, directory creation and program execution require explicit approval. Approved programs are launched directly with `shell: false`; shell interpreters and inline interpreter code are blocked. Package managers such as Termux pkg or Linux apt can be invoked as approved programs. Privileged commands must use non-interactive sudo; GULZ never collects administrator passwords.
 
-GULZ is being built around three connected interfaces backed by one shared core:
+Tool availability depends on the selected model and provider. If a model cannot produce tool calls, it can still answer conversationally. The built-in provider uses a structured JSON tool-call convention; compatibility must be verified against the live service and model.
 
-- **Terminal:** direct commands and power-user control.
-- **AI assistant:** continuous natural-language conversations connected to the shared agent engine and its registered tools.
-- **Agent activity:** internal plans, approvals, tool calls, results and resumable work without requiring users to manage task IDs.
+## Product architecture
 
-All interfaces must use the same execution policy. No interface may bypass permission checks.
+- **AI Assistant:** natural conversation, context and final explanations.
+- **Agent Engine:** bounded model/tool loop, tool registry, cancellation and result handoff.
+- **Tools & Integrations:** typed local capabilities, file operations, commands and future service adapters.
+- **Environment Manager:** Termux, Linux, macOS, Windows detection and available package-manager/tool discovery.
+- **Provider System:** user-selected AI provider and model; GULZ is not tied to one model vendor.
 
-## Product principles
+The selected model provides reasoning. GULZ owns environment access, credentials, approvals, execution and verification. The model never receives SSH credentials and cannot authorize its own tool calls.
 
-- Supervised autonomy: low-risk work can proceed; sensitive or destructive actions require explicit approval.
-- Real execution and verification: never simulate tool results or claim an operation succeeded without checking.
-- Least privilege: operate only on resources the user has authorized.
-- Durable work: internal plans, task state, logs and recoverable progress are managed behind the scenes.
-- Provider flexibility: the core product remains useful when an AI provider is unavailable.
-- Platform-aware installation: separate, tested paths for Termux, Linux, macOS, Windows, VPS environments and developers.
-- Open development: source code, design discussions and contributions are intended to be public.
+## Current implementation
 
-## Current implementation status
+- **Providers:** OpenAI-compatible chat-completions and function/tool calling, with a structured JSON fallback for the built-in provider.
+- **Agent:** bounded tool orchestration, maximum round/tool-call limits, cancellation support and local tool registry.
+- **Environments:** read-only detection of Termux, OS, architecture, package managers and developer tools.
+- **Execution:** path-scoped inspection, listing and bounded UTF-8 reads; approved directory creation and file writes with backups; fixed diagnostic command runner; and a separate approved direct-program runner with no shell, bounded output/time and interpreter-inline-code restrictions.
+- **CLI:** continuous chat, private history, provider setup, local agent integration, per-action approval, audit history, legacy advanced planning/execution, repair and source update.
 
-- **Core:** internal work/task records, guarded lifecycle transitions and risk-derived approval decisions.
-- **Execution:** bounded path inspection, directory listing/creation, UTF-8 reads/writes, high-risk reversible file deletion with private backups/restore, and a fixed allowlist of diagnostics plus approved CLI build/test workflows. The command runner uses no shell, a sanitized environment, bounded output/time and interactive approval.
-- **CLI:** provider configuration, continuous conversation persistence, local agent tool orchestration, per-tool approvals, audit history, legacy advanced planning/execution, repair, update and uninstall are implemented in source. Build and Termux runtime verification are still pending.
-- **Distribution:** npm package metadata and platform-specific source-build instructions are prepared. Packages have not been published and native installers are not available.
-- **Website:** installation centre and platform roadmap are in the source repository; deployment of the latest changes is still required.
-- **Not yet implemented:** remote SSH orchestration, connected-service adapters, arbitrary shell/package installation, desktop app, native installers, signed release downloads and signed automatic updates. Permanent/recursive deletion remains unavailable; the only delete operation moves a small regular file into a recoverable backup.
+Command completion is not proof that a website, API or service is healthy. GULZ must perform an appropriate follow-up check before reporting deployment or hosting as successful.
+
+## Not yet implemented
+
+- A paired remote VPS agent and verified SSH transport.
+- End-to-end VPS provisioning, API hosting, website hosting, databases, reverse proxies, TLS and service monitoring workflows.
+- Dedicated package-manager adapters and richer environment-specific recovery.
+- Connected GitHub/cloud/database integrations.
+- Multi-conversation workspace UI, authenticated sync, desktop and native Android apps.
+- Encrypted/OS-backed provider and remote credential storage, signed updates and release artifacts.
+
+See [docs/AGENT_ARCHITECTURE.md](docs/AGENT_ARCHITECTURE.md) for the local/remote trust model, [docs/ROADMAP.md](docs/ROADMAP.md) for development status, and [docs/INSTALLATION.md](docs/INSTALLATION.md) for supported source-install routes.
 
 ## Repository layout
 
 ~~~text
 apps/
-  cli/       GULZ terminal application
-  website/   Public website and installation centre
+  cli/          Terminal assistant
+  website/      Public website and installation centre
 packages/
-  core/      Goal and task orchestration
-  execution/ Permission-aware local execution engine
-  providers/ OpenAI-compatible chat, structured planning and tool-calling adapter
-  agent/     Shared provider-driven agent loop and supervised local tool registry
-  storage/   Local persistence and remote storage adapters (planned)
-  updater/   Verified update client (planned)
-docs/        Product, architecture and platform documentation
-supabase/    Database migrations for release infrastructure
+  core/         Shared domain and approval policy
+  execution/    Local file and approved program execution
+  providers/    Provider adapters and model tool calling
+  environments/OS, Termux and package-manager detection
+  agent/        Shared tool-calling agent engine
+docs/           Product, architecture and platform documentation
+supabase/       Release infrastructure migrations
 ~~~
-
-## Platform direction
-
-- **Android:** CLI through Termux; native Android app planned.
-- **Linux:** CLI source build now; AppImage, .deb, .rpm and desktop app planned.
-- **macOS:** CLI source build now; signed .dmg and Homebrew route planned.
-- **Windows:** PowerShell source build now; signed desktop installer and WinGet route planned.
-- **VPS:** headless CLI source build; a separately installed and paired remote agent is planned, not yet available.
-- **Desktop:** one task workspace using the same local execution policy as the CLI. No desktop binary is available yet.
-
-See [docs/ROADMAP.md](docs/ROADMAP.md) for remaining development and verification work. See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the interactive Bash installer, platform-specific setup and exact release status. Public release gates are tracked in [docs/PUBLIC_RELEASE_CHECKLIST.md](docs/PUBLIC_RELEASE_CHECKLIST.md). The desktop product direction and release requirements are in [docs/DESKTOP_APP.md](docs/DESKTOP_APP.md).
-
-## Architecture direction
-
-- TypeScript and Node.js LTS for the initial CLI runtime.
-- Cloudflare Workers with Workers Static Assets for the public website and API.
-- Supabase for release artifact storage and database-backed services.
-- Public GitHub repository for source and community development.
-- Signed release metadata, checksums and platform-specific artifacts before public downloads.
 
 ## Security
 
-Never commit API keys, Supabase service-role keys, signing keys, SSH credentials, access tokens or user data. Secrets belong in deployment secrets or the user's local secure configuration. AI-proposed operations must pass policy validation and explicit approval checks before execution. See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
-
-## Contributing
-
-Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. By submitting a contribution, you agree that it is provided under the Apache License 2.0, subject to any separate written agreement.
+Run GULZ without administrator privileges. Never commit API keys, signing keys, SSH credentials, access tokens or user data. Provider keys remain local and must not be included in model prompts or tool results. Mutating commands require the user's approval; remote operations will require a separately paired remote agent with independent policy enforcement. See [SECURITY.md](SECURITY.md).
 
 ## License
 
-Copyright © 2026 GULZ contributors.
-
-Licensed under the [Apache License, Version 2.0](LICENSE).
-
-The license grants broad rights to use, modify and redistribute the software under its conditions. It does **not** grant rights to use GULZ trademarks, logos or branding as though an unofficial fork were the official GULZ project. See [TRADEMARKS.md](TRADEMARKS.md).
+Apache License 2.0. See [LICENSE](LICENSE) and [TRADEMARKS.md](TRADEMARKS.md).
