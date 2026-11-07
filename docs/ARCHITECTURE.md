@@ -55,15 +55,15 @@ Arbitrary shell interpreters, inline interpreter code and direct SSH/SCP command
 
 The local agent runs as the ordinary user and confines file tools to the current authorized workspace. System-level package managers and service tools may affect broader system state, so every direct program requires explicit approval and an exact command preview.
 
-A future remote agent will be installed on the user's VPS or remote host. The local controller will pair with it and send scoped tool requests. The remote process must independently enforce workspace roots, operation policy, approvals, host identity, audit logs, timeouts and cancellation. SSH credentials and remote pairing tokens must never be included in prompts, tool schemas or tool results.
+The remote agent is the GULZ CLI installed on the user's VPS or remote host. The local controller pairs with it through the system OpenSSH client and sends scoped tool requests over an on-demand stdio session. The remote process checks the registered tool, workspace root and controller-provided approval flag, then records an audit event. SSH credentials and remote destinations are never included in prompts, tool schemas or tool results.
 
-Remote release requirements:
+Remote hardening still required before a stable release:
 
-- Explicit user-initiated pairing with short-lived, one-time pairing credentials.
+- A stronger pairing handshake with short-lived, revocable pairing credentials; current source pairing relies on the user's SSH authentication and known_hosts database.
 - Verified host identity and encrypted transport; never silently accept unknown host keys.
 - Per-environment, revocable, least-privilege credentials and scopes.
 - No public unauthenticated control port.
-- Independent remote-side policy and approval for privileged, destructive, package, firewall, service, user and public-network changes.
+- Independent remote-side approval verification for privileged, destructive, package, firewall, service, user and public-network changes. The current remote agent checks the controller's approval flag but does not independently authenticate the human approval.
 - Rate limits, bounded output, operation timeouts, cancellation, audit records and recovery.
 - Safe bootstrap, update, rollback and removal procedures.
 
