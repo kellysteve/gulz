@@ -21,7 +21,7 @@ GULZ is a provider-independent AI agent. The selected model supplies reasoning; 
 - **Environments (packages/environments):** read-only OS, Termux, package-manager and developer-tool detection. It does not execute commands or return environment variable values.
 - **Execution (packages/execution):** local filesystem enforcement and shell-free command execution. This is the enforcement boundary, not a general-purpose sandbox.
 - **Local state:** currently stored under ~/.gulz (or GULZ_HOME) with owner-only file permissions where supported. Provider keys are not encrypted yet.
-- **Remote adapters:** a transport interface and trust design exist, but no SSH transport or remote daemon is shipped.
+- **Remote (`packages/remote` + CLI stdio mode):** an on-demand OpenSSH transport and remote stdio agent protocol are implemented in source. The controller reuses the user's SSH config/agent, requires strict host-key verification, disables agent forwarding and port forwarding, and sends bounded JSON to fixed remote command entry points. Remote workspace roots are explicitly selected and checked on the host.
 
 ## Agent request lifecycle
 
@@ -67,7 +67,7 @@ Remote release requirements:
 - Rate limits, bounded output, operation timeouts, cancellation, audit records and recovery.
 - Safe bootstrap, update, rollback and removal procedures.
 
-The current RemoteAgentTransport is an interface boundary only; it is not an SSH implementation or running daemon.
+Remote tool execution is implemented as an on-demand SSH process rather than a long-running public daemon. The remote host must have the updated GULZ CLI installed and reachable in its non-interactive SSH PATH. The user must verify the host key before pairing. The remote transport and VPS workflows still require real-host integration tests.
 
 ## Provider and secret boundary
 
@@ -75,6 +75,6 @@ Provider credentials are used only by the provider adapter. Remote credentials m
 
 ## Verification and release status
 
-Source changes are not equivalent to tested capabilities. Provider tool calling, Android Termux build/runtime, Windows compatibility and actual local command workflows must be verified. Remote VPS execution, website/API hosting automation, connected services and the workspace UI are not yet implemented.
+Source changes are not equivalent to tested capabilities. Provider tool calling, Android Termux build/runtime, Windows compatibility and actual local command workflows must be verified. The initial remote agent protocol and SSH transport exist in source. Dedicated VPS provisioning, website/API hosting workflows, connected services and the workspace UI are not yet implemented.
 
 See [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md) for the remote trust model and [ROADMAP.md](ROADMAP.md) for remaining work.
