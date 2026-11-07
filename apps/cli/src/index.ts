@@ -1067,7 +1067,9 @@ async function chatSession(): Promise<void> {
             console.log("Tool: " + request.toolName);
             if (typeof request.arguments.command === "string") console.log("$ " + request.arguments.command + " " + (Array.isArray(request.arguments.args) ? request.arguments.args.join(" ") : ""));
             console.log("Details: " + JSON.stringify(request.arguments, null, 2));
-            warning("This action can change files or run a program on the selected device/server. Tool results and command output may be sent to your configured AI provider. Do not approve commands that expose passwords, API keys or private data.");
+            if (request.risk === "high") warning("HIGH-IMPACT ACTION: this may change system services, permissions, users or network security. Review every argument carefully.");
+            else warning("This action can change files or run a program on the selected device/server.");
+            warning("Tool results and command output may be sent to your configured AI provider. Do not approve commands that expose passwords, API keys or private data.");
             const answer = await rl.question("Allow GULZ to continue? (y/N): ");
             return ["y", "yes"].includes(answer.trim().toLowerCase());
           },
