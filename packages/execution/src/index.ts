@@ -489,7 +489,7 @@ export interface ApprovedCommandResult {
   durationMs: number;
   processSucceeded: boolean;
 }
-const forbiddenExecutables = new Set(["sh", "bash", "dash", "zsh", "fish", "csh", "tcsh", "cmd", "cmd.exe", "powershell", "pwsh", "busybox"]);
+const forbiddenExecutables = new Set(["sh", "bash", "dash", "zsh", "fish", "csh", "tcsh", "cmd", "cmd.exe", "powershell", "pwsh", "busybox", "ssh", "scp", "sftp"]);
 const inlineCodeFlags = new Set(["-c", "-e", "-r", "--command", "-command", "-encodedcommand", "--eval", "-eval"]);
 
 /**
@@ -516,6 +516,7 @@ export async function executeApprovedCommand(
   if (command.toLowerCase() === "sudo" && args[0] !== "-n") {
     throw new ExecutionError("sudo must use non-interactive mode (-n). GULZ will not collect or forward administrator passwords.");
   }
+  if (options.signal?.aborted) throw new ExecutionError("Command was cancelled before it started.");
   const cwd = resolve(options.cwd);
   const cwdInfo = await lstat(cwd).catch(() => null);
   if (!cwdInfo?.isDirectory() || cwdInfo.isSymbolicLink()) throw new ExecutionError("Command working directory must be an existing, non-symlink directory.");
