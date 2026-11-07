@@ -105,5 +105,26 @@ export function createLocalAgentTools(rootDirectory: string): AgentTool[] {
 
 /** Remote execution is injected by a trusted platform adapter; this interface alone does not ship SSH support. */
 export interface RemoteAgentTransport {
-  invoke(input: { environmentId: string; toolName: string; arguments: Record<string, unknown>; signal?: AbortSignal }): Promise<unknown>;
+  invoke(input: { environmentId: string; toolName: string; arguments: Record<string, unknown>; approved: boolean; signal?: AbortSignal }): Promise<unknown>;
+}
+
+/** Mirrors the bounded local tool catalogue onto one SSH-paired remote environment. */
+export function createRemoteAgentTools(transport: RemoteAgentTransport, environmentId: string): AgentTool[] {
+  if (!/^[a-z][a-z0-9_-]{1,31}$/.test(environmentId)) throw new AgentError("Remote environment name is invalid.");
+  const prefix = environmentId.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+  return createLocalAgentTools(".").map((localTool) => ({
+    definition: {
+      ...localTool.definition,
+      name: "remote_" + prefix + "_" + localTool.definition.name,
+      description: "On remote environment " + environmentId + ": " + localTool.definition.description,
+    },
+    requiresApproval: (input) => localTool.requiresApproval(input),
+    execute: (input, context) => transport.invoke({
+      environmentId,
+      toolName: localTool.definition.name,
+      arguments: input,
+      approved: context.approved === true,
+      ...(context.signal ? { signal: context.signal } : {}),
+    }),
+  }));
 }
