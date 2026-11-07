@@ -96,3 +96,26 @@ test("blocks known secret files and credential directories from provider context
   await assert.rejects(read.execute({ path: ".ssh/id_ed25519" }, {}), /known credential directories/);
   await assert.rejects(read.execute({ path: ".docker/config.json" }, {}), /known credential directories/);
 });
+
+test("caps a single user turn at eight-or-fewer total tool actions and returns a continuation message", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ choices: [{ message: {
+      content: "",
+      tool_calls: [{ id: "call_env_" + calls, type: "function", function: { name: "inspect_environment", arguments: "{}" } }],
+    } }] }), { status: 200 });
+  };
+  try {
+    const result = await runAgent({
+      provider: { baseUrl: "https://provider.example/v1", apiKey: "test", model: "tool-model" },
+      messages: [{ role: "user", content: "Check my environment." }],
+      tools: createLocalAgentTools(process.cwd()),
+      maxToolCalls: 1,
+    });
+    assert.equal(result.toolCallsExecuted, 1);
+    assert.match(result.reply, /safe action limit/);
+    assert.equal(calls, 2);
+  } finally { globalThis.fetch = originalFetch; }
+});
