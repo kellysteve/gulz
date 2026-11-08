@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateChatReply, generateGoalPlan, ProviderError } from "../dist/index.js";
+import { generateAgentTurn, generateChatReply, generateGoalPlan, ProviderError } from "../dist/index.js";
 
 test("rejects insecure remote provider URLs", async () => {
   await assert.rejects(
@@ -214,6 +214,35 @@ test("uses the built-in GULZ AI request format for conversational turns", async 
       [{ role: "user", content: "Hello GULZ" }],
     );
     assert.match(answer, /What can I help/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+
+test("preserves assistant tool calls and tool results in built-in provider conversation context", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") ?? "";
+    assert.match(query, /ASSISTANT TOOL CALLS/);
+    assert.match(query, /inspect_environment/);
+    assert.match(query, /TOOL RESULT \(call_previous\)/);
+    assert.match(query, /workspace checked/);
+    return new Response(JSON.stringify({ success: true, response: "I remember the workspace inspection." }), { status: 200 });
+  };
+  try {
+    const turn = await generateAgentTurn(
+      { baseUrl: "https://apis.nabeestech.com/api/v1/ai/gpt5-luna", apiKey: "test-key", model: "gpt5-luna" },
+      [
+        { role: "user", content: "Inspect the workspace." },
+        { role: "assistant", content: "", toolCalls: [{ id: "call_previous", name: "inspect_environment", arguments: {} }] },
+        { role: "tool", toolCallId: "call_previous", content: "{\\"ok\\":true}" },
+        { role: "assistant", content: "The workspace was checked." },
+      ],
+      [{ name: "inspect_environment", description: "Inspect environment", parameters: { type: "object", properties: {}, additionalProperties: false } }],
+    );
+    assert.match(turn.content, /remember the workspace inspection/);
+    assert.equal(turn.toolCalls.length, 0);
   } finally {
     globalThis.fetch = originalFetch;
   }
