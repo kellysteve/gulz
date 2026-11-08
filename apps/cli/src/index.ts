@@ -11,7 +11,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { addGoalTask, createGoal, createPlannedOperation, operationRequiresApproval, transitionGoal, transitionTask, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
 import { executeLocalOperation, type LocalExecutionResult } from "@gulz/execution";
-import { generateAgentTurn, generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderAgentMessage } from "@gulz/providers";
+import { generateAgentTurn, generateGoalPlan, listProviderModels, type OpenAICompatibleProviderConfig, type ProviderAgentMessage } from "@gulz/providers";
 import { createLocalAgentTools, createRemoteAgentTools, runAgent } from "@gulz/agent";
 import { OpenSshRemoteTransport, validateRemoteAlias, validateRemoteDestination, validateRemoteWorkspace } from "@gulz/remote";
 
@@ -513,7 +513,7 @@ async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<
  }
  if(action==="models"){
   const p=saved.providers.find(x=>x.id===(values[0]||saved.active));if(!p)throw new Error("Add a provider first.");
-  const preset=providerCatalog.find(x=>x.id===p.id);const options=preset?.models??[p.model];title("MODELS · "+p.name);console.log("Current: "+p.model);options.forEach((m,i)=>console.log("  "+(i+1)+") "+m));console.log("  "+(options.length+1)+") Enter model name");
+  const preset=providerCatalog.find(x=>x.id===p.id);let options:string[]=[];let live=false;try{options=await listProviderModels(p);live=options.length>0;}catch{options=[];}if(!options.length)options=[...(preset?.models??[p.model])];if(!options.includes(p.model))options.unshift(p.model);title("MODELS · "+p.name);muted(live?"Live model catalogue from provider:":"Suggested models (live catalogue unavailable):");console.log("Current: "+p.model);options.forEach((m,i)=>console.log("  "+(i+1)+") "+m));console.log("  "+(options.length+1)+") Enter model name");
   if(!stdin.isTTY||!stdout.isTTY)return;
   const rl=createInterface({input:stdin,output:stdout});let c="",custom="";try{c=(await rl.question("Choose a model (blank keeps current): ")).trim();if(c===String(options.length+1))custom=(await rl.question("Model name: ")).trim();}finally{rl.close();}
   const model=custom||(Number(c)>0&&Number(c)<=options.length?options[Number(c)-1]:p.model);
