@@ -1024,6 +1024,9 @@ async function doctor(): Promise<boolean> {
       const provider = await readProviderConfig();
       if (provider) success("AI provider configured · " + new URL(provider.baseUrl).host + " / " + provider.model);
       else warning("No AI provider configured; local CLI features remain available.");
+      const place = await readPlaceCredentials();
+      if (place) success("Account linked · Place ID " + place.placeId);
+      else info("Account not linked · GitHub sign-in is optional; use gulz account connect <code> when ready.");
     } catch (error) {
       failure("AI provider settings are invalid · " + (error instanceof Error ? error.message : String(error)));
       ok = false;
