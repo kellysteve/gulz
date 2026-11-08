@@ -248,11 +248,11 @@ export function transitionGoal(
   next: GoalStatus,
   now = new Date().toISOString(),
 ): GoalRecord {
-  if (!goalTransitions[goal.status].includes(next)) {
-    throw new GoalStateError(`Invalid goal transition: ${goal.status} -> ${next}.`);
-  }
   if (next === "running" && goal.tasks.length === 0) {
     throw new GoalStateError("A goal needs at least one task before execution can start.");
+  }
+  if (!goalTransitions[goal.status].includes(next)) {
+    throw new GoalStateError(`Invalid goal transition: ${goal.status} -> ${next}.`);
   }
   if (next === "completed" && goal.tasks.some((task) => !["completed", "skipped"].includes(task.status))) {
     throw new GoalStateError("A goal cannot complete while tasks remain unfinished.");

@@ -141,6 +141,42 @@ function parsePlanContent(content: unknown): GeneratedGoalPlan {
 }
 
 
+
+/** Fetch model IDs from an OpenAI-compatible provider's optional /models endpoint. */
+export async function listProviderModels(config: OpenAICompatibleProviderConfig): Promise<string[]> {
+  if (!config || typeof config !== "object") throw new ProviderError("Provider configuration is required.");
+  const endpoint = providerEndpoint(requiredString(config.baseUrl, "provider URL", 2000));
+  if (endpoint.builtin) throw new ProviderError("The legacy built-in endpoint does not expose a model catalogue.");
+  const apiKey = requiredString(config.apiKey, "API key", 4096);
+  const base = new URL(config.baseUrl);
+  const suffix = "/chat/completions";
+  const basePath = base.pathname.endsWith(suffix) ? base.pathname.slice(0, -suffix.length) : (base.pathname.endsWith("/") ? base.pathname.slice(0, -1) : base.pathname);
+  const url = new URL((basePath || "") + "/models", base.origin);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: "Bearer " + apiKey, Accept: "application/json" },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new ProviderError("Provider model discovery returned HTTP " + response.status + ". You can still enter a model name manually.");
+    const raw = await response.text();
+    if (raw.length > 1_000_000) throw new ProviderError("Provider model catalogue exceeded the 1 MB safety limit.");
+    let payload: unknown;
+    try { payload = JSON.parse(raw); } catch { throw new ProviderError("Provider returned an invalid model catalogue."); }
+    if (!isRecord(payload) || !Array.isArray(payload.data)) throw new ProviderError("This provider does not expose the expected OpenAI-compatible /models response.");
+    const models = payload.data
+      .filter((item): item is Record<string, unknown> => isRecord(item) && typeof item.id === "string" && item.id.length > 0 && item.id.length <= 300)
+      .map((item) => item.id as string);
+    return [...new Set(models)].slice(0, 200);
+  } catch (error) {
+    if (error instanceof ProviderError) throw error;
+    if (controller.signal.aborted) throw new ProviderError("Provider model discovery timed out.");
+    throw new ProviderError(error instanceof Error ? error.message : "Could not retrieve provider models.");
+  } finally { clearTimeout(timeout); }
+}
+
 export interface ProviderChatMessage {
   role: "user" | "assistant";
   content: string;

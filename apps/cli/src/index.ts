@@ -11,7 +11,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { addGoalTask, createGoal, createPlannedOperation, operationRequiresApproval, transitionGoal, transitionTask, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
 import { executeLocalOperation, type LocalExecutionResult } from "@gulz/execution";
-import { generateAgentTurn, generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderAgentMessage } from "@gulz/providers";
+import { generateAgentTurn, generateGoalPlan, listProviderModels, type OpenAICompatibleProviderConfig, type ProviderAgentMessage } from "@gulz/providers";
 import { createLocalAgentTools, createRemoteAgentTools, runAgent } from "@gulz/agent";
 import { OpenSshRemoteTransport, validateRemoteAlias, validateRemoteDestination, validateRemoteWorkspace } from "@gulz/remote";
 
@@ -21,6 +21,8 @@ const goalsFile = join(dataHome, "goals.json");
 const goalsLockFile = join(dataHome, "goals.lock");
 const auditFile = join(dataHome, "audit.jsonl");
 const providerFile = join(dataHome, "provider.json");
+const providerProfilesFile = join(dataHome, "provider-profiles.json");
+const placeFile = join(dataHome, "place.json");
 const conversationFile = join(dataHome, "conversation.json");
 const remoteEnvironmentsFile = join(dataHome, "remote-environments.json");
 const executionLockFile = join(dataHome, "execution.lock");
@@ -211,11 +213,19 @@ function help(): void {
     "  init                  Create the local GULZ data directory",
     "  doctor                Check the local runtime and data directory",
     "  audit [--limit N]     View recent local action history",
-    "  provider builtin      Use the built-in GULZ AI",
-    "  provider configure    Set your own OpenAI-compatible AI provider",
-    "  provider status       Show provider connection settings",
-    "  provider test         Test the configured AI connection with a sample request",
-    "  provider remove       Remove saved provider credentials",
+    "  provider              Open the interactive provider centre",
+    "  provider list         List saved providers on this Place",
+    "  provider add          Add another provider (up to 50)",
+    "  provider use <id>     Switch the active provider",
+    "  provider models       Browse or change models",
+    "  provider test         Test the active provider",
+    "  provider remove [id] Remove a saved provider",
+    "  AI provider profiles are managed per Place and stored locally",
+    "  account connect <code> Pair this installation with your GULZ account",
+    "  account status       Show this Place connection",
+    "  account disconnect  Remove this installation's Place credential",
+    "  provider builtin      Select hosted GULZ AI (guest or account allowance)",
+    "  provider configure    Configure a custom compatible API",
     "  chat                  Open a continuous AI conversation with GULZ",
     "  remote list           List saved VPS connections",
     "  remote add <name> <user@host> [workspace]  Pair a VPS over SSH",
@@ -375,13 +385,30 @@ interface StoredProviderConfig {
   apiKey: string;
 }
 
+async function applyPlaceCredential(config: StoredProviderConfig): Promise<StoredProviderConfig> {
+  try {
+    const endpoint = new URL(config.baseUrl);
+    if (endpoint.hostname === "gulz.gaxity.com.ng" && endpoint.pathname.replace(/\/$/, "") === "/api/ai/v1") {
+      const place = await readPlaceCredentials();
+      if (place) return { ...config, apiKey: place.deviceToken };
+    }
+  } catch { /* invalid endpoints are reported by the provider request path */ }
+  return config;
+}
+
 async function readProviderConfig(): Promise<StoredProviderConfig | null> {
   const envBase = process.env.GULZ_AI_BASE_URL;
   const envModel = process.env.GULZ_AI_MODEL;
   const envKey = process.env.GULZ_AI_API_KEY;
   if (envBase || envModel || envKey) {
     if (!envBase || !envModel || !envKey) throw new Error("Set all three variables: GULZ_AI_BASE_URL, GULZ_AI_MODEL and GULZ_AI_API_KEY.");
-    return { baseUrl: envBase, model: envModel, apiKey: envKey };
+    return await applyPlaceCredential({ baseUrl: envBase, model: envModel, apiKey: envKey });
+  }
+  const profiles = await readProviderProfiles();
+  if (profiles.active) {
+    const active = profiles.providers.find((item) => item.id === profiles.active);
+    if (!active) throw new Error("The active provider profile is missing.");
+    return await applyPlaceCredential({ baseUrl: active.baseUrl, model: active.model, apiKey: active.apiKey });
   }
   try {
     const info = await lstat(providerFile);
@@ -391,7 +418,7 @@ async function readProviderConfig(): Promise<StoredProviderConfig | null> {
     if (!isRecord(parsed) || !isNonEmptyString(parsed.baseUrl) || !isNonEmptyString(parsed.model) || !isNonEmptyString(parsed.apiKey)) {
       throw new Error("Saved provider settings are invalid. Run gulz provider configure to replace them.");
     }
-    return { baseUrl: parsed.baseUrl, model: parsed.model, apiKey: parsed.apiKey };
+    return await applyPlaceCredential({ baseUrl: parsed.baseUrl, model: parsed.model, apiKey: parsed.apiKey });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
@@ -414,6 +441,222 @@ async function saveProviderConfig(config: StoredProviderConfig): Promise<void> {
   } finally {
     await rm(temporary, { force: true }).catch(() => undefined);
   }
+}
+
+
+interface StoredProviderProfile extends StoredProviderConfig { id: string; name: string; }
+interface StoredProviderProfiles { active: string; providers: StoredProviderProfile[]; }
+const providerCatalog = [
+ {id:"gulz-ai",name:"GULZ AI (hosted)",baseUrl:"https://gulz.gaxity.com.ng/api/ai/v1",model:"gulz-default",models:["gulz-default"]},
+ {id:"openrouter",name:"OpenRouter",baseUrl:"https://openrouter.ai/api/v1",model:"openai/gpt-4o-mini",models:["openai/gpt-4o-mini","deepseek/deepseek-chat","google/gemini-2.5-flash"]},
+ {id:"deepseek",name:"DeepSeek",baseUrl:"https://api.deepseek.com",model:"deepseek-chat",models:["deepseek-chat","deepseek-reasoner"]},
+ {id:"openai",name:"OpenAI",baseUrl:"https://api.openai.com/v1",model:"gpt-4o-mini",models:["gpt-4o-mini","gpt-4.1-mini","gpt-4.1"]},
+ {id:"gemini",name:"Google Gemini",baseUrl:"https://generativelanguage.googleapis.com/v1beta/openai",model:"gemini-2.5-flash",models:["gemini-2.5-flash","gemini-2.5-pro"]},
+ {id:"groq",name:"Groq",baseUrl:"https://api.groq.com/openai/v1",model:"llama-3.3-70b-versatile",models:["llama-3.3-70b-versatile","qwen-qwq-32b"]},
+ {id:"mistral",name:"Mistral",baseUrl:"https://api.mistral.ai/v1",model:"mistral-small-latest",models:["mistral-small-latest","mistral-large-latest"]},
+ {id:"together",name:"Together AI",baseUrl:"https://api.together.xyz/v1",model:"meta-llama/Llama-3.3-70B-Instruct-Turbo",models:["meta-llama/Llama-3.3-70B-Instruct-Turbo"]},
+ {id:"fireworks",name:"Fireworks AI",baseUrl:"https://api.fireworks.ai/inference/v1",model:"accounts/fireworks/models/llama-v3p3-70b-instruct",models:["accounts/fireworks/models/llama-v3p3-70b-instruct"]},
+ {id:"cerebras",name:"Cerebras",baseUrl:"https://api.cerebras.ai/v1",model:"llama-3.3-70b",models:["llama-3.3-70b"]},
+ {id:"deepinfra",name:"DeepInfra",baseUrl:"https://api.deepinfra.com/v1/openai",model:"meta-llama/Meta-Llama-3.3-70B-Instruct",models:["meta-llama/Meta-Llama-3.3-70B-Instruct"]},
+ {id:"perplexity",name:"Perplexity",baseUrl:"https://api.perplexity.ai",model:"sonar",models:["sonar","sonar-pro"]},
+ {id:"xai",name:"xAI",baseUrl:"https://api.x.ai/v1",model:"grok-3-mini",models:["grok-3-mini","grok-3"]},
+ {id:"nvidia",name:"NVIDIA NIM",baseUrl:"https://integrate.api.nvidia.com/v1",model:"meta/llama-3.3-70b-instruct",models:["meta/llama-3.3-70b-instruct"]},
+ {id:"ollama",name:"Ollama (local)",baseUrl:"http://127.0.0.1:11434/v1",model:"qwen2.5-coder:7b",models:["qwen2.5-coder:7b","llama3.2"]},
+ {id:"lmstudio",name:"LM Studio (local)",baseUrl:"http://127.0.0.1:1234/v1",model:"local-model",models:["local-model"]},
+] as const;
+async function readProviderProfiles(): Promise<StoredProviderProfiles> {
+ await ensureDataHome();
+ try {
+  const info=await lstat(providerProfilesFile);
+  if(!info.isFile()||info.isSymbolicLink()) throw new Error("Provider profiles must be a regular file.");
+  await chmod(providerProfilesFile,0o600);
+  const raw:unknown=JSON.parse(await readFile(providerProfilesFile,"utf8"));
+  if(!isRecord(raw)||typeof raw.active!=="string"||!Array.isArray(raw.providers)||raw.providers.length>50) throw new Error("Saved provider profiles are invalid.");
+  const providers=raw.providers.map((p):StoredProviderProfile=>{
+   if(!isRecord(p)||!isNonEmptyString(p.id)||!isNonEmptyString(p.name)||!isNonEmptyString(p.baseUrl)||!isNonEmptyString(p.model)||!isNonEmptyString(p.apiKey)) throw new Error("A saved provider profile is invalid.");
+   return {id:p.id,name:p.name,baseUrl:p.baseUrl,model:p.model,apiKey:p.apiKey};
+  });
+  if(new Set(providers.map(p=>p.id)).size!==providers.length) throw new Error("Duplicate provider profile IDs were found.");
+  if(providers.length&&!providers.some(p=>p.id===raw.active)) throw new Error("The active provider profile is missing.");
+  return {active:raw.active,providers};
+ } catch(e) { if((e as NodeJS.ErrnoException).code==="ENOENT") return {active:"",providers:[]}; throw e; }
+}
+async function saveProviderProfiles(value:StoredProviderProfiles):Promise<void>{
+ if(value.providers.length>50) throw new Error("You can save up to 50 providers on this Place.");
+ await ensureDataHome(); const temp=join(dataHome,"provider-profiles."+randomUUID()+".tmp");
+ try { await writeFile(temp,JSON.stringify(value,null,2)+"\n",{encoding:"utf8",mode:0o600,flag:"wx"}); await rename(temp,providerProfilesFile); await chmod(providerProfilesFile,0o600); }
+ finally { await rm(temp,{force:true}).catch(()=>undefined); }
+}
+async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<void>{
+ if(process.env.GULZ_AI_BASE_URL||process.env.GULZ_AI_MODEL||process.env.GULZ_AI_API_KEY) throw new Error("GULZ_AI_* environment variables override saved profiles. Update or remove those variables before switching providers.");
+ let saved=await readProviderProfiles();
+ const list=()=>{title("AI PROVIDERS"); if(!saved.providers.length && !existsSync(providerFile)) warning("No saved providers yet."); for(const p of saved.providers) console.log((p.id===saved.active?paint("● ",ansi.green,ansi.bold):"  ")+p.name+(p.id===saved.active?paint("  ACTIVE",ansi.green):"")+" · "+p.id+" · "+p.model); if(!saved.providers.length && existsSync(providerFile)) console.log(paint("● Legacy provider configuration",ansi.green)+" · use `provider configure` to replace it"); muted("API keys remain local and are never displayed.");};
+ if(action==="menu"){
+  if(!stdin.isTTY||!stdout.isTTY) throw new Error("The provider centre requires an interactive terminal.");
+  list(); console.log("\n  1) Add provider\n  2) Switch provider\n  3) Browse/change models\n  4) Test active provider\n  5) Remove provider\n  0) Back");
+  const rl=createInterface({input:stdin,output:stdout}); let c=""; try{c=(await rl.question("Choose an option: ")).trim();}finally{rl.close();}
+  const next:Record<string,string>={"1":"add","2":"use","3":"models","4":"test","5":"remove"}; if(!next[c])return;
+  if(c==="4"){await runProviderConnectionTest();return;} await manageProviderProfiles(next[c]!,[]); return;
+ }
+ if(action==="list"){list();return;}
+ if(action==="add"){
+  if(!stdin.isTTY||!stdout.isTTY)throw new Error("Adding a provider requires an interactive terminal.");
+  if(saved.providers.length>=50)throw new Error("This Place already has 50 saved providers.");
+  const rl=createInterface({input:stdin,output:stdout}); let selected="",name="",baseUrl="",model="";
+  try{
+   title("ADD AI PROVIDER"); providerCatalog.forEach((p,i)=>console.log("  "+(i+1)+") "+p.name+" ("+p.id+")"));
+   console.log("  "+(providerCatalog.length+1)+") Custom OpenAI-compatible API");
+   selected=(await rl.question("Choose a provider: ")).trim(); const preset=providerCatalog[Number(selected)-1];
+   if(preset){name=preset.name;baseUrl=preset.baseUrl;model=preset.model;}
+   else if(selected===String(providerCatalog.length+1)){name=(await rl.question("Provider name: ")).trim();baseUrl=(await rl.question("API base URL: ")).trim();model=(await rl.question("Model name: ")).trim();}
+   else throw new Error("Choose one of the listed providers.");
+  }finally{rl.close();}
+  const url=new URL(baseUrl); if(url.username||url.password||url.search||url.hash||(url.protocol!=="https:"&&!(url.protocol==="http:"&&["localhost","127.0.0.1","[::1]"].includes(url.hostname))))throw new Error("Provider URL must use HTTPS; HTTP is allowed only for localhost.");
+  const chosenPreset=providerCatalog[Number(selected)-1];
+  const needsKey=!chosenPreset || !["gulz-ai","ollama","lmstudio"].includes(chosenPreset.id);
+  const key=needsKey?await askSecret("API key (input hidden): "):"";
+  const apiKey=key||(chosenPreset?.id==="gulz-ai"?"guest":chosenPreset && ["ollama","lmstudio"].includes(chosenPreset.id)?"local":""); if(!apiKey)throw new Error("An API key is required.");
+  const idBase=(providerCatalog[Number(selected)-1]?.id??name.toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-|-$/g,"")).slice(0,40)||"custom";
+  const id=saved.providers.some(p=>p.id===idBase)?idBase+"-"+randomUUID().slice(0,6):idBase;
+  saved.providers.push({id,name,baseUrl,model,apiKey});saved.active=id;await saveProviderProfiles(saved);await heartbeatPlace("configured");success(name+" added and selected.");return;
+ }
+ if(action==="use"){
+  let id=values[0];if(!id&&stdin.isTTY&&stdout.isTTY){list();const rl=createInterface({input:stdin,output:stdout});try{id=(await rl.question("Provider ID to activate: ")).trim();}finally{rl.close();}}
+  const p=saved.providers.find(x=>x.id===id);if(!p)throw new Error("Provider not found. Run /provider to see saved providers.");
+  saved.active=p.id;await saveProviderProfiles(saved);await heartbeatPlace("configured");success("Active provider: "+p.name+" · "+p.model);return;
+ }
+ if(action==="models"){
+  const p=saved.providers.find(x=>x.id===(values[0]||saved.active));if(!p)throw new Error("Add a provider first.");
+  const preset=providerCatalog.find(x=>x.id===p.id);let options:string[]=[];let live=false;try{options=await listProviderModels(p);live=options.length>0;}catch{options=[];}if(!options.length)options=[...(preset?.models??[p.model])];if(!options.includes(p.model))options.unshift(p.model);title("MODELS · "+p.name);muted(live?"Live model catalogue from provider:":"Suggested models (live catalogue unavailable):");console.log("Current: "+p.model);options.forEach((m,i)=>console.log("  "+(i+1)+") "+m));console.log("  "+(options.length+1)+") Enter model name");
+  if(!stdin.isTTY||!stdout.isTTY)return;
+  const rl=createInterface({input:stdin,output:stdout});let c="",custom="";try{c=(await rl.question("Choose a model (blank keeps current): ")).trim();if(c===String(options.length+1))custom=(await rl.question("Model name: ")).trim();}finally{rl.close();}
+  const model=custom||(Number(c)>0&&Number(c)<=options.length?options[Number(c)-1]:p.model);
+  if(model!==p.model){saved.providers=saved.providers.map(x=>x.id===p.id?{...x,model}:x);await saveProviderProfiles(saved);await heartbeatPlace("configured");success("Model changed to "+model);}return;
+ }
+ if(action==="remove"){
+  const id=values[0]||saved.active;const p=saved.providers.find(x=>x.id===id);if(!p){if(!saved.providers.length && existsSync(providerFile)){if(!stdin.isTTY||!stdout.isTTY)throw new Error("Removing a provider requires an interactive terminal.");const legacyRl=createInterface({input:stdin,output:stdout});let legacyAnswer="";try{legacyAnswer=await legacyRl.question("Remove the legacy saved provider configuration? (y/N): ");}finally{legacyRl.close();}if(["y","yes"].includes(legacyAnswer.trim().toLowerCase())){await rm(providerFile,{force:true});success("Legacy provider configuration removed.");}return;}console.log("No matching saved provider.");return;}
+  if(!stdin.isTTY||!stdout.isTTY)throw new Error("Removing a provider requires an interactive terminal.");
+  const rl=createInterface({input:stdin,output:stdout});let answer="";try{answer=await rl.question("Remove "+p.name+" from this Place? (y/N): ");}finally{rl.close();}
+  if(!["y","yes"].includes(answer.trim().toLowerCase())){console.log("Nothing changed.");return;}
+  saved.providers=saved.providers.filter(x=>x.id!==p.id);saved.active=saved.providers[0]?.id??"";await saveProviderProfiles(saved);await heartbeatPlace(saved.active?"configured":"unknown");success(p.name+" removed.");return;
+ }
+ throw new Error("Use /provider, list, add, use, models, test or remove.");
+}
+async function runProviderConnectionTest():Promise<void>{
+ const config=await readProviderConfig();if(!config){warning("No active provider. Add one with /provider.");return;}
+ title("AI CONNECTION CHECK");
+ try { const turn=await generateAgentTurn({...config,toolChoice:"required"},[{role:"user",content:"Call the gulz_connection_check tool exactly once with an empty object. Do not execute any real-world action."}],[{name:"gulz_connection_check",description:"Harmless tool-calling capability check. Never execute it.",parameters:{type:"object",properties:{},additionalProperties:false}}]); success("Provider responded.");label("Tool calling",turn.toolCalls.some(c=>c.name==="gulz_connection_check"&&Object.keys(c.arguments).length===0)?"Supported":"Not confirmed");await heartbeatPlace("connected");await showHostedAiUsage(config); } catch(error) { await heartbeatPlace("error"); failure(error instanceof Error?error.message:"Provider test failed."); }
+}
+
+
+interface PlaceCredentials { placeId: string; deviceToken: string; controlUrl: string; pairedAt: string; }
+async function readPlaceCredentials(): Promise<PlaceCredentials | null> {
+  await ensureDataHome();
+  try {
+    const info = await lstat(placeFile);
+    if (!info.isFile() || info.isSymbolicLink()) throw new Error("Place credentials must be a regular file.");
+    await chmod(placeFile, 0o600);
+    const parsed: unknown = JSON.parse(await readFile(placeFile, "utf8"));
+    if (!isRecord(parsed) || !isNonEmptyString(parsed.placeId) || !isNonEmptyString(parsed.deviceToken) ||
+        !isNonEmptyString(parsed.controlUrl) || !isTimestamp(parsed.pairedAt)) throw new Error("Saved Place credentials are invalid.");
+    return parsed as unknown as PlaceCredentials;
+  } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return null; throw error; }
+}
+async function savePlaceCredentials(value: PlaceCredentials): Promise<void> {
+  await ensureDataHome();
+  const temporary = join(dataHome, "place." + randomUUID() + ".tmp");
+  try {
+    await writeFile(temporary, JSON.stringify(value, null, 2) + "\n", { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await rename(temporary, placeFile);
+    await chmod(placeFile, 0o600);
+  } finally { await rm(temporary, { force: true }).catch(() => undefined); }
+}
+async function connectPlace(code: string): Promise<void> {
+  const normalized = code.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!/^[A-HJ-NP-Z2-9]{8}$/.test(normalized)) throw new Error("Enter the eight-character pairing code from your GULZ dashboard.");
+  const controlUrl = (process.env.GULZ_CONTROL_URL || "https://gulz.gaxity.com.ng").replace(/\/$/, "");
+  const response = await fetch(controlUrl + "/api/places/pair/complete", {
+    method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      code: normalized,
+      name: (process.env.PREFIX?.includes("com.termux") ? "Android Termux" : platform()) + " · " + arch(),
+      platform: process.env.PREFIX?.includes("com.termux") ? "termux" : platform(),
+      architecture: arch(), version: VERSION,
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  const payload = await response.json() as { placeId?: string; deviceToken?: string; message?: string; error?: string };
+  if (!response.ok || !payload.placeId || !payload.deviceToken) throw new Error(payload.error || "Place pairing failed. Generate a fresh code on the website and try again.");
+  await savePlaceCredentials({ placeId: payload.placeId, deviceToken: payload.deviceToken, controlUrl, pairedAt: new Date().toISOString() });
+  success("This installation is now connected as a GULZ Place.");
+  console.log("Manage it at " + controlUrl + "/dashboard");
+}
+async function showHostedAiUsage(config: StoredProviderConfig): Promise<void> {
+  try {
+    const endpoint = new URL(config.baseUrl);
+    if (endpoint.hostname !== "gulz.gaxity.com.ng" || endpoint.pathname.replace(/\/$/, "") !== "/api/ai/v1") return;
+    const response = await fetch(endpoint.origin + "/api/ai/usage", {
+      headers: { Authorization: "Bearer " + config.apiKey, Accept: "application/json" },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!response.ok) return;
+    const usage = await response.json() as { used?: number; limit?: number; remaining?: number; tier?: string };
+    if (typeof usage.remaining === "number" && typeof usage.limit === "number") {
+      label("Daily GULZ AI allowance", usage.remaining + " of " + usage.limit + " requests remaining" + (usage.tier ? " · " + usage.tier : ""));
+    }
+  } catch { /* Usage display must never block local work or chat. */ }
+}
+
+async function heartbeatPlace(providerStatus?: "configured" | "connected" | "error" | "unknown"): Promise<void> {
+  const place = await readPlaceCredentials();
+  if (!place) return;
+  try {
+    const config = await readProviderConfig();
+    await fetch(place.controlUrl + "/api/places/heartbeat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + place.deviceToken },
+      body: JSON.stringify({
+        version: VERSION,
+        platform: process.env.PREFIX?.includes("com.termux") ? "termux" : platform(),
+        architecture: arch(),
+        ...(config ? { provider: new URL(config.baseUrl).host, model: config.model, ...(providerStatus ? { providerStatus } : {}) } : (providerStatus ? { providerStatus } : {})),
+      }),
+      signal: AbortSignal.timeout(4000),
+    });
+  } catch { /* Place heartbeat is best-effort; local CLI work must remain available offline. */ }
+}
+async function accountCommand(args: string[]): Promise<void> {
+  const action = args[0] || "status";
+  if (action === "connect") {
+    if (args.length !== 2) throw new Error("Usage: gulz account connect <8-character-code>");
+    await connectPlace(args[1]!);
+    await heartbeatPlace("configured");
+    return;
+  }
+  if (action === "status") {
+    const place = await readPlaceCredentials();
+    title("GULZ ACCOUNT");
+    if (!place) { warning("This installation is not connected to a GULZ account. Local coding and BYOK providers still work."); console.log("Sign in at " + (process.env.GULZ_CONTROL_URL || "https://gulz.gaxity.com.ng") + "/dashboard and run gulz account connect <code>."); return; }
+    success("This installation is paired as a Place.");
+    label("Place ID", place.placeId);
+    label("Dashboard", place.controlUrl + "/dashboard");
+    label("Paired", new Date(place.pairedAt).toLocaleString());
+    return;
+  }
+  if (action === "disconnect") {
+    if (args.length !== 1) throw new Error("Usage: gulz account disconnect");
+    const place = await readPlaceCredentials();
+    if (!place) { console.log("This installation is not connected."); return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("Disconnecting a Place requires an interactive terminal.");
+    const rl = createInterface({ input: stdin, output: stdout });
+    let answer = "";
+    try { answer = await rl.question("Remove this Place credential from this installation? (y/N): "); } finally { rl.close(); }
+    if (!["y", "yes"].includes(answer.trim().toLowerCase())) { console.log("Nothing changed."); return; }
+    await rm(placeFile, { force: true });
+    success("Local Place credential removed. You can also revoke the Place from your website dashboard.");
+    return;
+  }
+  throw new Error("Usage: gulz account <connect <code>|status|disconnect>");
 }
 
 async function askSecret(prompt: string): Promise<string> {
@@ -811,6 +1054,9 @@ async function doctor(): Promise<boolean> {
       const provider = await readProviderConfig();
       if (provider) success("AI provider configured · " + new URL(provider.baseUrl).host + " / " + provider.model);
       else warning("No AI provider configured; local CLI features remain available.");
+      const place = await readPlaceCredentials();
+      if (place) success("Account linked · Place ID " + place.placeId);
+      else info("Account not linked · GitHub sign-in is optional; use gulz account connect <code> when ready.");
     } catch (error) {
       failure("AI provider settings are invalid · " + (error instanceof Error ? error.message : String(error)));
       ok = false;
@@ -909,12 +1155,12 @@ async function updateInstallation(): Promise<void> {
       const choiceRl = createInterface({ input: stdin, output: stdout });
       let choice = "";
       try {
-        console.log("\n  1) Built-in GULZ AI");
-        console.log("  2) Use my own AI provider / choose a model");
+        console.log("\n  1) Open provider manager");
+        console.log("  2) Test current provider");
         console.log("  3) Keep my current settings");
         choice = await choiceRl.question("Choose 1, 2 or 3: ");
       } finally { choiceRl.close(); }
-      const action = choice.trim() === "1" ? "builtin" : choice.trim() === "2" ? "configure" : "";
+      const action = choice.trim() === "1" ? "menu" : choice.trim() === "2" ? "test" : "";
       if (action) {
         const cliEntry = join(installDirectory, "apps", "cli", "dist", "index.js");
         const configured = spawnSync(process.execPath, [cliEntry, "provider", action], { stdio: "inherit", env: updateEnv });
@@ -922,7 +1168,7 @@ async function updateInstallation(): Promise<void> {
         if (configured.status !== 0) throw new Error("The GULZ installation succeeded, but AI provider setup did not finish.");
         const tested = spawnSync(process.execPath, [cliEntry, "provider", "test"], { stdio: "inherit", env: updateEnv });
         if (tested.error) throw tested.error;
-        if (tested.status !== 0) warning("The GULZ installation succeeded, but the AI connection test did not pass. You can retry with gulz provider test.");
+        if (tested.status !== 0) warning("The GULZ installation succeeded, but the AI connection test did not pass. You can retry with /provider test inside chat.");
       } else if (choice.trim() !== "3") {
         warning("No provider changes were made. Your existing settings were preserved.");
       }
@@ -964,7 +1210,7 @@ async function interactiveSession(): Promise<void> {
     console.log("Your conversations and local settings are saved on this device in " + paint(dataHome, ansi.cyan));
     const configuredProvider = await readProviderConfig().catch(() => null);
     if (configuredProvider) warning("AI is ready. Chat naturally; GULZ can use the tools available in your environment.");
-    else warning("AI is not set up yet. Choose option 3 to connect built-in GULZ AI or your own provider.");
+    else warning("AI is not set up yet. Open option 3 or type /provider in chat to connect a provider.");
     while (true) {
       showMenu();
       const choice = await ask("\nChoose an option: ");
@@ -981,18 +1227,19 @@ async function interactiveSession(): Promise<void> {
         continue;
       }
       if (choice === "3" || choice.toLowerCase() === "provider" || choice.toLowerCase() === "settings") {
-        console.log("\n  1) Built-in GULZ AI");
-        console.log("  2) Connect my own AI provider / model");
-        console.log("  3) Test current AI connection");
-        console.log("  4) View provider status");
-        console.log("  5) Remove provider settings");
+        console.log("\n  1) Add provider");
+        console.log("  2) Switch active provider");
+        console.log("  3) Browse / change models");
+        console.log("  4) Test active provider");
+        console.log("  5) List saved providers");
+        console.log("  6) Remove provider");
         console.log("  0) Back");
         const setupChoice = await ask("Choose an option: ");
         if (setupChoice === "0" || !setupChoice) continue;
-        const action = setupChoice === "1" ? "builtin" : setupChoice === "2" ? "configure" : setupChoice === "3" ? "test" : setupChoice === "4" ? "status" : setupChoice === "5" ? "remove" : "";
-        if (!action) { warning("Choose 1, 2, 3, 4, 5 or 0."); continue; }
+        const action = setupChoice === "1" ? "add" : setupChoice === "2" ? "use" : setupChoice === "3" ? "models" : setupChoice === "4" ? "test" : setupChoice === "5" ? "list" : setupChoice === "6" ? "remove" : "";
+        if (!action) { warning("Choose 1, 2, 3, 4, 5, 6 or 0."); continue; }
         const result = await runCli(["provider", action]);
-        if (result === 0 && (action === "builtin" || action === "configure")) await runCli(["provider", "test"]);
+        if (result === 0 && ["add", "use", "models"].includes(action)) await runCli(["provider", "test"]);
         return await interactiveSession();
       }
       if (choice === "4" || ["remote", "vps", "servers"].includes(choice.toLowerCase())) {
@@ -1176,18 +1423,21 @@ function quickChatHelpReply(input: string): string | null {
 
 async function chatSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) throw new Error("GULZ chat requires an interactive terminal.");
-  const config = await readProviderConfig();
-  if (!config) throw new Error("AI is not configured. Run gulz provider builtin or choose AI setup from the GULZ menu.");
+  let config = await readProviderConfig();
+  if (!config) throw new Error("AI is not configured. Run /provider to add an AI provider.");
   const remoteEnvironments = await readRemoteEnvironments();
   const remoteTransport = new OpenSshRemoteTransport(
     Object.fromEntries(remoteEnvironments.map((item): [string, string] => [item.name, item.destination])),
     Object.fromEntries(remoteEnvironments.map((item): [string, string] => [item.name, item.workspace])),
   );
+  await heartbeatPlace();
   const agentTools = [
     ...createLocalAgentTools(process.cwd()),
     ...remoteEnvironments.flatMap((item) => createRemoteAgentTools(remoteTransport, item.name)),
   ];
   const rl = createInterface({ input: stdin, output: stdout });
+  const placeHeartbeat = setInterval(() => { void heartbeatPlace(); }, 2 * 60 * 1000);
+  placeHeartbeat.unref();
   try {
     title("GULZ AI  ·  WORKSPACE ASSISTANT");
     console.log(paint("Your terminal, projects and connected VPSs—one conversation.", ansi.dim));
@@ -1209,6 +1459,22 @@ async function chatSession(): Promise<void> {
       if (input.toLowerCase() === "/exit" || input.toLowerCase() === "/quit") break;
       if (input.toLowerCase() === "/help" || input.toLowerCase() === "/commands") {
         renderAssistantMessage(quickChatHelpReply("/help")!);
+        continue;
+      }
+      if (input.toLowerCase() === "/provider") {
+        await manageProviderProfiles("menu");
+        config = await readProviderConfig();
+        if (config) success("Active model: " + config.model);
+        else warning("No active provider is configured.");
+        continue;
+      }
+      if (input.toLowerCase().startsWith("/provider ")) {
+        const parts = input.slice(10).trim().split(/\\s+/);
+        const action = parts.shift() || "menu";
+        if (action === "test") await runProviderConnectionTest();
+        else await manageProviderProfiles(action, parts);
+        config = await readProviderConfig();
+        if (config) success("Active model: " + config.model);
         continue;
       }
       if (input.toLowerCase() === "/clear") {
@@ -1307,6 +1573,7 @@ async function chatSession(): Promise<void> {
       }
     }
   } finally {
+    clearInterval(placeHeartbeat);
     rl.close();
   }
 }
@@ -1450,7 +1717,11 @@ async function main(): Promise<void> {
     return;
   }
   if (command === "provider") {
-    const action = args[0] ?? "status";
+    const action = args[0] ?? "menu";
+    if (["menu", "add", "list", "use", "models", "remove"].includes(action)) {
+      await manageProviderProfiles(action, args.slice(1));
+      return;
+    }
     if (action === "test") {
       if (args.length > 1) { failure("Usage: gulz provider test"); process.exitCode = 2; return; }
       const config = await readProviderConfig();
@@ -1470,6 +1741,7 @@ async function main(): Promise<void> {
         success("AI provider connection responded");
         label("Connection", "Connected");
         const supported = turn.toolCalls.some((call) => call.name === "gulz_connection_check" && isRecord(call.arguments) && Object.keys(call.arguments).length === 0);
+        await heartbeatPlace(supported ? "connected" : "error");
         if (supported) {
           success("This model returned the required structured tool call.");
           label("Tool calling", "Supported");
@@ -1488,6 +1760,7 @@ async function main(): Promise<void> {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (/HTTP 400|supports tool calling|invalid agent response/i.test(message)) {
+          await heartbeatPlace("error");
           warning("The provider rejected the tool-calling test request.");
           label("Tool calling", "Unsupported or unavailable");
           info("This does not by itself prove that ordinary chat is unavailable.");
@@ -1504,23 +1777,32 @@ async function main(): Promise<void> {
       if (process.env.GULZ_AI_BASE_URL || process.env.GULZ_AI_MODEL || process.env.GULZ_AI_API_KEY) {
         throw new Error("AI provider settings are controlled by GULZ_AI_* environment variables. Remove them before selecting the built-in provider.");
       }
-      await saveProviderConfig({
-        baseUrl: "https://apis.nabeestech.com/api/v1/ai/gpt5-luna",
-        model: "gpt5-luna",
-        apiKey: "nabeestech",
-      });
-      success("Built-in GULZ AI is ready");
+      const gulzConfig = { baseUrl: "https://gulz.gaxity.com.ng/api/ai/v1", model: "gulz-default", apiKey: "guest" };
+      const profiles = await readProviderProfiles();
+      if (profiles.providers.length) {
+        const existingProfile = profiles.providers.find((profile) => profile.id === "gulz-ai");
+        if (existingProfile) Object.assign(existingProfile, { name: "GULZ AI (hosted)", ...gulzConfig });
+        else {
+          if (profiles.providers.length >= 50) throw new Error("This Place already has 50 saved providers.");
+          profiles.providers.push({ id: "gulz-ai", name: "GULZ AI (hosted)", ...gulzConfig });
+        }
+        profiles.active = "gulz-ai";
+        await saveProviderProfiles(profiles);
+      } else await saveProviderConfig(gulzConfig);
+      await heartbeatPlace("configured");
+      success("GULZ AI selected. Guests use the public daily allowance; paired Places use the account allowance.");
       return;
     }
     if (action === "status") {
       const config = await readProviderConfig();
       title("AI PROVIDER");
-      if (!config) { warning("No provider configured. Run gulz provider builtin for the recommended setup, or gulz provider configure to use your own."); return; }
-      const isBuiltin = config.model === "gpt5-luna" && new URL(config.baseUrl).pathname.replace(/\/$/, "").endsWith("/gpt5-luna");
+      if (!config) { warning("No provider configured. Run gulz provider add or open /provider in chat."); return; }
+      const isBuiltin = new URL(config.baseUrl).hostname === "gulz.gaxity.com.ng" && new URL(config.baseUrl).pathname.replace(/\/$/, "") === "/api/ai/v1";
       success("Provider settings are available");
       label("Provider", isBuiltin ? "Built-in GULZ AI" : new URL(config.baseUrl).host);
       label("Model", config.model);
       label("API key", "Stored privately; value hidden");
+      await showHostedAiUsage(config);
       return;
     }
     if (action === "configure") {
@@ -1558,9 +1840,23 @@ async function main(): Promise<void> {
         throw new Error("Provider URL must use HTTPS. HTTP is allowed only for localhost.");
       }
       if (!model.trim()) throw new Error("A model name is required.");
-      await saveProviderConfig(validated);
-      success("Provider settings saved");
-      console.log("API key stored in " + providerFile + " with owner-only permissions where supported.");
+      const profiles = await readProviderProfiles();
+      if (profiles.providers.length) {
+        if (profiles.providers.length >= 50) throw new Error("This Place already has 50 saved providers. Remove one before adding another.");
+        const idBase = "custom-" + parsed.hostname.toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 28);
+        const id = profiles.providers.some((profile) => profile.id === idBase) ? idBase + "-" + randomUUID().slice(0, 6) : idBase;
+        profiles.providers.push({ id, name: parsed.hostname, ...validated });
+        profiles.active = id;
+        await saveProviderProfiles(profiles);
+        await heartbeatPlace("configured");
+        success("Provider profile saved and selected · " + id);
+        console.log("API key stored in " + providerProfilesFile + " with owner-only permissions.");
+      } else {
+        await saveProviderConfig(validated);
+        await heartbeatPlace("configured");
+        success("Provider settings saved");
+        console.log("API key stored in " + providerFile + " with owner-only permissions where supported.");
+      }
       return;
     }
     if (action === "remove") {
@@ -1586,6 +1882,10 @@ async function main(): Promise<void> {
     }
     console.error("Usage: gulz provider [builtin|configure|status|remove]");
     process.exitCode = 2;
+    return;
+  }
+  if (command === "account") {
+    await accountCommand(args);
     return;
   }
   if (command === "remote") {
@@ -1678,7 +1978,7 @@ async function main(): Promise<void> {
     const goal = (await readGoals()).find((item) => item.id === id);
     if (!goal) throw new Error("Goal not found.");
     if (goal.status !== "draft" || goal.tasks.length > 0) throw new Error("Only an untouched draft goal can be planned. Create a new goal if you need a fresh plan.");
-    const isBuiltin = config.model === "gpt5-luna" && new URL(config.baseUrl).pathname.replace(/\/$/, "").endsWith("/gpt5-luna");
+    const isBuiltin = new URL(config.baseUrl).hostname === "gulz.gaxity.com.ng" && new URL(config.baseUrl).pathname.replace(/\/$/, "") === "/api/ai/v1";
     const providerName = isBuiltin ? "Built-in GULZ AI" : new URL(config.baseUrl).host;
     const rl = createInterface({ input: stdin, output: stdout });
     try {

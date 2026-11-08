@@ -148,19 +148,20 @@ After building and linking the CLI:
 ~~~sh
 gulz --version
 gulz doctor
-gulz provider status
+gulz provider list
+gulz account status
 gulz chat
 ~~~
 
-Run `gulz` with no arguments to open the interactive assistant. Connect the built-in provider or your own compatible provider once, then chat naturally. Recent conversation history is saved privately in `~/.gulz/conversation.json` (or your configured `GULZ_HOME`). Use `/clear` to clear it or `/exit` to leave.
+Run `gulz` with no arguments to open the interactive assistant. Add a provider with `/provider` and manage multiple saved profiles from its interactive provider centre. GitHub sign-in is optional: sign in at `https://gulz.gaxity.com.ng/dashboard`, create a Place pairing code, and enter it during installation or run `gulz account connect <code>` later. Then chat naturally. Recent conversation history is saved privately in `~/.gulz/conversation.json` (or your configured `GULZ_HOME`). Use `/clear` to clear it or `/exit` to leave.
 
 When the selected model supports tool calling, GULZ can inspect the current workspace, list directories, read non-secret text files, create directories, write files with backups and run explicitly approved programs. Program execution uses no shell; shell interpreters and inline code are blocked. Package-manager commands can be proposed by the AI and run only after you approve the exact command. Command output may be sent to your configured provider, so do not approve commands that print credentials or private data. The current tool set is a foundation, not yet the complete VPS hosting workflow.
 
-To update this installation later, run `gulz update` from an interactive terminal and answer `y` or `n`. GULZ runs a fast-forward-only Git update, installs only the CLI workspaces (including TypeScript development dependencies), rebuilds the CLI and refreshes the global link. It then asks whether you want to configure or change your AI provider/model. You can keep your current settings and change them later with the AI setup menu. It deliberately does not install the website's Wrangler/Workerd dependency. Close the current session and run `gulz` again. This updater is for source-checkout installations; published package updates are not available yet.
+To update this installation later, run `gulz update` from an interactive terminal and answer `y` or `n`. GULZ runs a fast-forward-only Git update, installs only the CLI workspaces (including TypeScript development dependencies), rebuilds the CLI and refreshes the global link. It then preserves your saved provider profiles. Add or switch providers later with `/provider` inside chat. Pair this installation with your account at any time using `gulz account connect <code>`. It deliberately does not install the website's Wrangler/Workerd dependency. Close the current session and run `gulz` again. This updater is for source-checkout installations; published package updates are not available yet.
 
 ## Local data and privacy
 
-GULZ stores its local data under `~/.gulz` by default; set `GULZ_HOME` to choose another data directory. Conversation history is stored in `conversation.json`, provider configuration in `provider.json`, paired VPS destinations/workspace roots in `remote-environments.json`, and local audit events in `audit.jsonl`. These files are created with owner-only permissions where supported. Provider keys are not encrypted by the current CLI; protect your device account and data directory. Internal work records remain an implementation detail and are not required for normal chat.
+GULZ stores its local data under `~/.gulz` by default; set `GULZ_HOME` to choose another data directory. Conversation history is stored in `conversation.json`, provider configuration in `provider.json`, paired VPS destinations/workspace roots in `remote-environments.json`, and local audit events in `audit.jsonl`. These files are created with owner-only permissions where supported. Provider keys and per-Place credentials are stored in owner-only files under `~/.gulz`; they are not yet encrypted by an OS credential vault. Protect your device account and data directory. The optional Places dashboard stores only a hash of the Place credential and provider/model metadata, never provider API keys. Internal work records remain an implementation detail and are not required for normal chat.
 
 ## Filesystem and diagnostic commands
 
@@ -210,3 +211,19 @@ npm unlink --workspace @gulz/cli
 ~~~
 
 This removes the global development link. It does not delete the repository or local GULZ data.
+
+
+## Multiple AI providers
+
+Inside GULZ chat, type `/provider` to open the provider centre. You can also use:
+
+~~~text
+/provider add
+/provider list
+/provider use deepseek
+/provider models
+/provider test
+/provider remove
+~~~
+
+The CLI currently includes presets for several popular OpenAI-compatible providers and local model servers, plus a custom endpoint option. Up to 50 provider profiles can be saved per Place. A preset is a connection template, not a guarantee that every model supports tool calling. Run the provider test before asking GULZ to execute project operations. See [PLACES_AND_AUTH.md](PLACES_AND_AUTH.md) for optional GitHub sign-in and Places pairing setup.

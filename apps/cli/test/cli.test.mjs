@@ -294,10 +294,11 @@ test("configures the built-in AI without asking the user for API details", async
   await withHome(async (home) => {
     const result = invoke(home, "provider", "builtin");
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /Built-in GULZ AI is ready/);
+    assert.match(result.stdout, /GULZ AI selected/);
     const config = JSON.parse(await readFile(join(home, "provider.json"), "utf8"));
-    assert.equal(new URL(config.baseUrl).pathname, "/api/v1/ai/gpt5-luna");
-    assert.equal(config.model, "gpt5-luna");
+    assert.equal(new URL(config.baseUrl).pathname, "/api/ai/v1");
+    assert.equal(config.model, "gulz-default");
+    assert.equal(config.apiKey, "guest");
     if (process.platform !== "win32") {
       assert.equal((await stat(join(home, "provider.json"))).mode & 0o777, 0o600);
     }
@@ -500,5 +501,34 @@ test("doctor validates saved agent conversation transcripts without modifying in
     assert.match(result.stdout + result.stderr, /Saved conversation could not be loaded/);
     assert.match(result.stderr, /Saved conversation is invalid/);
     assert.equal(await readFile(join(home, "conversation.json"), "utf8"), invalid);
+  });
+});
+
+
+test("lists an empty provider profile collection without requiring an interactive terminal", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "provider", "list");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /AI PROVIDERS/);
+    assert.match(result.stdout, /No saved providers yet/);
+  });
+});
+
+test("validates saved provider profile collections and refuses duplicate identifiers", async () => {
+  await withHome(async (home) => {
+    const profile = { id: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com", model: "deepseek-chat", apiKey: "test-secret" };
+    await writeFile(join(home, "provider-profiles.json"), JSON.stringify({ active: "deepseek", providers: [profile, profile] }));
+    const result = invoke(home, "provider", "list");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Duplicate provider profile IDs/);
+  });
+});
+
+test("reports an optional unpaired account without requiring network access", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "account", "status");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /GULZ ACCOUNT/);
+    assert.match(result.stdout, /not connected to a GULZ account/);
   });
 });

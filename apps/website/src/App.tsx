@@ -1,172 +1,233 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient, type Session } from "@supabase/supabase-js";
 import {
-  ArrowRight, ArrowUpRight, Bot, Check, Command, Copy,
-  Download, Laptop, Menu, Monitor, Server, ShieldCheck, Smartphone, Terminal, Code2, AppWindow,
-  X, Zap,
+  ArrowRight, ArrowUpRight, Check, Code2,
+  Command, Copy, Github, GitBranch, Laptop, LockKeyhole, Menu, Server,
+  ShieldCheck, Smartphone, Terminal, X, Zap,
 } from "lucide-react";
 
-type Platform = "termux" | "linux" | "macos" | "windows" | "vps";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+type AiUsage = { used: number; limit: number; remaining: number; resetsAt?: string };
+type Place = {
+  id: string; place_name: string; platform: string; architecture: string;
+  gulz_version: string; active_provider: string | null; active_model: string | null;
+  provider_status: string; status: string; last_seen_at: string;
+};
 
-const platforms: { id: Platform; name: string; detail: string; icon: typeof Terminal; methods: string[]; steps: string[]; commands: string[]; note: string }[] = [
-  {
-    id: "termux", name: "Android / Termux", detail: "Android phones and tablets", icon: Smartphone,
-    methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "Native Android app (planned)"],
-    steps: ["Install Termux from F-Droid or the official GitHub releases.","Run pkg update && pkg upgrade -y.","Install curl with pkg install curl.","Copy the Bash command above into Termux and answer the installer's questions.","After installation, run gulz."],
-    commands: ["pkg update && pkg upgrade -y","pkg install curl","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz","gulz doctor"],
-    note: "The installer asks for the install folder and confirmation. It installs only the CLI workspaces and deliberately skips Wrangler/Workerd, which is unsupported on Android/Termux. This is a source-build CLI inside Termux, not a standalone Android app.",
-  },
-  {
-    id: "linux", name: "Linux", detail: "Ubuntu, Debian and other distributions", icon: Terminal,
-    methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "AppImage / .deb / .rpm packages (planned)", "Desktop app (planned)"],
-    steps: ["Install Node.js 20.19+ and curl.","Optionally review scripts/install.sh in the public GitHub repository.","Run the Bash command above and answer the installer's questions.","Open a new terminal and run gulz."],
-    commands: ["# Install Node.js 20.19+ and curl first","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz","gulz doctor"],
-    note: "The installer asks for the install folder and confirmation, installs only CLI workspace dependencies, then builds and links the CLI. It skips the website tooling. Review scripts/install.sh before running it. Signed .deb, .rpm and AppImage packages are not published.",
-  },
-  {
-    id: "macos", name: "macOS", detail: "Apple Silicon and Intel Macs", icon: Command,
-    methods: ["Interactive Bash installer (developer preview)", "Manual CLI source build (developer preview)", "Signed .dmg desktop app (planned)", "Homebrew package (planned)"],
-    steps: ["Install Node.js 20.19+ and Git.","Optionally review scripts/install.sh in the public GitHub repository.","Run the Bash command above and answer the installer's questions.","Open a new terminal and run gulz."],
-    commands: ["brew install node git curl","curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash","gulz","gulz doctor"],
-    note: "Install Node.js 20.19+ and Git first. The interactive installer asks where to install GULZ and requests confirmation. Signed desktop .dmg installers for Apple Silicon and Intel are planned, not available for download.",
-  },
-  {
-    id: "windows", name: "Windows", detail: "Windows 10 and 11 · PowerShell", icon: Monitor,
-    methods: ["PowerShell source build (developer preview)", "WinGet CLI package (planned)", "Signed desktop installer (planned)"],
-    steps: ["Install Node.js LTS and Git for Windows with WinGet.", "Close and reopen PowerShell so PATH updates apply.", "Confirm Node.js is version 20.19 or newer.", "Clone GULZ, install dependencies and link the CLI."],
-    commands: ["winget install OpenJS.NodeJS.LTS", "winget install Git.Git", "# Open a new PowerShell window", "node --version", "git clone https://github.com/kellysteve/gulz.git", "cd gulz", "npm run install:cli", "gulz", "gulz --help"],
-    note: "Run these commands in PowerShell. The current route builds the CLI from source; signed Windows desktop installers and WinGet publication are planned.",
-  },
-  {
-    id: "vps", name: "VPS / Remote servers", detail: "Ubuntu, Debian and SSH-connected hosts", icon: Server,
-    methods: ["Paired OpenSSH remote agent (source preview)", "Headless CLI source build", "Dedicated hosting workflows (in development)"],
-    steps: ["Install or update the latest GULZ CLI on the VPS as your normal non-root user.","From your local device, connect once with ssh user@host and verify the host fingerprint yourself.","Ensure the gulz command is available in non-interactive SSH sessions.","Run gulz remote add production user@host /var/www/project (or omit the path to use the remote home directory).","Run gulz remote test production.","Open gulz chat and ask it to work on the production environment."],
-    commands: ["# On the VPS, install/update GULZ first","gulz update","# On your local device, verify the host key manually","ssh user@host","# Pair the already-installed remote agent","gulz remote add production user@host /var/www/project","gulz remote test production","gulz chat"],
-    note: "GULZ uses the system OpenSSH client with strict host-key checking, no agent forwarding and no automatic host-key acceptance. Pairing stores only the SSH destination and chosen workspace; your SSH keys stay in your own SSH config/agent. The remote agent exposes the same bounded tools and asks for approval before changes or program execution. Package managers can be run as the SSH user; privileged commands must use sudo -n. Dedicated API/website hosting workflows are still in development.",
-  },
+type Platform = "termux" | "linux" | "macos" | "windows" | "vps";
+const installCommand = "curl -fsSL https://gulz.gaxity.com.ng/install | bash";
+const platforms: { id: Platform; name: string; detail: string; command: string; note: string }[] = [
+  { id: "termux", name: "Android · Termux", detail: "Run GULZ on your phone", command: "pkg update && pkg install curl git nodejs-lts\ncurl -fsSL https://gulz.gaxity.com.ng/install | bash", note: "Install Termux from F-Droid or the official GitHub releases first. The current CLI runs inside Termux; it is not a native Android app." },
+  { id: "linux", name: "Linux", detail: "Ubuntu, Debian and more", command: "curl -fsSL https://gulz.gaxity.com.ng/install | bash", note: "Requires Node.js 20.19+ and Git. Run as your normal user, not with sudo." },
+  { id: "macos", name: "macOS", detail: "Apple Silicon and Intel", command: "curl -fsSL https://gulz.gaxity.com.ng/install | bash", note: "Requires Node.js 20.19+ and Git. Native signed desktop packages are not published yet." },
+  { id: "windows", name: "Windows", detail: "PowerShell / WSL", command: "wsl --install\n# Then, inside your Linux distribution:\ncurl -fsSL https://gulz.gaxity.com.ng/install | bash", note: "The branded Bash installer runs inside WSL. A native Windows installer is not published yet." },
+  { id: "vps", name: "VPS / Linux server", detail: "Install on your own server", command: "curl -fsSL https://gulz.gaxity.com.ng/install | bash", note: "Install as a non-root user. Pair the VPS from your local GULZ session after verifying its SSH host key." },
 ];
 
 function App() {
-  const [selected, setSelected] = useState<Platform>("termux");
+  const [platform, setPlatform] = useState<Platform>("termux");
+  const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [copiedInstall, setCopiedInstall] = useState(false);
-  const installCommand = "curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash";
-  const copyInstallCommand = async () => {
-    try { await navigator.clipboard.writeText(installCommand); setCopiedInstall(true); window.setTimeout(() => setCopiedInstall(false), 2200); }
-    catch { window.prompt("Copy the GULZ installation command:", installCommand); setCopiedInstall(false); }
+  const [session, setSession] = useState<Session | null>(null);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [usage, setUsage] = useState<AiUsage | null>(null);
+  const [pairingCode, setPairingCode] = useState("");
+  const [dashboardError, setDashboardError] = useState("");
+  const [loadingPlaces, setLoadingPlaces] = useState(false);
+  useEffect(() => {
+    if (!supabase) return;
+    void supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
+    return () => data.subscription.unsubscribe();
+  }, []);
+  useEffect(() => {
+    if (!session) { setPlaces([]); return; }
+    let cancelled = false;
+    setLoadingPlaces(true);
+    void fetch("/api/places", { headers: { Authorization: "Bearer " + session.access_token } })
+      .then(async (response) => {
+        const payload = await response.json() as { places?: Place[]; error?: string };
+        if (!response.ok) throw new Error(payload.error || "Could not load Places.");
+        if (!cancelled) setPlaces(payload.places ?? []);
+      })
+      .catch((error: unknown) => { if (!cancelled) setDashboardError(error instanceof Error ? error.message : "Could not load Places."); })
+      .finally(() => { if (!cancelled) setLoadingPlaces(false); });
+    return () => { cancelled = true; };
+  }, [session]);
+  useEffect(() => {
+    if (!session) { setUsage(null); return; }
+    let cancelled = false;
+    void fetch("/api/ai/usage", { headers: { Authorization: "Bearer " + session.access_token } })
+      .then(async (response) => {
+        const payload = await response.json() as AiUsage & { error?: string };
+        if (!response.ok) throw new Error(payload.error || "Could not load AI usage.");
+        if (!cancelled) setUsage(payload);
+      })
+      .catch(() => { if (!cancelled) setUsage(null); });
+    return () => { cancelled = true; };
+  }, [session]);
+  const signInWithGithub = async () => {
+    if (!supabase) { setDashboardError("Website sign-in is not configured yet. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to the website build, then enable GitHub in Supabase Authentication."); return; }
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "github", options: { redirectTo: window.location.origin + "/dashboard" } });
+    if (error) setDashboardError(error.message);
   };
-  const active = platforms.find((item) => item.id === selected)!;
+  const createPairingCode = async () => {
+    if (!session) return;
+    setDashboardError("");
+    const response = await fetch("/api/places/pair/start", { method: "POST", headers: { Authorization: "Bearer " + session.access_token } });
+    const payload = await response.json() as { code?: string; error?: string };
+    if (!response.ok || !payload.code) { setDashboardError(payload.error || "Could not create a pairing code."); return; }
+    setPairingCode(payload.code);
+  };
+  const disconnectPlace = async (id: string) => {
+    if (!session || !window.confirm("Disconnect this Place? Its local files will not be changed.")) return;
+    const response = await fetch("/api/places/revoke", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token }, body: JSON.stringify({ id }) });
+    const payload = await response.json() as { error?: string };
+    if (!response.ok) { setDashboardError(payload.error || "Could not disconnect Place."); return; }
+    setPlaces((current) => current.filter((place) => place.id !== id));
+  };
 
+  const active = platforms.find((item) => item.id === platform)!;
+  const copy = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      window.prompt("Copy this command:", value);
+    }
+  };
+
+  if (window.location.pathname === "/dashboard") {
+    return (
+      <div className="dashboard-shell">
+        <header className="dashboard-topbar">
+          <a className="brand" href="/"><span className="brand-mark">G</span><span>gulz</span></a>
+          <div className="dashboard-actions">
+            <a href="/">Website</a>
+            {session && <button onClick={() => void supabase?.auth.signOut()}>Sign out</button>}
+          </div>
+        </header>
+        <main className="dashboard-main">
+          <div className="dashboard-heading"><div><div className="eyebrow">GULZ CONTROL ROOM</div><h1>Your Places</h1><p>Manage the GULZ installations connected to your account.</p></div></div>
+          {!session ? (
+            <section className="dashboard-login">
+              <Github size={30}/><h2>Sign in to GULZ</h2>
+              <p>Use your GitHub account to manage Places. GitHub repository access is not requested for account sign-in.</p>
+              <button className="button button-primary" onClick={() => void signInWithGithub()}><Github size={17}/> Continue with GitHub</button>
+              {!supabase && <small>Sign-in setup required: configure the Supabase website URL and anon key, and enable the GitHub provider in Supabase Authentication.</small>}
+            </section>
+          ) : (
+            <>
+              {usage && <section className="usage-card"><div><b>GULZ AI daily allowance</b><small>Resets daily · usage shared across your account Places</small></div><strong>{usage.remaining} <span>of {usage.limit} requests left</span></strong><div className="usage-track"><i style={{ width: ((usage.used / Math.max(1, usage.limit)) * 100) + "%" }}/></div></section>}
+              <section className="account-strip"><div><b>{session.user.user_metadata?.user_name || session.user.user_metadata?.preferred_username || session.user.email || "GitHub account"}</b><small>Signed in with GitHub via Supabase Auth</small></div><span>Account connected</span></section>
+              <section className="places-toolbar"><div><h2>Connected installations</h2><p>Each Place is one GULZ installation on a device or server.</p></div><button className="button button-primary" onClick={() => void createPairingCode()}>Connect a Place</button></section>
+              {pairingCode && <section className="pairing-panel"><div><b>Enter this code in your GULZ installer or terminal</b><p>It expires in 10 minutes and can only be used once.</p></div><strong>{pairingCode}</strong><button onClick={() => void navigator.clipboard.writeText(pairingCode)}>Copy code</button></section>}
+              {dashboardError && <p className="dashboard-error">{dashboardError}</p>}
+              {loadingPlaces ? <p>Loading your Places…</p> : places.length === 0 ? <section className="empty-places"><Laptop size={28}/><h3>No Places connected yet</h3><p>Connect GULZ from Termux, your computer or a VPS to see it here.</p></section> : (
+                <section className="places-grid">{places.map((place) => <article className="place-card" key={place.id}>
+                  <div className="place-card-top"><div><h3>{place.place_name}</h3><small>{place.platform} · {place.architecture}</small></div><span className={place.status === "online" ? "place-online" : "place-offline"}>{place.status}</span></div>
+                  <div className="place-details"><span>GULZ version</span><b>{place.gulz_version}</b><span>AI provider</span><b>{place.active_provider || "Not reported"}</b><span>Active model</span><b>{place.active_model || "Not reported"}</b><span>Provider status</span><b>{place.provider_status || "Unknown"}</b><span>Last seen</span><b>{new Date(place.last_seen_at).toLocaleString()}</b></div>
+                  <button className="disconnect-button" onClick={() => void disconnectPlace(place.id)}>Disconnect Place</button>
+                </article>)}</section>
+              )}
+              <p className="dashboard-privacy"><LockKeyhole size={14}/> Provider API keys and project files stay on their Places. This dashboard displays connection metadata only.</p>
+            </>
+          )}
+          {dashboardError && !session && <p className="dashboard-error">{dashboardError}</p>}
+        </main>
+      </div>
+    );
+  }
   return (
     <div className="site-shell">
       <header className="topbar">
-        <a className="brand" href="#" aria-label="GULZ home"><span className="brand-mark">G</span><span>GULZ</span></a>
+        <a className="brand" href="#" aria-label="GULZ home"><span className="brand-mark">G</span><span>gulz</span><span className="brand-beta">OPEN SOURCE</span></a>
+        <button className="mobile-menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation">{menuOpen ? <X/> : <Menu/>}</button>
         <nav className={menuOpen ? "nav nav-open" : "nav"}>
-          <a href="#capabilities" onClick={() => setMenuOpen(false)}>Capabilities</a>
-          <a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a>
-          <a href="#install" onClick={() => setMenuOpen(false)}>Installation</a>
-          <a href="#commands" onClick={() => setMenuOpen(false)}>CLI commands</a>
-          <a href="#desktop" onClick={() => setMenuOpen(false)}>Desktop app</a>
-          <a href="#security" onClick={() => setMenuOpen(false)}>Security</a>
+          <a href="#agent" onClick={() => setMenuOpen(false)}>Agent</a>
+          <a href="#workspaces" onClick={() => setMenuOpen(false)}>Workspaces</a>
+          <a href="#providers" onClick={() => setMenuOpen(false)}>Models</a>
+          <a href="#install" onClick={() => setMenuOpen(false)}>Install</a>
         </nav>
-        <a className="nav-cta" href="#install">Get started <ArrowUpRight size={15}/></a>
-        <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu">{menuOpen ? <X/> : <Menu/>}</button>
+        {session ? <a className="github-link" href="/dashboard"><Github size={16}/> Dashboard <ArrowUpRight size={14}/></a> : <a className="github-link" href="/dashboard"><Github size={16}/> Sign in <ArrowUpRight size={14}/></a>}
       </header>
 
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <div className="eyebrow"><span className="pulse-dot"/> A NEW WAY TO GET WORK DONE</div>
-            <h1>Tell GULZ what you need.<br/><span>Let it work it out.</span></h1>
-            <p className="hero-description">Meet GULZ — an open-source AI assistant for getting real work done. Tell it what you need, keep the conversation going, and stay in control of every sensitive operation.</p>
-            <div className="hero-actions"><a className="button button-primary" href="#install">Explore installation <ArrowRight size={17}/></a><a className="button button-quiet" href="https://github.com/kellysteve/gulz" target="_blank" rel="noreferrer">View source</a></div>
-            <div className="hero-note"><ShieldCheck size={15}/> You stay in control. Sensitive actions need your approval.</div>
+            <div className="eyebrow"><span className="status-dot"/> OPEN-SOURCE CODING AGENT</div>
+            <h1>Your terminal.<br/><span>Your code.</span><br/>Your agent.</h1>
+            <p className="hero-lead">An AI coding agent that understands your project, edits files, runs commands, fixes errors and helps ship real software. Use it on your phone, computer or VPS.</p>
+            <div className="hero-actions">
+              <a className="button button-primary" href="#install"><Terminal size={17}/> Install GULZ <ArrowRight size={16}/></a>
+              <a className="button button-secondary" href="https://github.com/kellysteve/gulz" target="_blank" rel="noreferrer"><Github size={17}/> Explore source</a>
+            </div>
+            <div className="hero-meta"><span><Check size={14}/> Apache 2.0</span><span><Check size={14}/> Bring your own model</span><span><Check size={14}/> Local-first</span></div>
           </div>
-          <div className="terminal-card" aria-label="Illustrative GULZ terminal preview">
-            <div className="terminal-head"><div className="window-dots"><i/><i/><i/></div><span>gulz — interactive session</span><span className="terminal-live">CLI PREVIEW</span></div>
-            <div className="terminal-body">
-              <div className="terminal-prompt"><b>❯</b> gulz</div>
-              <div className="terminal-title">Hi. I'm GULZ.</div>
-              <div className="terminal-muted">A continuous conversation. No repeated commands.</div>
-              <div className="terminal-input">› Build a portfolio website for me<span className="cursor"/></div>
-              <div className="terminal-line"><span className="ok"><Check size={13}/></span> Request understood</div>
-              <div className="terminal-line"><span className="ok"><Check size={13}/></span> Conversation context retained</div>
-              <div className="terminal-line"><span className="wait">◌</span> Sensitive actions require approval</div>
-              <div className="terminal-footer"><span><Bot size={13}/> CONTINUOUS AI CHAT</span><span>SUPERVISED MODE</span></div>
+          <div className="agent-window">
+            <div className="window-top"><div className="window-controls"><i/><i/><i/></div><span>my-project · gulz</span><span className="window-status"><span/> AGENT READY</span></div>
+            <div className="window-content">
+              <div className="terminal-dim">~/projects/my-project</div>
+              <div className="terminal-user"><span>›</span> Find and fix the bug in my checkout flow. Run the tests afterwards.</div>
+              <div className="agent-step"><span className="step-icon"><Command size={14}/></span><div><b>Inspecting project</b><small>Reading package.json, src/ and test files</small></div><Check size={15} className="step-check"/></div>
+              <div className="agent-step"><span className="step-icon"><Code2 size={14}/></span><div><b>Tracing checkout logic</b><small>Found a quantity validation edge case</small></div><Check size={15} className="step-check"/></div>
+              <div className="agent-step active-step"><span className="step-icon"><Terminal size={14}/></span><div><b>Preparing a code change</b><small>Review the diff before applying it</small></div><span className="step-pending">REVIEW</span></div>
+              <div className="terminal-result"><span className="result-mark">✓</span><div><b>Verify the fix</b><small>Run the test suite and report what passed.</small></div></div>
+              <div className="window-bottom"><span><LockKeyhole size={13}/> YOU CONTROL EXECUTION</span><span>SUPERVISED AGENT</span></div>
             </div>
           </div>
         </section>
 
-        <section className="trust-strip"><span><Zap size={16}/> Work that gets done</span><span><ShieldCheck size={16}/> Permission-aware by design</span><span><Terminal size={16}/> Local-first execution</span></section>
+        <div className="proof-strip"><span><Zap size={16}/> Understands real projects</span><span><GitBranch size={16}/> Git-native workflows</span><span><ShieldCheck size={16}/> Approvals for risky actions</span><span><Smartphone size={16}/> Termux-ready</span></div>
 
-        <section className="section" id="capabilities">
-          <div className="section-kicker">BUILT FOR REAL WORK</div><h2>One interface. Many environments.</h2><p className="section-lead">From your phone's terminal to a remote VPS, GULZ works where your projects and systems already live.</p>
-          <div className="feature-grid">
-            <article className="feature-card"><div className="feature-icon"><Command/></div><h3>Machine operations</h3><p>The local agent can inspect workspaces, read files, create folders, write approved changes with backups and run approved programs without a shell.</p></article>
-            <article className="feature-card"><div className="feature-icon"><Bot/></div><h3>AI that gets work done</h3><p>Choose an AI provider and chat naturally. The Agent Engine turns supported requests into tool calls, executes approved actions and returns results to the same conversation.</p></article>
-            <article className="feature-card"><div className="feature-icon"><Server/></div><h3>Remote management</h3><p>Pair a VPS through OpenSSH. GULZ can inspect its selected workspace and run approved programs there without sending SSH credentials to the AI provider. Full hosting workflows are still being built.</p></article>
+        <section className="section" id="agent">
+          <div className="section-heading"><div className="eyebrow">MORE THAN CHAT</div><h2>An agent that works inside your project.</h2><p>GULZ is designed around the coding loop: understand the codebase, make a focused change, run it, learn from the result and keep going.</p></div>
+          <div className="capability-grid">
+            <article><span className="feature-icon"><Code2/></span><h3>Read and change code</h3><p>Explore project structure, trace how files connect, create and edit code, and review diffs with backups.</p></article>
+            <article><span className="feature-icon"><Terminal/></span><h3>Run and verify</h3><p>Execute approved development commands, run tests and builds, inspect failures and iterate on fixes.</p></article>
+            <article><span className="feature-icon"><GitBranch/></span><h3>Git-aware workflow</h3><p>Work with branches, commits and repository history. GitHub account linking and pull-request workflows are being built.</p></article>
+            <article><span className="feature-icon"><Server/></span><h3>Local and remote</h3><p>Work in local folders or pair a VPS over SSH. Keep credentials on the machine that owns them.</p></article>
+            <article><span className="feature-icon"><Zap/></span><h3>Build and deploy</h3><p>Help configure APIs, websites and services on your own infrastructure, with explicit checks before risky changes.</p></article>
+            <article><span className="feature-icon"><ShieldCheck/></span><h3>Human in control</h3><p>Read-only inspection can be automatic. File changes, installs and sensitive operations require your approval.</p></article>
           </div>
         </section>
 
-        <section className="section process-section" id="how-it-works">
-          <div className="section-kicker">HOW GULZ WORKS</div><h2>From intention to verified outcome.</h2>
-          <div className="process-grid">
-            <div><span className="process-number">01</span><h3>Tell GULZ what you need</h3><p>Describe the outcome you want in plain language.</p></div>
-            <div><span className="process-number">02</span><h3>Understand what is needed</h3><p>The selected model reasons over your request and the tools available to GULZ. It can ask questions when details are missing.</p></div>
-            <div><span className="process-number">03</span><h3>Approve sensitive work</h3><p>File changes, package commands, privileged operations and other sensitive actions wait for your approval.</p></div>
-            <div><span className="process-number">04</span><h3>Verify the result</h3><p>GULZ returns actual tool results to the model and checks the outcome before reporting completion.</p></div>
+        <section className="workspace-section" id="workspaces">
+          <div className="section-heading"><div className="eyebrow">LOCAL-FIRST · GITHUB-READY</div><h2>Install it where your code lives.</h2><p>Clone a repository, enter its folder and start GULZ. The agent reads and edits the local project; Git handles branches, commits and pushes. GitHub sign-in is a separate optional step for hosted AI access.</p></div>
+          <div className="workspace-grid">
+            <article className="workspace-card"><div className="workspace-top"><Terminal/><span className="status-label">CORE WORKFLOW</span></div><h3>Local folders</h3><p>Run GULZ from a project directory on Termux, Linux or macOS. Your files stay on your device.</p><code>cd my-project && gulz</code></article>
+            <article className="workspace-card"><div className="workspace-top"><Github/><span className="status-label">GIT-NATIVE</span></div><h3>GitHub repositories</h3><p>Install GULZ inside a cloned repository and it works on that project locally. Sign in to GitHub for hosted GULZ AI access, and use your existing Git credentials to push branches and open pull requests.</p><code>git clone · cd project · gulz</code></article>
+            <article className="workspace-card"><div className="workspace-top"><Server/><span className="status-label">EARLY SSH SUPPORT</span></div><h3>Your VPS</h3><p>Pair a server using OpenSSH and work inside an explicitly selected remote project folder.</p><code>gulz remote add production …</code></article>
           </div>
+        </section>
+
+        <section className="section provider-section" id="providers">
+          <div className="section-heading"><div className="eyebrow">MODEL FREEDOM</div><h2>Bring the model you trust.</h2><p>GULZ stays provider-independent. The agent tools and approval system belong to GULZ, not to one model vendor.</p></div>
+          <div className="provider-grid">
+            <article><span className="provider-symbol">G</span><h3>GULZ AI</h3><p>Hosted GULZ AI through a request-limited Worker proxy. It becomes available when the upstream model and Supabase Worker secrets are configured.</p><span className="provider-state">DEPLOYMENT SETUP REQUIRED</span></article>
+            <article><span className="provider-symbol"><Command/></span><h3>Your API key</h3><p>Configure a supported provider or OpenAI-compatible endpoint using your own credentials.</p><span className="provider-state ready">CLI CONFIGURATION AVAILABLE</span></article>
+            <article><span className="provider-symbol"><Laptop/></span><h3>Local models</h3><p>Use local model servers such as Ollama or other compatible endpoints when configured.</p><span className="provider-state">COMPATIBILITY DEPENDS ON PROVIDER</span></article>
+          </div>
+          <p className="gateway-note"><LockKeyhole size={15}/> The hosted gateway will keep provider secrets server-side. No shared provider key will be embedded in this open-source CLI.</p>
         </section>
 
         <section className="install-section" id="install">
-          <div className="section-kicker">INSTALLATION CENTRE</div><h2>Your device. Your way to install.</h2><p className="section-lead">Choose your environment for the current CLI developer preview. Source builds require Node.js 20.19+ and Git. Native installers and the desktop app are not published yet.</p>
-          <div className="install-layout">
-            <div className="platform-list" role="tablist" aria-label="Choose your platform">
-              {platforms.map((platform) => { const Icon = platform.icon; return <button key={platform.id} role="tab" aria-selected={selected === platform.id} className={selected === platform.id ? "platform-option selected" : "platform-option"} onClick={() => setSelected(platform.id)}><Icon size={19}/><span><b>{platform.name}</b><small>{platform.detail}</small></span><ArrowRight size={15}/></button>; })}
-            </div>
-            <div className="install-detail" role="tabpanel">
-              <div className="install-detail-top"><div><span className="available-label">INSTALLATION GUIDE</span><h3>{active.name}</h3><p>{active.detail}</p></div><Download size={23}/></div>
-              <h4>Distribution status</h4><div className="method-list">{active.methods.map((method) => <span key={method}><ArrowRight size={14}/>{method}</span>)}</div>
-              <h4>One-command installer</h4>
-              {active.id !== "windows" && <div className="install-one-click"><pre className="install-code"><code>{installCommand}</code></pre><button className="button button-primary" type="button" onClick={copyInstallCommand}><Copy size={15}/>{copiedInstall ? "Copied" : "Copy install command"}</button><p>Run this in your platform's terminal. The installer asks questions and requests confirmation before making changes.</p></div>}
-              <h4>Platform commands</h4><pre className="install-code"><code>{active.commands.join("\n")}</code></pre><p className="install-note">{active.note} {active.id !== "termux" && <><a href="https://nodejs.org/en/download" target="_blank" rel="noreferrer">Get Node.js</a>. </>} {active.id === "termux" && <>Get Termux from <a href="https://f-droid.org/packages/com.termux/" target="_blank" rel="noreferrer">F-Droid</a> or the <a href="https://github.com/termux/termux-app/releases" target="_blank" rel="noreferrer">official releases</a>.</>}</p>
-              <p className="install-note"><b>Using and updating:</b> After setup, run <code>gulz</code> whenever you want to use GULZ; it does not need to stay open in the background. To update this developer preview later, run <code>gulz update</code> and answer yes when prompted. It fast-forwards the source, installs the CLI dependencies and rebuilds itself. Close the session and run <code>gulz</code> again. Published package updates are not available yet.</p><h4>Step-by-step setup</h4><ol className="steps-list">{active.steps.map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}</ol>
-              <div className="release-notice"><ShieldCheck size={17}/><p><b>This is an interactive source installer, not a stable release installer.</b><br/>The CLI is in early development. Native packages and signed downloads will only be listed after platform builds and security checks pass.</p></div>
-              <p className="install-note"><a href="https://github.com/kellysteve/gulz/blob/main/docs/INSTALLATION.md" target="_blank" rel="noreferrer">Open the complete installation guide <ArrowUpRight size={13}/></a></p>
-            </div>
+          <div className="install-heading"><div><div className="eyebrow">GET STARTED</div><h2>Install once. Start building.</h2><p>Choose where you want to run GULZ. The branded installer route is served by the GULZ website after the updated Worker is deployed and the domain is connected.</p></div><div className="install-badge"><ShieldCheck size={16}/> Open source · Apache 2.0</div></div>
+          <div className="install-command"><div className="command-label"><span><span className="status-dot"/> RECOMMENDED INSTALL COMMAND</span><button onClick={() => copy(installCommand)}><Copy size={14}/>{copied ? "Copied" : "Copy"}</button></div><code>{installCommand}</code></div>
+          <div className="platform-picker" role="tablist" aria-label="Choose installation platform">
+            {platforms.map((item) => <button key={item.id} role="tab" aria-selected={platform === item.id} onClick={() => setPlatform(item.id)}>{item.name}</button>)}
           </div>
+          <div className="platform-detail" role="tabpanel"><div><b>{active.name}</b><p>{active.detail}. {active.note}</p></div><button className="copy-platform" onClick={() => copy(active.command)}><Copy size={14}/> Copy commands</button><pre>{active.command}</pre></div>
+          <p className="install-footnote">Always review an install script before running it. Source installer supports Termux, Linux, macOS and Linux VPS. Windows uses WSL. Signed native packages are not published yet.</p>
         </section>
 
-        <section className="section cli-reference" id="commands">
-          <div className="section-kicker">CLI QUICK REFERENCE</div><h2>Open GULZ whenever you need it.</h2>
-          <p className="section-lead">Run gulz to open the interactive assistant. Connect an AI provider, pair any VPS you authorize and describe the work you want done.</p>
-          <div className="command-grid">
-            <article><h3><Terminal size={17}/> Start and inspect</h3><pre><code>{"gulz\ngulz chat\ngulz doctor\ngulz provider status"}</code></pre></article>
-            <article><h3><Code2 size={17}/> Workspace tools</h3><pre><code>{"gulz inspect .\ngulz list\ngulz read README.md\ngulz write notes.txt"}</code></pre></article>
-            <article><h3><Server size={17}/> Connect a VPS</h3><pre><code>{"gulz remote add production user@host /var/www/project\ngulz remote list\ngulz remote test production\ngulz chat"}</code></pre></article>
-          </div>
-          <div className="release-notice"><ShieldCheck size={17}/><p><b>Safety boundary:</b><br/>GULZ uses strict SSH host-key verification and never stores SSH private keys. File changes and direct program execution require approval. Remote tools are scoped to the workspace selected when the connection is added. Shell interpreters and inline code are blocked. Dedicated end-to-end hosting workflows remain in development.</p></div>
-        </section>
-
-        <section className="section desktop-section" id="desktop">
-          <div className="section-kicker">DESKTOP EXPERIENCE</div><h2>A native workspace is on the roadmap.</h2>
-          <p className="section-lead">The planned desktop app will bring conversations, local and remote environment connections, approvals, tool activity and project access together in one focused interface. It will use the same local execution engine and approval policy as the CLI rather than introducing a second, less-restricted execution path.</p>
-          <div className="desktop-grid">
-            <article><AppWindow/><h3>Windows</h3><p>Signed .msi or .exe installer, with verified updates.</p><span>Planned</span></article>
-            <article><Laptop/><h3>macOS</h3><p>Signed .dmg app for Apple Silicon and Intel.</p><span>Planned</span></article>
-            <article><Monitor/><h3>Linux</h3><p>AppImage, .deb and .rpm packages for supported systems.</p><span>Planned</span></article>
-          </div>
-          <p className="desktop-footnote">No desktop download is available yet. Android users can use the CLI through Termux in the developer preview; a native Android app is planned. VPS users can install the headless CLI over SSH. All native packages will be published only after platform testing, signing and checksum verification.</p>
-          <p className="desktop-footnote"><a href="https://github.com/kellysteve/gulz/blob/main/docs/DESKTOP_APP.md" target="_blank" rel="noreferrer">Read the desktop app design and release plan <ArrowUpRight size={13}/></a></p>
-        </section>
-        <section className="security-section" id="security">
-          <div className="security-icon"><ShieldCheck size={28}/></div><div><div className="section-kicker">CONTROL IS NOT OPTIONAL</div><h2>Autonomy, with boundaries.</h2><p>GULZ is being built around least-privilege access, clear approvals, transparent activity logs and verified outcomes. Your credentials stay yours. Sensitive actions do not happen silently.</p></div>
-        </section>
-
-        <section className="final-cta"><div><div className="section-kicker">THE BEGINNING</div><h2>Make progress, not just plans.</h2><p>GULZ is in active development. Platform downloads will appear here after they are built, tested and ready.</p></div><a className="button button-primary" href="#install">Explore installation <ArrowUpRight size={16}/></a></section>
+        <section className="closing-cta"><div><div className="eyebrow">BUILT BY GAXITY</div><h2>Make the computer do the work.</h2><p>GULZ is open source. Inspect it, improve it, and build with it.</p></div><a className="button button-primary" href="https://github.com/kellysteve/gulz" target="_blank" rel="noreferrer">View GULZ on GitHub <ArrowUpRight size={16}/></a></section>
       </main>
-      <footer><a className="brand" href="#"><span className="brand-mark">G</span><span>GULZ</span></a><span>Tell it. Get it done.</span><span>A Gaxity product · © 2026</span></footer>
+      <footer><a className="brand" href="#"><span className="brand-mark">G</span><span>gulz</span></a><span>Goals. Executed.</span><span>A Gaxity product · Apache 2.0</span></footer>
     </div>
   );
 }
-
 export default App;
