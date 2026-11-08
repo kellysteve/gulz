@@ -1288,7 +1288,7 @@ async function chatSession(): Promise<void> {
         messages.splice(0, messages.length, ...result.messages);
         await saveConversation(messages);
         if (streamAnchor) {
-          stdout.write("\u001b[u\u001b[J" + renderMarkdown(answer) + "\\n");
+          stdout.write("\u001b[u\u001b[J" + renderMarkdown(answer) + "\n");
         } else {
           console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + paint("  ·  RESPONSE", ansi.dim));
           renderAssistantMessage(answer);
