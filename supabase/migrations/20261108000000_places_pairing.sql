@@ -11,6 +11,7 @@ create table if not exists public.gulz_places (
   gulz_version text not null default 'unknown',
   active_provider text,
   active_model text,
+  provider_status text not null default 'unknown' check (provider_status in ('unknown', 'configured', 'connected', 'error')),
   status text not null default 'online' check (status in ('online', 'offline', 'revoked')),
   device_token_hash text not null unique,
   created_at timestamptz not null default now(),
