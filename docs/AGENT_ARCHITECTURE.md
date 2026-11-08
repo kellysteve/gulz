@@ -11,7 +11,7 @@ GULZ supports three distinct workspace types:
 
 - **Local workspace:** the current CLI operates on an explicitly selected local directory. Source files remain on the user's device.
 - **Remote VPS workspace:** the current initial SSH transport operates on an explicitly paired host and selected directory.
-- **GitHub cloud workspace:** planned. The user authorizes specific repositories; a short-lived isolated workspace checks out a selected branch, runs agent work, and returns a reviewable diff or pull request. GitHub is optional and must not become a prerequisite for local or VPS work.
+- **GitHub-backed local workspace:** clone or open a repository on the user's machine, then launch GULZ from that project directory. The agent edits the local checkout; Git and the user's existing GitHub authentication handle branches, commits, pushes and pull requests. Signing in to the optional hosted GULZ AI service is a separate account-authentication flow and does not grant repository access or upload project contents.\n- **Optional cloud workspace:** a future feature may allow a user to explicitly authorize a repository for an isolated hosted run. It is not the default coding-agent workflow.
 
 A cloud workspace must be isolated per user/job, resource-limited, network-restricted by default, ephemeral, and destroyed after retention expires. Repository content is untrusted input: instructions found in project files must never override the platform's safety policy or reveal credentials.
 
