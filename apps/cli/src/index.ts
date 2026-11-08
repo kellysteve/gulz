@@ -1235,9 +1235,15 @@ async function chatSession(): Promise<void> {
       const cancelTurn = () => turnController.abort();
       process.once("SIGINT", cancelTurn);
       process.once("SIGTERM", cancelTurn);
+      let streamedText = "";
+      let streamAnchor = false;
+      const finishStream = () => {
+        if (!streamAnchor) return;
+        stdout.write("\u001b[u\u001b[J" + renderMarkdown(streamedText) + "\n");
+        streamAnchor = false;
+        streamedText = "";
+      };
       try {
-        let streamedText = "";
-        let streamAnchor = false;
         const result = await runAgent({
           provider: config,
           signal: turnController.signal,
@@ -1254,6 +1260,7 @@ async function chatSession(): Promise<void> {
             stdout.write("\u001b[u\u001b[J" + renderMarkdown(streamedText));
           },
           approve: async (request) => {
+            finishStream();
             title("REVIEW THIS ACTION");
             console.log(paint(request.description, ansi.bold, ansi.white));
             label("Action", request.toolName);
@@ -1269,6 +1276,7 @@ async function chatSession(): Promise<void> {
             return ["y", "yes"].includes(answer.trim().toLowerCase());
           },
           onToolResult: async (toolName, toolResult) => {
+            finishStream();
             const output = isRecord(toolResult) && isRecord(toolResult.output) ? toolResult.output : {};
             const ok = isRecord(toolResult) && toolResult.ok === true && output.processSucceeded !== false && output.verified !== false;
             await recordAudit("agent.tool", { toolName, outcome: ok ? "succeeded" : "not_completed" });
@@ -1286,6 +1294,7 @@ async function chatSession(): Promise<void> {
           renderAssistantMessage(answer);
         }
       } catch (error) {
+        finishStream();
         const message = error instanceof Error ? error.message : String(error);
         const failureReply = "I couldn't finish that request: " + message;
         messages.push({ role: "assistant", content: failureReply });
