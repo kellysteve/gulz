@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateAgentTurn, generateChatReply, generateGoalPlan, ProviderError } from "../dist/index.js";
+import { generateAgentTurn, generateChatReply, generateGoalPlan, listProviderModels, ProviderError } from "../dist/index.js";
 
 test("rejects insecure remote provider URLs", async () => {
   await assert.rejects(
@@ -243,6 +243,37 @@ test("preserves assistant tool calls and tool results in built-in provider conve
     );
     assert.match(turn.content, /remember the workspace inspection/);
     assert.equal(turn.toolCalls.length, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+
+test("discovers live model IDs from an OpenAI-compatible provider", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    assert.equal(String(url), "https://api.example.com/v1/models");
+    assert.equal(options?.method, "GET");
+    assert.equal(new Headers(options?.headers).get("authorization"), "Bearer test-key");
+    return new Response(JSON.stringify({ data: [{ id: "deepseek-chat" }, { id: "deepseek-reasoner" }, { id: "deepseek-chat" }] }), { status: 200 });
+  };
+  try {
+    const models = await listProviderModels({ baseUrl: "https://api.example.com/v1", apiKey: "test-key", model: "deepseek-chat" });
+    assert.deepEqual(models, ["deepseek-chat", "deepseek-reasoner"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("derives model catalogue URL from a full chat-completions endpoint", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    assert.equal(String(url), "https://api.example.com/v1/models");
+    return new Response(JSON.stringify({ data: [{ id: "model-a" }] }), { status: 200 });
+  };
+  try {
+    const models = await listProviderModels({ baseUrl: "https://api.example.com/v1/chat/completions", apiKey: "test-key", model: "model-a" });
+    assert.deepEqual(models, ["model-a"]);
   } finally {
     globalThis.fetch = originalFetch;
   }
