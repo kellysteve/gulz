@@ -140,45 +140,38 @@ else
   NPM_CONFIG_PREFIX="$HOME/.local" npm run install:cli
 fi
 
-bold "5/6 · Choose your AI setup"
-printf 'Choose how GULZ should connect to AI.\n'
-printf '  1) Built-in GULZ AI (recommended)\n'
-printf '  2) Use my own AI provider\n'
-printf '  3) Set this up later\n'
+bold "5/7 · Choose your AI setup"
+printf 'GULZ supports multiple AI providers. You can add and switch providers later with /provider inside chat.\n'
+printf '  1) Add an AI provider now\n'
+printf '  2) Set this up later\n'
 while true; do
-  read -r -p "Select 1, 2 or 3 [1]: " AI_CHOICE </dev/tty || AI_CHOICE="1"
+  read -r -p "Select 1 or 2 [1]: " AI_CHOICE </dev/tty || AI_CHOICE="1"
   AI_CHOICE="${AI_CHOICE:-1}"
   case "$AI_CHOICE" in
     1)
       if [ -x "$GULZ_BIN_DIR/gulz" ]; then
-        if "$GULZ_BIN_DIR/gulz" provider builtin; then
-          "$GULZ_BIN_DIR/gulz" provider test || warn "The built-in AI settings were saved, but the connection test did not pass. Run gulz provider test after installation."
-        else
-          warn "Built-in AI setup could not be completed. Run gulz provider builtin later."
-        fi
+        "$GULZ_BIN_DIR/gulz" provider add || warn "Provider setup was not completed. Run /provider inside GULZ chat later."
       else
-        warn "GULZ command link is not available yet. Run gulz provider builtin after installation."
+        warn "GULZ command link is not available yet. Run /provider after installation."
       fi
       break
       ;;
-    2)
-      if [ -x "$GULZ_BIN_DIR/gulz" ]; then
-        if "$GULZ_BIN_DIR/gulz" provider configure; then
-          "$GULZ_BIN_DIR/gulz" provider test || warn "Your provider settings were saved, but the connection test did not pass. Run gulz provider test after installation."
-        else
-          warn "Your provider was not configured. Run gulz provider configure later."
-        fi
-      else
-        warn "GULZ command link is not available yet. Run gulz provider configure after installation."
-      fi
-      break
-      ;;
-    3) info "AI setup skipped. Run gulz provider builtin or gulz provider configure later."; break ;;
-    *) printf 'Please enter 1, 2 or 3.\n' ;;
+    2) info "AI setup skipped. Run /provider inside GULZ chat whenever you're ready."; break ;;
+    *) printf 'Please enter 1 or 2.\n' ;;
   esac
 done
 
-bold "6/6 · Verify the gulz command"
+bold "6/7 · Optional account connection"
+printf 'Sign in with GitHub at https://gulz.gaxity.com.ng/dashboard to create a one-time Place code.\n'
+printf 'GitHub sign-in is optional. You can use GULZ locally without connecting an account.\n'
+read -r -p "Enter your 8-character Place code (press Enter to skip): " PLACE_CODE </dev/tty || PLACE_CODE=""
+if [ -n "$PLACE_CODE" ] && [ -x "$GULZ_BIN_DIR/gulz" ]; then
+  "$GULZ_BIN_DIR/gulz" account connect "$PLACE_CODE" || warn "Place pairing did not complete. You can retry later with: gulz account connect <code>"
+else
+  info "Place connection skipped. You can connect later from the GULZ dashboard."
+fi
+
+bold "7/7 · Verify the gulz command"
 case ":$PATH:" in
   *":$GULZ_BIN_DIR:"*) ;;
   *)
@@ -212,4 +205,4 @@ printf 'Run: gulz\n'
 printf 'Update later: gulz update (requires a clean source checkout)\n'
 printf 'Install folder: %s\n' "$INSTALL_DIR"
 printf 'Your local GULZ data is stored separately in ~/.gulz.\n'
-printf 'GULZ provides local goal management, provider-based AI planning and supervised execution of a narrow set of local operations. Remote SSH orchestration is not included in this CLI installation.\n'
+printf 'GULZ includes a local-first coding agent, optional provider connections and supervised local/VPS tools. Account pairing is optional.\n'
