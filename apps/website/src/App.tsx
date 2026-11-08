@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 
 type Platform = "termux" | "linux" | "macos" | "windows" | "vps";
-const installCommand = "curl -fsSL https://gulz.gaxity.com.ng/install | sh";
+const installCommand = "curl -fsSL https://gulz.gaxity.com.ng/install | bash";
 const platforms: { id: Platform; name: string; detail: string; command: string; note: string }[] = [
   { id: "termux", name: "Android · Termux", detail: "Run GULZ on your phone", command: "pkg update && pkg install curl git nodejs-lts\ncurl -fsSL https://gulz.gaxity.com.ng/install | bash", note: "Install Termux from F-Droid or the official GitHub releases first. The current CLI runs inside Termux; it is not a native Android app." },
   { id: "linux", name: "Linux", detail: "Ubuntu, Debian and more", command: "curl -fsSL https://gulz.gaxity.com.ng/install | bash", note: "Requires Node.js 20.19+ and Git. Run as your normal user, not with sudo." },
