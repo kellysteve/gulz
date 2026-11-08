@@ -66,13 +66,16 @@ GULZ is a provider-independent, project-first AI coding agent with a conversatio
 
 ## Hosted GULZ AI gateway
 
-- [ ] Build a separate Cloudflare Worker service at `ai.gaxity.com.ng`; do not bundle its secrets or server code into the public CLI.
-- [ ] Add account/device authentication, short-lived access tokens, refresh/revocation and per-installation identity.
-- [ ] Store provider credentials only as server-side secrets or encrypted records with managed key rotation.
-- [ ] Add model routing, provider health/fallbacks, request limits, usage quotas, abuse controls and spend limits.
-- [ ] Never treat a public URL, client ID or obfuscated string as a secret; never ship a shared gateway master key in GULZ.
-- [ ] Provide a BYOK route so users can keep using their own provider keys without the hosted gateway.
-- [ ] Add privacy policy, data retention controls, abuse reporting and operational monitoring before public access.
+- [x] Add an OpenAI-compatible hosted AI proxy at `gulz.gaxity.com.ng/api/ai/v1/chat/completions` in the website Worker.
+- [x] Keep the upstream provider key in a Cloudflare Worker secret; no shared key is embedded in the CLI.
+- [x] Add account-based daily request quotas shared across a user's Places and a separate guest IP allowance.
+- [x] Add an account usage endpoint and show daily remaining requests in the website dashboard.
+- [x] Use the per-Place credential for account metering when a Place is paired; allow guest use without GitHub sign-in.
+- [ ] Configure the upstream AI provider key and model in the deployed Worker.
+- [ ] Apply the AI usage migration and run load, quota-boundary, streaming and provider-failure tests.
+- [ ] Add model routing, provider health/fallbacks, token-based accounting, spend controls and operational alerts.
+- [ ] Add privacy policy, data retention controls and abuse reporting before public access.
+- [ ] Verify account and guest quota enforcement against concurrent requests and multiple Places.
 
 ## Tools and integrations
 
