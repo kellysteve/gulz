@@ -838,15 +838,17 @@ async function updateInstallation(): Promise<void> {
         const cliEntry = join(installDirectory, "apps", "cli", "dist", "index.js");
         const configured = spawnSync(process.execPath, [cliEntry, "provider", action], { stdio: "inherit", env: updateEnv });
         if (configured.error) throw configured.error;
-        if (configured.status !== 0) throw new Error("The source update succeeded, but AI provider setup did not finish.");
+        if (configured.status !== 0) throw new Error("The GULZ installation succeeded, but AI provider setup did not finish.");
         const tested = spawnSync(process.execPath, [cliEntry, "provider", "test"], { stdio: "inherit", env: updateEnv });
         if (tested.error) throw tested.error;
-        if (tested.status !== 0) warning("The source update succeeded, but the AI connection test did not pass. You can retry with gulz provider test.");
+        if (tested.status !== 0) warning("The GULZ installation succeeded, but the AI connection test did not pass. You can retry with gulz provider test.");
       } else if (choice.trim() !== "3") {
         warning("No provider changes were made. Your existing settings were preserved.");
       }
     }
-    console.log(installedFallback\n      ? "\nGULZ fallback completed. You are using the previous version. Try updating again after the latest release is fixed."\n      : "\nGULZ update completed. Close this session and run gulz again to use the updated CLI.");
+    console.log(installedFallback
+      ? "\nGULZ fallback completed. You are using the previous version. Try updating again after the latest release is fixed."
+      : "\nGULZ update completed. Close this session and run gulz again to use the updated CLI.");
   });
 }
 
