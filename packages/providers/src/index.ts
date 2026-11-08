@@ -349,9 +349,14 @@ export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, 
     let response: Response;
     if (endpoint.builtin) {
       const url = new URL(endpoint.url);
-      url.searchParams.set("q", system + "\n\nAvailable tools (JSON schemas):\n" + JSON.stringify(tools) +
-        "\n\nConversation:\n" + safeMessages.map((item) => item.role.toUpperCase() + ": " + item.content).join("\n") +
-        "\n\nIf a tool is needed, return ONLY JSON: {\"tool_calls\":[{\"id\":\"call_1\",\"name\":\"tool_name\",\"arguments\":{}}]}. Otherwise return a natural-language answer.");
+            const conversation = safeMessages.map((item) => {
+        if (item.role === "assistant" && Array.isArray(item.tool_calls)) return "ASSISTANT TOOL CALLS: " + JSON.stringify(item.tool_calls);
+        if (item.role === "tool") return "TOOL RESULT (" + String(item.tool_call_id ?? "unknown") + "): " + item.content;
+        return item.role.toUpperCase() + ": " + item.content;
+      }).join("\\n");
+      url.searchParams.set("q", system + "\\n\\nAvailable tools (JSON schemas):\\n" + JSON.stringify(tools) +
+        "\\n\\nConversation:\\n" + conversation +
+        "\\n\\nIf a tool is needed, return ONLY JSON: {\\\"tool_calls\\\":[{\\\"id\\\":\\\"call_1\\\",\\\"name\\\":\\\"tool_name\\\",\\\"arguments\\\":{}}]}. Otherwise return a natural-language answer.");
       url.searchParams.set("apikey", apiKey);
       response = await fetch(url, { method: "GET", headers: { "Accept": "application/json" }, signal: controller.signal });
     } else {
