@@ -782,43 +782,25 @@ async function updateInstallation(): Promise<void> {
     const pulled = spawnSync("git", ["pull", "--ff-only"], { cwd: installDirectory, stdio: "inherit", env: updateEnv });
     if (pulled.error) throw pulled.error;
     if (pulled.status !== 0) throw new Error("GULZ could not download the latest source. Your previous installation was not intentionally replaced.");
+    const latestCommit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: installDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    if (latestCommit.error) throw latestCommit.error;
+    if (latestCommit.status !== 0 || !/^[a-f0-9]{40,64}$/i.test(latestCommit.stdout.trim())) {
+      throw new Error("Unable to identify the downloaded GULZ version.");
+    }
 
     console.log("\n$ " + npm + " run install:cli");
-    const latestBuild = spawnSync(npm, ["run", "install:cli"], {
+    const installation = spawnSync(npm, ["run", "install:cli"], {
       cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: updateEnv,
     });
-    if (latestBuild.error) throw latestBuild.error;
-    let installedFallback = false;
-    if (latestBuild.status !== 0) {
-      const fallbackRl = createInterface({ input: stdin, output: stdout });
-      let fallbackAnswer = "";
-      try {
-        console.log("\n" + paint("The latest GULZ version could not be built.", ansi.yellow, ansi.bold));
-        console.log("The previously installed commit " + previousCommit.stdout.trim().slice(0, 12) + " is available as a fallback.");
-        fallbackAnswer = await fallbackRl.question("Restore and rebuild the previous version instead? (y/N): ");
-      } finally { fallbackRl.close(); }
-      if (!["y", "yes"].includes(fallbackAnswer.trim().toLowerCase())) {
-        throw new Error("Latest version failed to build and fallback was declined. No older version was installed. Review the build error before retrying.");
-      }
-      console.log("\nRestoring the previously installed GULZ source...");
-      const restored = spawnSync("git", ["reset", "--hard", previousCommit.stdout.trim()], {
-        cwd: installDirectory, stdio: "inherit", env: updateEnv,
-      });
-      if (restored.error) throw restored.error;
-      if (restored.status !== 0) throw new Error("Could not restore the previous GULZ source commit. Stop here and inspect the checkout before retrying.");
-      console.log("\nRebuilding the previous version...");
-      const fallbackBuild = spawnSync(npm, ["run", "install:cli"], {
-        cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: updateEnv,
-      });
-      if (fallbackBuild.error) throw fallbackBuild.error;
-      if (fallbackBuild.status !== 0) {
-        throw new Error("Both the latest version and the previous version failed to build. The source checkout has been restored to the previous commit; inspect the second build error before retrying.");
-      }
-      installedFallback = true;
-      warning("The latest version was not installed. GULZ has been restored to the previously installed version.");
-    } else {
-      success("GULZ source updated and rebuilt.");
+    if (installation.error) throw installation.error;
+    if (installation.status !== 0) {
+      throw new Error("GULZ could not install the downloaded version. Review the build output and retry after the issue is fixed.");
     }
+    const installedCommit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: installDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    if (installedCommit.error) throw installedCommit.error;
+    const installedFallback = installedCommit.status === 0 && installedCommit.stdout.trim() === previousCommit.stdout.trim();
+    if (installedFallback) warning("The latest version failed its build. The installer restored and rebuilt your previous version instead.");
+    else success("GULZ source updated and rebuilt.");
 
     const setupRl = createInterface({ input: stdin, output: stdout });
     let changeProvider = "";
