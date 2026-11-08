@@ -32,15 +32,18 @@ begin
   values (p_identity_hash, current_date, 1)
   on conflict (identity_hash, usage_date)
   do update set
-    requests = case
-      when usage.requests < p_daily_limit
-      then usage.requests + 1
-      else usage.requests
-    end,
+    requests = usage.requests + 1,
     updated_at = now()
+  where usage.requests < p_daily_limit
   returning requests into used;
 
-  allowed := used <= p_daily_limit;
+  allowed := found;
+  if not allowed then
+    select requests into used
+    from public.gulz_ai_usage_daily
+    where identity_hash = p_identity_hash
+      and usage_date = current_date;
+  end if;
   return jsonb_build_object(
     'allowed', allowed,
     'used', used,
