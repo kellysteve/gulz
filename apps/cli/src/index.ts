@@ -772,12 +772,12 @@ async function updateInstallation(): Promise<void> {
     const npm = process.platform === "win32" ? "npm.cmd" : "npm";
     const updateEnv: NodeJS.ProcessEnv = { ...process.env };
     if (process.platform !== "win32") updateEnv.NPM_CONFIG_PREFIX = process.env.PREFIX?.includes("com.termux") ? process.env.PREFIX : join(homedir(), ".local");
-    updateEnv.GULZ_PREVIOUS_COMMIT = previousCommit.stdout.trim();
     const previousCommit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: installDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
     if (previousCommit.error) throw previousCommit.error;
     if (previousCommit.status !== 0 || !/^[a-f0-9]{40,64}$/i.test(previousCommit.stdout.trim())) {
       throw new Error("Unable to record the currently installed GULZ version. Update cancelled before changing source.");
     }
+    updateEnv.GULZ_PREVIOUS_COMMIT = previousCommit.stdout.trim();
     console.log("\n$ git pull --ff-only");
     const pulled = spawnSync("git", ["pull", "--ff-only"], { cwd: installDirectory, stdio: "inherit", env: updateEnv });
     if (pulled.error) throw pulled.error;
