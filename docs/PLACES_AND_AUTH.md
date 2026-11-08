@@ -19,7 +19,7 @@ GitHub identity is separate from GitHub repository access. The account flow does
 1. Create or select the Supabase project for GULZ.
 2. In **Authentication → Providers → GitHub**, enable GitHub and configure the GitHub OAuth App using the callback URL displayed by Supabase.
 3. Set the Supabase Site URL to `https://gulz.gaxity.com.ng` and add `https://gulz.gaxity.com.ng/dashboard` to allowed redirect URLs.
-4. Apply `supabase/migrations/20261108000000_places_pairing.sql` to the project. The tables have RLS enabled and no browser policies; the Worker uses the service-role key.
+4. Apply both `supabase/migrations/20261108000000_places_pairing.sql` and `supabase/migrations/20261108010000_gulz_ai_usage.sql` to the project. The tables have RLS enabled and no browser policies; the Worker uses the service-role key.
 5. Configure website build variables:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
@@ -27,6 +27,11 @@ GitHub identity is separate from GitHub repository access. The account flow does
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - `GULZ_AI_API_KEY` (the upstream hosted-model key; never expose it to the browser or CLI)
+   - Optional `GULZ_AI_BASE_URL` (full HTTPS chat-completions URL)
+   - Optional `GULZ_AI_MODEL` (default `openai/gpt-4o-mini`)
+   - Optional `GULZ_AI_ACCOUNT_DAILY_LIMIT` (default 20)
+   - Optional `GULZ_AI_GUEST_DAILY_LIMIT` (default 5)
 
 Example secret setup from the repository root:
 
@@ -36,7 +41,7 @@ npx wrangler secret put SUPABASE_ANON_KEY --config apps/website/wrangler.toml
 npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config apps/website/wrangler.toml
 ```
 
-The GitHub OAuth client secret belongs in Supabase Auth provider configuration, not in the browser or public repository.
+The GitHub OAuth client secret belongs in Supabase Auth provider configuration, not in the browser or public repository. The hosted model key belongs only in the Cloudflare Worker secret `GULZ_AI_API_KEY`.
 
 ## API
 
@@ -45,8 +50,16 @@ The GitHub OAuth client secret belongs in Supabase Auth provider configuration, 
 - `GET /api/places` — requires a Supabase access token; lists only the signed-in user's active Places.
 - `POST /api/places/heartbeat` — requires a Place token; updates last-seen and non-secret provider/model metadata.
 - `POST /api/places/revoke` — requires a Supabase access token; revokes one Place owned by that user.
+- `POST /api/ai/v1/chat/completions` — OpenAI-compatible hosted GULZ AI proxy. Guest requests are limited by hashed Cloudflare client IP; paired Places are metered against their account.
+- `GET /api/ai/usage` — requires a Supabase access token; returns the signed-in account daily request allowance.
 
 All account and Place API responses are marked `Cache-Control: no-store`. Pairing codes and device tokens are hashed before storage. The Worker must be deployed only with the service-role secret configured.
+
+## Hosted GULZ AI quotas
+
+The Worker proxies requests to the configured upstream model without exposing its API key. The default limits are 20 requests per account per UTC day and 5 requests per guest client IP per UTC day. Account usage is shared across all Places connected to that account. The quota function increments requests atomically in Supabase. Failed upstream requests currently consume a request allowance; usage counts requests, not tokens or monetary spend. These are source defaults and must be load-tested and adjusted before public launch.
+
+The CLI can select **GULZ AI (hosted)** from `/provider`. When the Place is paired, the CLI automatically uses its per-Place credential for account metering; otherwise it uses the guest allowance. No upstream provider key is stored on the user's machine.
 
 ## Local provider settings
 
