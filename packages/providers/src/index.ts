@@ -180,7 +180,7 @@ export async function generateChatReply(
       const url = new URL(endpoint.url);
       url.searchParams.set("q", system + "\n\nConversation:\n" + bounded.map((item) => item.role.toUpperCase() + ": " + item.content).join("\n"));
       url.searchParams.set("apikey", apiKey);
-      response = await fetch(url, { method: "GET", headers: { "Accept": "application/json" }, signal: controller.signal });
+      response = await fetch(url, { method: "GET", headers: { "Accept": onContentDelta ? "text/event-stream, application/json" : "application/json" }, signal: controller.signal });
     } else {
       response = await fetch(endpoint.url, {
         method: "POST",
@@ -386,6 +386,68 @@ async function readAgentStream(response: Response, onContentDelta?: (delta: stri
   return { choices: [{ message: { content, tool_calls: [...calls.entries()].sort((a, b) => a[0] - b[0]).map(([, call]) => call) }, finish_reason: finishReason }] };
 }
 
+async function readBuiltinAgentResponse(response: Response, onContentDelta?: (delta: string) => void): Promise<unknown> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("text/event-stream") || !response.body) {
+    const raw = await response.text();
+    if (raw.length > 1_000_000) throw new ProviderError("AI provider response exceeded the 1 MB safety limit.");
+    let payload: unknown;
+    try { payload = JSON.parse(raw); } catch { throw new ProviderError("Built-in GULZ AI returned invalid response JSON."); }
+    if (onContentDelta && isRecord(payload) && typeof payload.response === "string") {
+      if (payload.response.length > 32000) throw new ProviderError("AI response exceeded the 32,000-character limit.");
+      onContentDelta(payload.response);
+    }
+    return payload;
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let content = "";
+  let total = 0;
+  const consume = (line: string) => {
+    if (!line.startsWith("data:")) return;
+    const data = line.slice(5).trim();
+    if (!data || data === "[DONE]") return;
+    let payload: unknown;
+    try { payload = JSON.parse(data); } catch { payload = { delta: data }; }
+    if (!isRecord(payload)) return;
+    if (typeof payload.error === "string") throw new ProviderError("Built-in GULZ AI streaming error: " + payload.error.slice(0, 500));
+    let chunk = typeof payload.delta === "string" ? payload.delta : typeof payload.response === "string" ? payload.response : "";
+    if (!chunk && Array.isArray(payload.choices)) {
+      const choice = payload.choices[0];
+      if (isRecord(choice)) {
+        const delta = isRecord(choice.delta) ? choice.delta : {};
+        const message = isRecord(choice.message) ? choice.message : {};
+        chunk = typeof delta.content === "string" ? delta.content : typeof message.content === "string" ? message.content : "";
+      }
+    }
+    if (!chunk) return;
+    if (typeof payload.response === "string" && payload.response.startsWith(content)) chunk = payload.response.slice(content.length);
+    content += chunk;
+    if (content.length > 32000) throw new ProviderError("AI response exceeded the 32,000-character limit.");
+    if (chunk) onContentDelta?.(chunk);
+  };
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > 1_000_000) throw new ProviderError("AI provider response exceeded the 1 MB safety limit.");
+      buffer += decoder.decode(value, { stream: true });
+      let newline = buffer.indexOf("\n");
+      while (newline >= 0) {
+        consume(buffer.slice(0, newline).replace(/\r$/, ""));
+        buffer = buffer.slice(newline + 1);
+        newline = buffer.indexOf("\n");
+      }
+    }
+    buffer += decoder.decode();
+    if (buffer.trim()) consume(buffer.replace(/\r$/, ""));
+  } finally { reader.releaseLock(); }
+  if (!content) throw new ProviderError("Built-in GULZ AI returned an empty streaming response.");
+  return { success: true, response: content };
+}
+
 /** Requests one tool-capable turn. Model tool calls are untrusted proposals, never authorization. */
 export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, messages: ProviderAgentMessage[], tools: ProviderAgentToolDefinition[], onContentDelta?: (delta: string) => void): Promise<ProviderAgentTurn> {
   if (!config || typeof config !== "object") throw new ProviderError("Provider configuration is required.");
@@ -443,7 +505,7 @@ export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, 
       });
     }
     if (!response.ok) throw new ProviderError("AI agent request failed with HTTP " + response.status + ". Check whether this model supports tool calling.");
-    const payload = endpoint.builtin ? await response.json() as unknown : await readAgentStream(response, onContentDelta);
+    const payload = endpoint.builtin ? await readBuiltinAgentResponse(response, onContentDelta) : await readAgentStream(response, onContentDelta);
     let rawMessage: unknown;
     if (endpoint.builtin) {
       if (!isRecord(payload) || payload.success === false || typeof payload.response !== "string") throw new ProviderError("Built-in GULZ AI returned an invalid agent response.");
