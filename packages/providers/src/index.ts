@@ -455,6 +455,7 @@ export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, 
     }
     if (!isRecord(rawMessage)) throw new ProviderError("AI provider returned an invalid assistant turn.");
     const content = typeof rawMessage.content === "string" ? rawMessage.content.trim() : "";
+    if (endpoint.builtin && content) onContentDelta?.(content);
     const rawCalls = Array.isArray(rawMessage.tool_calls) ? rawMessage.tool_calls : [];
     if (rawCalls.length > 8) throw new ProviderError("The AI requested more than 8 tools in one turn.");
     const allowedNames = new Set(tools.map((tool) => tool.name));
