@@ -114,7 +114,7 @@ function App() {
               {loadingPlaces ? <p>Loading your Places…</p> : places.length === 0 ? <section className="empty-places"><Laptop size={28}/><h3>No Places connected yet</h3><p>Connect GULZ from Termux, your computer or a VPS to see it here.</p></section> : (
                 <section className="places-grid">{places.map((place) => <article className="place-card" key={place.id}>
                   <div className="place-card-top"><div><h3>{place.place_name}</h3><small>{place.platform} · {place.architecture}</small></div><span className={place.status === "online" ? "place-online" : "place-offline"}>{place.status}</span></div>
-                  <div className="place-details"><span>GULZ version</span><b>{place.gulz_version}</b><span>AI provider</span><b>{place.active_provider || "Not reported"}</b><span>Active model</span><b>{place.active_model || "Not reported"}</b><span>Last seen</span><b>{new Date(place.last_seen_at).toLocaleString()}</b></div>
+                  <div className="place-details"><span>GULZ version</span><b>{place.gulz_version}</b><span>AI provider</span><b>{place.active_provider || "Not reported"}</b><span>Active model</span><b>{place.active_model || "Not reported"}</b><span>Provider status</span><b>{place.provider_status || "Unknown"}</b><span>Last seen</span><b>{new Date(place.last_seen_at).toLocaleString()}</b></div>
                   <button className="disconnect-button" onClick={() => void disconnectPlace(place.id)}>Disconnect Place</button>
                 </article>)}</section>
               )}
