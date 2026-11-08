@@ -1152,6 +1152,28 @@ async function runRemoteAgentStdio(): Promise<void> {
 }
 
 
+function quickChatHelpReply(input: string): string | null {
+  const value = input.trim().toLowerCase().replace(/[?!.,]+$/g, "");
+  if (/^(\/help|\/commands|help|commands|show commands)$/.test(value)) {
+    return [
+      "Here are the chat commands:",
+      "- /help or /commands — show this guide",
+      "- /clear — clear the saved conversation",
+      "- /exit or /quit — leave GULZ chat",
+      "",
+      "You can also ask questions normally. GULZ only asks for approval when it is about to perform an action that needs permission.",
+    ].join("\n");
+  }
+  if (/(how|where|what).*(exit|leave|quit).*(chat|gulz)?/.test(value) ||
+      /^(\/exit|\/quit|exit|quit|leave chat)$/.test(value)) {
+    return "To leave this chat, type /exit or /quit and press Enter. Your saved conversation will remain available the next time you open GULZ.";
+  }
+  if (/(how|where|what).*(clear|delete).*(chat|conversation|history)/.test(value)) {
+    return "Type /clear and press Enter to clear the saved conversation. This is a built-in chat command; it does not need an AI action or approval.";
+  }
+  return null;
+}
+
 async function chatSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) throw new Error("GULZ chat requires an interactive terminal.");
   const config = await readProviderConfig();
@@ -1171,7 +1193,7 @@ async function chatSession(): Promise<void> {
     console.log(paint("Your terminal, projects and connected VPSs—one conversation.", ansi.dim));
     console.log(paint("Local workspace: ", ansi.dim) + paint(process.cwd(), ansi.cyan));
     console.log(paint("Connected VPSs: ", ansi.dim) + paint(String(remoteEnvironments.length), ansi.cyan));
-    console.log(paint("Ask naturally. Use /clear to erase history or /exit to leave.", ansi.dim));
+    console.log(paint("Ask naturally. /help for commands · /clear for history · /exit to leave.", ansi.dim));
     const messages = await readConversation();
     if (messages.length) {
       for (const message of messages.filter((item) => item.role !== "tool" && !(item.role === "assistant" && item.toolCalls?.length)).slice(-12)) {
@@ -1185,17 +1207,26 @@ async function chatSession(): Promise<void> {
       const input = (await rl.question("\n" + paint("YOU  ", ansi.green, ansi.bold) + paint("› ", ansi.green))).trim();
       if (!input) continue;
       if (input.toLowerCase() === "/exit" || input.toLowerCase() === "/quit") break;
+      if (input.toLowerCase() === "/help" || input.toLowerCase() === "/commands") {
+        renderAssistantMessage(quickChatHelpReply("/help")!);
+        continue;
+      }
       if (input.toLowerCase() === "/clear") {
-        const confirmation = await rl.question("Clear the saved conversation? (y/N): ");
-        if (["y", "yes"].includes(confirmation.trim().toLowerCase())) {
-          messages.length = 0;
-          await saveConversation(messages);
-          success("Conversation cleared.");
-        }
+        messages.length = 0;
+        await saveConversation(messages);
+        success("Conversation cleared.");
         continue;
       }
       if (input.length > 8000) {
         warning("That message is too long. Keep each message under 8,000 characters.");
+        continue;
+      }
+      const quickReply = quickChatHelpReply(input);
+      if (quickReply) {
+        messages.push({ role: "user", content: input }, { role: "assistant", content: quickReply });
+        await saveConversation(messages);
+        console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + paint("  ·  RESPONSE", ansi.dim));
+        renderAssistantMessage(quickReply);
         continue;
       }
       messages.push({ role: "user", content: input });
@@ -1205,11 +1236,23 @@ async function chatSession(): Promise<void> {
       process.once("SIGINT", cancelTurn);
       process.once("SIGTERM", cancelTurn);
       try {
+        let streamedText = "";
+        let streamAnchor = false;
         const result = await runAgent({
           provider: config,
           signal: turnController.signal,
           messages: messages.slice(-30),
           tools: agentTools,
+          onContentDelta: (delta) => {
+            if (!delta) return;
+            if (!streamAnchor) {
+              console.log("\\n" + paint("GULZ", ansi.cyan, ansi.bold) + paint("  ·  RESPONSE", ansi.dim));
+              stdout.write("\\u001b[s");
+              streamAnchor = true;
+            }
+            streamedText += delta;
+            stdout.write("\\u001b[u\\u001b[J" + renderMarkdown(streamedText));
+          },
           approve: async (request) => {
             title("REVIEW THIS ACTION");
             console.log(paint(request.description, ansi.bold, ansi.white));
@@ -1236,8 +1279,12 @@ async function chatSession(): Promise<void> {
         const answer = result.reply || "The requested tool operations finished, but the AI did not provide a final explanation.";
         messages.splice(0, messages.length, ...result.messages);
         await saveConversation(messages);
-        console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + paint("  ·  RESPONSE", ansi.dim));
-        renderAssistantMessage(answer);
+        if (streamAnchor) {
+          stdout.write("\\u001b[u\\u001b[J" + renderMarkdown(answer) + "\\n");
+        } else {
+          console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + paint("  ·  RESPONSE", ansi.dim));
+          renderAssistantMessage(answer);
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const failureReply = "I couldn't finish that request: " + message;
