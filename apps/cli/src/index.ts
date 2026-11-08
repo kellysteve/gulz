@@ -545,7 +545,7 @@ async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<
 async function runProviderConnectionTest():Promise<void>{
  const config=await readProviderConfig();if(!config){warning("No active provider. Add one with /provider.");return;}
  title("AI CONNECTION CHECK");
- try { const turn=await generateAgentTurn({...config,toolChoice:"required"},[{role:"user",content:"Call the gulz_connection_check tool exactly once with an empty object. Do not execute any real-world action."}],[{name:"gulz_connection_check",description:"Harmless tool-calling capability check. Never execute it.",parameters:{type:"object",properties:{},additionalProperties:false}}]); success("Provider responded.");label("Tool calling",turn.toolCalls.some(c=>c.name==="gulz_connection_check"&&Object.keys(c.arguments).length===0)?"Supported":"Not confirmed");await heartbeatPlace("connected"); } catch(error) { await heartbeatPlace("error"); failure(error instanceof Error?error.message:"Provider test failed."); }
+ try { const turn=await generateAgentTurn({...config,toolChoice:"required"},[{role:"user",content:"Call the gulz_connection_check tool exactly once with an empty object. Do not execute any real-world action."}],[{name:"gulz_connection_check",description:"Harmless tool-calling capability check. Never execute it.",parameters:{type:"object",properties:{},additionalProperties:false}}]); success("Provider responded.");label("Tool calling",turn.toolCalls.some(c=>c.name==="gulz_connection_check"&&Object.keys(c.arguments).length===0)?"Supported":"Not confirmed");await heartbeatPlace("connected");await showHostedAiUsage(config); } catch(error) { await heartbeatPlace("error"); failure(error instanceof Error?error.message:"Provider test failed."); }
 }
 
 
@@ -591,6 +591,22 @@ async function connectPlace(code: string): Promise<void> {
   success("This installation is now connected as a GULZ Place.");
   console.log("Manage it at " + controlUrl + "/dashboard");
 }
+async function showHostedAiUsage(config: StoredProviderConfig): Promise<void> {
+  try {
+    const endpoint = new URL(config.baseUrl);
+    if (endpoint.hostname !== "gulz.gaxity.com.ng" || endpoint.pathname.replace(/\/$/, "") !== "/api/ai/v1") return;
+    const response = await fetch(endpoint.origin + "/api/ai/usage", {
+      headers: { Authorization: "Bearer " + config.apiKey, Accept: "application/json" },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!response.ok) return;
+    const usage = await response.json() as { used?: number; limit?: number; remaining?: number; tier?: string };
+    if (typeof usage.remaining === "number" && typeof usage.limit === "number") {
+      label("Daily GULZ AI allowance", usage.remaining + " of " + usage.limit + " requests remaining" + (usage.tier ? " · " + usage.tier : ""));
+    }
+  } catch { /* Usage display must never block local work or chat. */ }
+}
+
 async function heartbeatPlace(providerStatus?: "configured" | "connected" | "error" | "unknown"): Promise<void> {
   const place = await readPlaceCredentials();
   if (!place) return;
@@ -1778,6 +1794,7 @@ async function main(): Promise<void> {
       label("Provider", isBuiltin ? "Built-in GULZ AI" : new URL(config.baseUrl).host);
       label("Model", config.model);
       label("API key", "Stored privately; value hidden");
+      await showHostedAiUsage(config);
       return;
     }
     if (action === "configure") {
