@@ -5,7 +5,7 @@
 GULZ is a provider-independent AI agent. The selected model supplies reasoning; GULZ owns resource access, tool execution, authorization, persistence and verification. A model never receives direct machine credentials and never authorizes its own proposed actions.
 The user experience is conversation-first. Internal plans, operation records and checkpoints are implementation details, not required concepts for everyday users.
 
-## Runtime components
+## Coding-agent workspace model\n\nGULZ supports three distinct workspace types:\n\n- **Local workspace:** the current CLI operates on an explicitly selected local directory. Source files remain on the user's device.\n- **Remote VPS workspace:** the current initial SSH transport operates on an explicitly paired host and selected directory.\n- **GitHub cloud workspace:** planned. The user authorizes specific repositories; a short-lived isolated workspace checks out a selected branch, runs agent work, and returns a reviewable diff or pull request. GitHub is optional and must not become a prerequisite for local or VPS work.\n\nA cloud workspace must be isolated per user/job, resource-limited, network-restricted by default, ephemeral, and destroyed after retention expires. Repository content is untrusted input: instructions found in project files must never override the platform's safety policy or reveal credentials.\n\n## Runtime components
 
 1. **AI Assistant** — conversation history, user intent and final explanations.
 2. **Agent Engine** — bounded tool-calling loop, tool registry, cancellation and result handoff.
@@ -55,7 +55,7 @@ Remote connection requirements before release:
 
 The current OpenSSH transport and remote stdio protocol are implemented in source. They are not a long-running public daemon: each tool call opens a fresh SSH process. Host-key verification, workspace scoping and a second remote-side approval check are implemented; full remote provisioning workflows and real VPS integration tests remain outstanding.
 
-## Provider and secret boundary
+## Hosted AI gateway boundary\n\nA future GULZ-hosted model service is a separate server-side product, planned for `ai.gaxity.com.ng`. It must not be implemented as a shared API key embedded in the open-source CLI. The gateway will authenticate users/devices, issue revocable short-lived tokens, enforce quotas and model access policy, and keep upstream provider credentials in server-side secret storage. Public client IDs and endpoint URLs are identifiers, not secrets. The client must remain usable with a user-supplied provider key or local model if the hosted service is unavailable.\n\n## Provider and secret boundary
 
 Provider keys are used only by the provider adapter. SSH credentials and future remote pairing tokens belong in a dedicated local secret store and are never included in prompts, tool schemas or tool results. Current provider configuration is still a local JSON file protected by owner-only filesystem permissions; encryption or OS-backed secret storage remains a hardening requirement.
 
