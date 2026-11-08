@@ -1420,6 +1420,8 @@ async function chatSession(): Promise<void> {
     ...remoteEnvironments.flatMap((item) => createRemoteAgentTools(remoteTransport, item.name)),
   ];
   const rl = createInterface({ input: stdin, output: stdout });
+  const placeHeartbeat = setInterval(() => { void heartbeatPlace(); }, 2 * 60 * 1000);
+  placeHeartbeat.unref();
   try {
     title("GULZ AI  ·  WORKSPACE ASSISTANT");
     console.log(paint("Your terminal, projects and connected VPSs—one conversation.", ansi.dim));
@@ -1555,6 +1557,7 @@ async function chatSession(): Promise<void> {
       }
     }
   } finally {
+    clearInterval(placeHeartbeat);
     rl.close();
   }
 }
