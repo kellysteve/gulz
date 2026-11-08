@@ -236,7 +236,7 @@ test("preserves assistant tool calls and tool results in built-in provider conve
       [
         { role: "user", content: "Inspect the workspace." },
         { role: "assistant", content: "", toolCalls: [{ id: "call_previous", name: "inspect_environment", arguments: {} }] },
-        { role: "tool", toolCallId: "call_previous", content: "{\\"ok\\":true}" },
+        { role: "tool", toolCallId: "call_previous", content: "workspace checked" },
         { role: "assistant", content: "The workspace was checked." },
       ],
       [{ name: "inspect_environment", description: "Inspect environment", parameters: { type: "object", properties: {}, additionalProperties: false } }],
