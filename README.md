@@ -53,7 +53,13 @@ gulz chat
 
 Omit the workspace argument to use the remote SSH user's starting directory. You can also use an SSH config alias instead of user@host. GULZ requires strict host-key verification, reuses your SSH config/agent and does not store private keys or passwords. The remote agent is invoked on demand for each tool call. The current remote tool set can inspect the selected workspace, read non-secret files, make approved changes and run approved programs. Full API/website hosting workflows and real-host integration tests are still in development. See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the complete procedure.
 
-## Coding-agent direction\n\nGULZ is being upgraded around a project-first coding-agent workflow inspired by the usability of modern terminal coding agents, while retaining local-first Termux and VPS execution. Local folders remain first-class; GitHub-connected repositories will be an optional cloud workspace, not a requirement to upload source code. GitHub OAuth, isolated cloud workspaces and pull-request automation are not yet implemented.\n\nThe optional GULZ AI service is planned at `ai.gaxity.com.ng`, separate from this public repository. Provider credentials must remain server-side; the public CLI must never contain a shared master key. Each client will use revocable, scoped credentials and quotas. Until the gateway is deployed, users should configure their own provider.\n\n## Product architecture
+## Coding-agent direction
+
+GULZ is being upgraded around a project-first coding-agent workflow inspired by the usability of modern terminal coding agents, while retaining local-first Termux and VPS execution. Local folders remain first-class; GitHub-connected repositories will be an optional cloud workspace, not a requirement to upload source code. GitHub OAuth, isolated cloud workspaces and pull-request automation are not yet implemented.
+
+The optional GULZ AI service is planned at `ai.gaxity.com.ng`, separate from this public repository. Provider credentials must remain server-side; the public CLI must never contain a shared master key. Each client will use revocable, scoped credentials and quotas. Until the gateway is deployed, users should configure their own provider.
+
+## Product architecture
 
 - **AI Assistant:** natural conversation, context and final explanations.
 - **Agent Engine:** bounded model/tool loop, tool registry, cancellation and result handoff.
