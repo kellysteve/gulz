@@ -57,7 +57,7 @@ Omit the workspace argument to use the remote SSH user's starting directory. You
 
 GULZ is being upgraded around a project-first coding-agent workflow inspired by the usability of modern terminal coding agents, while retaining local-first Termux and VPS execution. Local folders remain first-class; GitHub-connected repositories will be an optional cloud workspace, not a requirement to upload source code. Optional GitHub sign-in and account-linked Places pairing are implemented in source on the development branch. See [docs/PLACES_AND_AUTH.md](docs/PLACES_AND_AUTH.md) for Supabase and Cloudflare setup. GitHub repository access remains separate from account sign-in. Isolated cloud workspaces and automated pull-request workflows are not yet implemented.
 
-The optional GULZ AI service is planned at `ai.gaxity.com.ng`, separate from this public repository. Provider credentials must remain server-side; the public CLI must never contain a shared master key. Each client will use revocable, scoped credentials and quotas. Until the gateway is deployed, users should configure their own provider.
+The hosted GULZ AI proxy is implemented in the website Worker at `gulz.gaxity.com.ng/api/ai/v1`, with request-count quotas for guests and paired Places. The upstream model key remains a Cloudflare Worker secret; the public CLI contains no shared provider key. The service is not live until both Supabase migrations and the Worker secrets are configured. See [docs/PLACES_AND_AUTH.md](docs/PLACES_AND_AUTH.md).
 
 ## Product architecture
 
