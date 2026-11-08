@@ -732,6 +732,14 @@ async function doctor(): Promise<boolean> {
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
+    try {
+      const history = await readConversation();
+      success("Saved conversation is valid · " + history.length + " messages");
+    } catch (error) {
+      failure("Saved conversation could not be loaded");
+      console.error(error instanceof Error ? error.message : String(error));
+      ok = false;
+    }
     return ok;
   } catch (error) {
     failure("Local storage is unavailable");
