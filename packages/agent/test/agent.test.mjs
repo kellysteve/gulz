@@ -239,3 +239,32 @@ test("history trimming starts at a user message instead of an orphaned tool resu
     assert.equal(conversationMessages[0]?.content, "Recent request.");
   } finally { globalThis.fetch = originalFetch; }
 });
+
+
+test("forwards streamed assistant text deltas to the chat caller", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, options) => {
+    const body = JSON.parse(String(options?.body));
+    assert.equal(body.stream, true);
+    const events = [
+      { choices: [{ delta: { content: "Streaming " } }] },
+      { choices: [{ delta: { content: "works." } }] },
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+    ];
+    return new Response(events.map((event) => "data: " + JSON.stringify(event)).join("\n") + "\ndata: [DONE]\n", {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream" },
+    });
+  };
+  const chunks = [];
+  try {
+    const result = await runAgent({
+      provider: { baseUrl: "https://provider.example/v1", apiKey: "test", model: "tool-model" },
+      messages: [{ role: "user", content: "Say streaming works." }],
+      tools: createLocalAgentTools(process.cwd()),
+      onContentDelta: (delta) => chunks.push(delta),
+    });
+    assert.deepEqual(chunks, ["Streaming ", "works."]);
+    assert.equal(result.reply, "Streaming works.");
+  } finally { globalThis.fetch = originalFetch; }
+});
