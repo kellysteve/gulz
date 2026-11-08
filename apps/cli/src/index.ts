@@ -224,7 +224,7 @@ function help(): void {
     "  account connect <code> Pair this installation with your GULZ account",
     "  account status       Show this Place connection",
     "  account disconnect  Remove this installation's Place credential",
-    "  provider builtin      Use the legacy built-in provider",
+    "  provider builtin      Select hosted GULZ AI (guest or account allowance)",
     "  provider configure    Configure a custom compatible API",
     "  chat                  Open a continuous AI conversation with GULZ",
     "  remote list           List saved VPS connections",
