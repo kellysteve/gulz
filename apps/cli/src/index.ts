@@ -531,7 +531,7 @@ async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<
 async function runProviderConnectionTest():Promise<void>{
  const config=await readProviderConfig();if(!config){warning("No active provider. Add one with /provider.");return;}
  title("AI CONNECTION CHECK");
- try { const turn=await generateAgentTurn({...config,toolChoice:"required"},[{role:"user",content:"Call the gulz_connection_check tool exactly once with an empty object. Do not execute any real-world action."}],[{name:"gulz_connection_check",description:"Harmless tool-calling capability check. Never execute it.",parameters:{type:"object",properties:{},additionalProperties:false}}]); success("Provider responded.");label("Tool calling",turn.toolCalls.some(c=>c.name==="gulz_connection_check"&&Object.keys(c.arguments).length===0)?"Supported":"Not confirmed"); } catch(error) { failure(error instanceof Error?error.message:"Provider test failed."); }
+ try { const turn=await generateAgentTurn({...config,toolChoice:"required"},[{role:"user",content:"Call the gulz_connection_check tool exactly once with an empty object. Do not execute any real-world action."}],[{name:"gulz_connection_check",description:"Harmless tool-calling capability check. Never execute it.",parameters:{type:"object",properties:{},additionalProperties:false}}]); success("Provider responded.");label("Tool calling",turn.toolCalls.some(c=>c.name==="gulz_connection_check"&&Object.keys(c.arguments).length===0)?"Supported":"Not confirmed");await heartbeatPlace("connected"); } catch(error) { await heartbeatPlace("error"); failure(error instanceof Error?error.message:"Provider test failed."); }
 }
 
 
@@ -577,7 +577,7 @@ async function connectPlace(code: string): Promise<void> {
   success("This installation is now connected as a GULZ Place.");
   console.log("Manage it at " + controlUrl + "/dashboard");
 }
-async function heartbeatPlace(): Promise<void> {
+async function heartbeatPlace(providerStatus: "configured" | "connected" | "error" | "unknown" = "configured"): Promise<void> {
   const place = await readPlaceCredentials();
   if (!place) return;
   try {
@@ -589,7 +589,7 @@ async function heartbeatPlace(): Promise<void> {
         version: VERSION,
         platform: process.env.PREFIX?.includes("com.termux") ? "termux" : platform(),
         architecture: arch(),
-        ...(config ? { provider: new URL(config.baseUrl).host, model: config.model } : {}),
+        ...(config ? { provider: new URL(config.baseUrl).host, model: config.model, providerStatus } : { providerStatus: "unknown" }),
       }),
       signal: AbortSignal.timeout(4000),
     });
