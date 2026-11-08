@@ -11,7 +11,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { addGoalTask, createGoal, createPlannedOperation, operationRequiresApproval, transitionGoal, transitionTask, type GoalRecord, type GoalStatus, type TaskStatus, type RiskLevel, type OperationKind } from "@gulz/core";
 import { executeLocalOperation, type LocalExecutionResult } from "@gulz/execution";
-import { generateAgentTurn, generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderChatMessage } from "@gulz/providers";
+import { generateAgentTurn, generateGoalPlan, type OpenAICompatibleProviderConfig, type ProviderAgentMessage } from "@gulz/providers";
 import { createLocalAgentTools, createRemoteAgentTools, runAgent } from "@gulz/agent";
 import { OpenSshRemoteTransport, validateRemoteAlias, validateRemoteDestination, validateRemoteWorkspace } from "@gulz/remote";
 
@@ -923,31 +923,44 @@ async function interactiveSession(): Promise<void> {
 }
 
 
-async function readConversation(): Promise<ProviderChatMessage[]> {
+async function readConversation(): Promise<ProviderAgentMessage[]> {
   await ensureDataHome();
   try {
     const info = await lstat(conversationFile);
     if (!info.isFile() || info.isSymbolicLink()) throw new Error("Conversation storage must be a regular file, not a symbolic link.");
     await chmod(conversationFile, 0o600);
-    const parsed: unknown = JSON.parse(await readFile(conversationFile, "utf8"));
-    if (!Array.isArray(parsed) || parsed.length > 40 || !parsed.every((item) =>
-      isRecord(item) && (item.role === "user" || item.role === "assistant") &&
-      typeof item.content === "string" && item.content.length > 0 && item.content.length <= 32000)) {
-      throw new Error("Saved conversation is invalid. It was left untouched.");
-    }
-    return parsed as ProviderChatMessage[];
+    const raw = await readFile(conversationFile, "utf8");
+    if (Buffer.byteLength(raw, "utf8") > 2_000_000) throw new Error("Saved conversation exceeds the 2 MB storage limit. It was left untouched.");
+    const parsed: unknown = JSON.parse(raw);
+    const valid = Array.isArray(parsed) && parsed.length <= 40 && parsed.every((item) => {
+      if (!isRecord(item) || !["user", "assistant", "tool"].includes(String(item.role)) ||
+          typeof item.content !== "string" || item.content.length > 32000) return false;
+      if (item.role === "user") return item.content.length > 0 && item.toolCallId === undefined && item.toolCalls === undefined;
+      if (item.role === "tool") return isNonEmptyString(item.toolCallId) && item.toolCallId.length <= 200 && item.toolCalls === undefined;
+      if (item.toolCallId !== undefined || (item.content.length === 0 && item.toolCalls === undefined)) return false;
+      if (item.toolCalls !== undefined) {
+        if (!Array.isArray(item.toolCalls) || item.toolCalls.length < 1 || item.toolCalls.length > 8) return false;
+        if (!item.toolCalls.every((call) => isRecord(call) && isNonEmptyString(call.id) && call.id.length <= 200 &&
+            isNonEmptyString(call.name) && /^[a-z][a-z0-9_]{1,63}$/.test(call.name) && isRecord(call.arguments))) return false;
+      }
+      return true;
+    });
+    if (!valid) throw new Error("Saved conversation is invalid. It was left untouched.");
+    return parsed as ProviderAgentMessage[];
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
   }
 }
 
-async function saveConversation(messages: ProviderChatMessage[]): Promise<void> {
+async function saveConversation(messages: ProviderAgentMessage[]): Promise<void> {
   await ensureDataHome();
   const bounded = messages.slice(-40);
+  const serialized = JSON.stringify(bounded, null, 2) + "\n";
+  if (Buffer.byteLength(serialized, "utf8") > 2_000_000) throw new Error("Conversation is too large to save safely. Use /clear to start a fresh conversation.");
   const temporary = join(dataHome, "conversation." + randomUUID() + ".tmp");
   try {
-    await writeFile(temporary, JSON.stringify(bounded, null, 2) + "\n", { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await writeFile(temporary, serialized, { encoding: "utf8", mode: 0o600, flag: "wx" });
     await rename(temporary, conversationFile);
     await chmod(conversationFile, 0o600);
   } finally {
@@ -1032,7 +1045,7 @@ async function chatSession(): Promise<void> {
     console.log("Chat naturally. GULZ can work in this workspace and on your " + remoteEnvironments.length + " connected VPS environment(s). Changes and commands require approval. Type /clear to erase history or /exit to leave.");
     const messages = await readConversation();
     if (messages.length) {
-      for (const message of messages.slice(-12)) {
+      for (const message of messages.filter((item) => item.role !== "tool" && !(item.role === "assistant" && item.toolCalls?.length)).slice(-12)) {
         const speaker = message.role === "user" ? "You" : "GULZ";
         const color = message.role === "user" ? ansi.green : ansi.cyan;
         console.log("\n" + paint(speaker, color, ansi.bold) + "\n" + message.content);
@@ -1064,7 +1077,7 @@ async function chatSession(): Promise<void> {
         const result = await runAgent({
           provider: config,
           signal: turnController.signal,
-          messages: messages.slice(-30).map((message) => ({ role: message.role, content: message.content })),
+          messages: messages.slice(-30),
           tools: agentTools,
           approve: async (request) => {
             title("GULZ ACTION REQUEST");
@@ -1085,7 +1098,7 @@ async function chatSession(): Promise<void> {
           },
         });
         const answer = result.reply || "The requested tool operations finished, but the AI did not provide a final explanation.";
-        messages.push({ role: "assistant", content: answer });
+        messages.splice(0, messages.length, ...result.messages);
         await saveConversation(messages);
         console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + "\n" + answer);
       } catch (error) {
