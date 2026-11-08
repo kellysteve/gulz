@@ -126,7 +126,7 @@ async function main() {
     }) + "\n", { mode: 0o600 });
   }
 
-  console.log("\\n$ " + npm + " run build:cli");
+  console.log("\n$ " + npm + " run build:cli");
   const latestBuild = spawnSync(npm, ["run", "build:cli"], {
     cwd: root, stdio: "inherit", shell: process.platform === "win32", env: process.env,
   });
@@ -139,7 +139,7 @@ async function main() {
     const rl = createInterface({ input: stdin, output: stdout });
     let answer = "";
     try {
-      console.log("\\nThe latest GULZ version failed to build.");
+      console.log("\nThe latest GULZ version failed to build.");
       console.log("The previously installed commit " + previousCommit.slice(0, 12) + " is available.");
       answer = await rl.question("Restore and install the previous version instead? (y/N): ");
     } finally { rl.close(); }
@@ -154,7 +154,7 @@ async function main() {
     const fallbackEnv = { ...process.env };
     delete fallbackEnv.GULZ_PREVIOUS_COMMIT;
     fallbackEnv.GULZ_FALLBACK_ATTEMPT = "1";
-    console.log("\\nReinstalling dependencies and rebuilding the previous version...");
+    console.log("\nReinstalling dependencies and rebuilding the previous version...");
     const fallback = spawnSync(npm, ["run", "install:cli"], {
       cwd: root, stdio: "inherit", shell: process.platform === "win32", env: fallbackEnv,
     });
