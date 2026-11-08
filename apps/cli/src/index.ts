@@ -220,6 +220,7 @@ function help(): void {
     "  provider models       Browse or change models",
     "  provider test         Test the active provider",
     "  provider remove [id] Remove a saved provider",
+    "  AI provider profiles are managed per Place and stored locally",
     "  account connect <code> Pair this installation with your GULZ account",
     "  account status       Show this Place connection",
     "  account disconnect  Remove this installation's Place credential",
