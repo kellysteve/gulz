@@ -1,9 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient, type Session } from "@supabase/supabase-js";
 import {
   ArrowRight, ArrowUpRight, Check, Code2,
   Command, Copy, Github, GitBranch, Laptop, LockKeyhole, Menu, Server,
   ShieldCheck, Smartphone, Terminal, X, Zap,
 } from "lucide-react";
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+type Place = {
+  id: string; place_name: string; platform: string; architecture: string;
+  gulz_version: string; active_provider: string | null; active_model: string | null;
+  status: string; last_seen_at: string;
+};
 
 type Platform = "termux" | "linux" | "macos" | "windows" | "vps";
 const installCommand = "curl -fsSL https://gulz.gaxity.com.ng/install | bash";
@@ -19,6 +29,52 @@ function App() {
   const [platform, setPlatform] = useState<Platform>("termux");
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [pairingCode, setPairingCode] = useState("");
+  const [dashboardError, setDashboardError] = useState("");
+  const [loadingPlaces, setLoadingPlaces] = useState(false);
+  useEffect(() => {
+    if (!supabase) return;
+    void supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
+    return () => data.subscription.unsubscribe();
+  }, []);
+  useEffect(() => {
+    if (!session) { setPlaces([]); return; }
+    let cancelled = false;
+    setLoadingPlaces(true);
+    void fetch("/api/places", { headers: { Authorization: "Bearer " + session.access_token } })
+      .then(async (response) => {
+        const payload = await response.json() as { places?: Place[]; error?: string };
+        if (!response.ok) throw new Error(payload.error || "Could not load Places.");
+        if (!cancelled) setPlaces(payload.places ?? []);
+      })
+      .catch((error: unknown) => { if (!cancelled) setDashboardError(error instanceof Error ? error.message : "Could not load Places."); })
+      .finally(() => { if (!cancelled) setLoadingPlaces(false); });
+    return () => { cancelled = true; };
+  }, [session]);
+  const signInWithGithub = async () => {
+    if (!supabase) { setDashboardError("Website sign-in is not configured yet. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to the website build, then enable GitHub in Supabase Authentication."); return; }
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "github", options: { redirectTo: window.location.origin + "/dashboard" } });
+    if (error) setDashboardError(error.message);
+  };
+  const createPairingCode = async () => {
+    if (!session) return;
+    setDashboardError("");
+    const response = await fetch("/api/places/pair/start", { method: "POST", headers: { Authorization: "Bearer " + session.access_token } });
+    const payload = await response.json() as { code?: string; error?: string };
+    if (!response.ok || !payload.code) { setDashboardError(payload.error || "Could not create a pairing code."); return; }
+    setPairingCode(payload.code);
+  };
+  const disconnectPlace = async (id: string) => {
+    if (!session || !window.confirm("Disconnect this Place? Its local files will not be changed.")) return;
+    const response = await fetch("/api/places/revoke", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token }, body: JSON.stringify({ id }) });
+    const payload = await response.json() as { error?: string };
+    if (!response.ok) { setDashboardError(payload.error || "Could not disconnect Place."); return; }
+    setPlaces((current) => current.filter((place) => place.id !== id));
+  };
+
   const active = platforms.find((item) => item.id === platform)!;
   const copy = async (value: string) => {
     try {
@@ -30,6 +86,46 @@ function App() {
     }
   };
 
+  if (window.location.pathname === "/dashboard") {
+    return (
+      <div className="dashboard-shell">
+        <header className="dashboard-topbar">
+          <a className="brand" href="/"><span className="brand-mark">G</span><span>gulz</span></a>
+          <div className="dashboard-actions">
+            <a href="/">Website</a>
+            {session && <button onClick={() => void supabase?.auth.signOut()}>Sign out</button>}
+          </div>
+        </header>
+        <main className="dashboard-main">
+          <div className="dashboard-heading"><div><div className="eyebrow">GULZ CONTROL ROOM</div><h1>Your Places</h1><p>Manage the GULZ installations connected to your account.</p></div></div>
+          {!session ? (
+            <section className="dashboard-login">
+              <Github size={30}/><h2>Sign in to GULZ</h2>
+              <p>Use your GitHub account to manage Places. GitHub repository access is not requested for account sign-in.</p>
+              <button className="button button-primary" onClick={() => void signInWithGithub()}><Github size={17}/> Continue with GitHub</button>
+              {!supabase && <small>Sign-in setup required: configure the Supabase website URL and anon key, and enable the GitHub provider in Supabase Authentication.</small>}
+            </section>
+          ) : (
+            <>
+              <section className="account-strip"><div><b>{session.user.user_metadata?.user_name || session.user.user_metadata?.preferred_username || session.user.email || "GitHub account"}</b><small>Signed in with GitHub via Supabase Auth</small></div><span>Account connected</span></section>
+              <section className="places-toolbar"><div><h2>Connected installations</h2><p>Each Place is one GULZ installation on a device or server.</p></div><button className="button button-primary" onClick={() => void createPairingCode()}>Connect a Place</button></section>
+              {pairingCode && <section className="pairing-panel"><div><b>Enter this code in your GULZ installer or terminal</b><p>It expires in 10 minutes and can only be used once.</p></div><strong>{pairingCode}</strong><button onClick={() => void navigator.clipboard.writeText(pairingCode)}>Copy code</button></section>}
+              {dashboardError && <p className="dashboard-error">{dashboardError}</p>}
+              {loadingPlaces ? <p>Loading your Places…</p> : places.length === 0 ? <section className="empty-places"><Laptop size={28}/><h3>No Places connected yet</h3><p>Connect GULZ from Termux, your computer or a VPS to see it here.</p></section> : (
+                <section className="places-grid">{places.map((place) => <article className="place-card" key={place.id}>
+                  <div className="place-card-top"><div><h3>{place.place_name}</h3><small>{place.platform} · {place.architecture}</small></div><span className={place.status === "online" ? "place-online" : "place-offline"}>{place.status}</span></div>
+                  <div className="place-details"><span>GULZ version</span><b>{place.gulz_version}</b><span>AI provider</span><b>{place.active_provider || "Not reported"}</b><span>Active model</span><b>{place.active_model || "Not reported"}</b><span>Last seen</span><b>{new Date(place.last_seen_at).toLocaleString()}</b></div>
+                  <button className="disconnect-button" onClick={() => void disconnectPlace(place.id)}>Disconnect Place</button>
+                </article>)}</section>
+              )}
+              <p className="dashboard-privacy"><LockKeyhole size={14}/> Provider API keys and project files stay on their Places. This dashboard displays connection metadata only.</p>
+            </>
+          )}
+          {dashboardError && !session && <p className="dashboard-error">{dashboardError}</p>}
+        </main>
+      </div>
+    );
+  }
   return (
     <div className="site-shell">
       <header className="topbar">
@@ -41,7 +137,7 @@ function App() {
           <a href="#providers" onClick={() => setMenuOpen(false)}>Models</a>
           <a href="#install" onClick={() => setMenuOpen(false)}>Install</a>
         </nav>
-        <a className="github-link" href="https://github.com/kellysteve/gulz" target="_blank" rel="noreferrer"><Github size={16}/> GitHub <ArrowUpRight size={14}/></a>
+        {session ? <a className="github-link" href="/dashboard"><Github size={16}/> Dashboard <ArrowUpRight size={14}/></a> : <button className="github-link" onClick={() => void signInWithGithub()}><Github size={16}/> Sign in <ArrowUpRight size={14}/></button>}
       </header>
 
       <main>
