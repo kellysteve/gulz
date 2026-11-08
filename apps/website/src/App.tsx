@@ -85,10 +85,10 @@ function App() {
         </section>
 
         <section className="workspace-section" id="workspaces">
-          <div className="section-heading"><div className="eyebrow">ONE AGENT · YOUR CHOICE</div><h2>Your code can live where you want.</h2><p>GULZ should never force you to upload every project to a cloud account. Choose the workspace that fits the job.</p></div>
+          <div className="section-heading"><div className="eyebrow">LOCAL-FIRST · GITHUB-READY</div><h2>Install it where your code lives.</h2><p>Clone a repository, enter its folder and start GULZ. The agent reads and edits the local project; Git handles branches, commits and pushes. GitHub sign-in is a separate optional step for hosted AI access.</p></div>
           <div className="workspace-grid">
-            <article className="workspace-card"><div className="workspace-top"><Terminal/><span className="status-label">AVAILABLE IN CLI</span></div><h3>Local folders</h3><p>Run GULZ from a project directory on Termux, Linux or macOS. Your files stay on your device.</p><code>cd my-project && gulz</code></article>
-            <article className="workspace-card"><div className="workspace-top"><Github/><span className="status-label planned">IN DEVELOPMENT</span></div><h3>GitHub repositories</h3><p>Connect GitHub, choose a repository, and let GULZ work in an isolated cloud workspace with branch-based changes.</p><code>Connect GitHub · Select repository</code></article>
+            <article className="workspace-card"><div className="workspace-top"><Terminal/><span className="status-label">CORE WORKFLOW</span></div><h3>Local folders</h3><p>Run GULZ from a project directory on Termux, Linux or macOS. Your files stay on your device.</p><code>cd my-project && gulz</code></article>
+            <article className="workspace-card"><div className="workspace-top"><Github/><span className="status-label">GIT-NATIVE</span></div><h3>GitHub repositories</h3><p>Install GULZ inside a cloned repository and it works on that project locally. Sign in to GitHub for hosted GULZ AI access, and use your existing Git credentials to push branches and open pull requests.</p><code>git clone · cd project · gulz</code></article>
             <article className="workspace-card"><div className="workspace-top"><Server/><span className="status-label">EARLY SSH SUPPORT</span></div><h3>Your VPS</h3><p>Pair a server using OpenSSH and work inside an explicitly selected remote project folder.</p><code>gulz remote add production …</code></article>
           </div>
         </section>
