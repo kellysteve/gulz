@@ -66,7 +66,7 @@ GULZ is a provider-independent, project-first AI coding agent with a conversatio
 
 ## Hosted GULZ AI gateway
 
-- [x] Add an OpenAI-compatible hosted AI proxy at `gulz.gaxity.com.ng/api/ai/v1/chat/completions` in the website Worker.
+- [x] Add an OpenAI-compatible hosted AI proxy at `gulz.gaxity.com.ng/api/ai/v1/chat/completions` in the website Worker.\n- [x] Add a hosted model alias endpoint so `/provider models` can discover the GULZ AI model.
 - [x] Keep the upstream provider key in a Cloudflare Worker secret; no shared key is embedded in the CLI.
 - [x] Add account-based daily request quotas shared across a user's Places and a separate guest IP allowance.
 - [x] Add an account usage endpoint and show daily remaining requests in the website dashboard.
@@ -85,7 +85,7 @@ GULZ is a provider-independent, project-first AI coding agent with a conversatio
 - [ ] Add file transfer and deployment adapters with checksums and rollback.
 - [ ] Add a plugin/capability manifest so new tools can be installed and reviewed safely.
 
-## Provider system\n\n- [x] Add a local multi-provider profile store supporting up to 50 saved configurations per Place.\n- [x] Add interactive `/provider` management and add/list/use/models/test/remove actions.\n- [x] Add provider presets for OpenRouter, DeepSeek, OpenAI, Gemini, Groq, Mistral, Together AI, Fireworks, Cerebras, DeepInfra, Perplexity, xAI, NVIDIA NIM, Ollama and LM Studio, plus custom OpenAI-compatible endpoints.\n- [ ] Verify each preset against current provider documentation and live endpoints; model availability and tool-calling support vary.\n
+## Provider system\n\n- [x] Add a local multi-provider profile store supporting up to 50 saved configurations per Place.\n- [x] Add interactive `/provider` management and add/list/use/models/test/remove actions.\n- [x] Add live `/models` discovery for OpenAI-compatible providers with a manual/suggested-model fallback.\n- [x] Add provider presets for OpenRouter, DeepSeek, OpenAI, Gemini, Groq, Mistral, Together AI, Fireworks, Cerebras, DeepInfra, Perplexity, xAI, NVIDIA NIM, Ollama and LM Studio, plus custom OpenAI-compatible endpoints.\n- [ ] Verify each preset against current provider documentation and live endpoints; model availability and tool-calling support vary.\n
 - [ ] Add model capability discovery and clear tool-calling compatibility checks.
 - [ ] Add streaming responses and tool progress events.
 - [ ] Add provider switching without losing conversation history.
