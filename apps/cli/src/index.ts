@@ -772,17 +772,52 @@ async function updateInstallation(): Promise<void> {
     const npm = process.platform === "win32" ? "npm.cmd" : "npm";
     const updateEnv: NodeJS.ProcessEnv = { ...process.env };
     if (process.platform !== "win32") updateEnv.NPM_CONFIG_PREFIX = process.env.PREFIX?.includes("com.termux") ? process.env.PREFIX : join(homedir(), ".local");
-    const steps = [
-      ["git", ["pull", "--ff-only"]],
-      [npm, ["run", "install:cli"]],
-    ] as const;
-    for (const [program, args] of steps) {
-      console.log("\n$ " + program + " " + args.join(" "));
-      const result = spawnSync(program, [...args], { cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: updateEnv });
-      if (result.error) throw result.error;
-      if (result.status !== 0) throw new Error("Update stopped because " + program + " exited with status " + String(result.status) + ". Fix the reported issue and run gulz update again.");
+    const previousCommit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: installDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    if (previousCommit.error) throw previousCommit.error;
+    if (previousCommit.status !== 0 || !/^[a-f0-9]{40,64}$/i.test(previousCommit.stdout.trim())) {
+      throw new Error("Unable to record the currently installed GULZ version. Update cancelled before changing source.");
     }
-    success("GULZ source updated and rebuilt.");
+    console.log("\n$ git pull --ff-only");
+    const pulled = spawnSync("git", ["pull", "--ff-only"], { cwd: installDirectory, stdio: "inherit", env: updateEnv });
+    if (pulled.error) throw pulled.error;
+    if (pulled.status !== 0) throw new Error("GULZ could not download the latest source. Your previous installation was not intentionally replaced.");
+
+    console.log("\n$ " + npm + " run install:cli");
+    const latestBuild = spawnSync(npm, ["run", "install:cli"], {
+      cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: updateEnv,
+    });
+    if (latestBuild.error) throw latestBuild.error;
+    let installedFallback = false;
+    if (latestBuild.status !== 0) {
+      const fallbackRl = createInterface({ input: stdin, output: stdout });
+      let fallbackAnswer = "";
+      try {
+        console.log("\n" + paint("The latest GULZ version could not be built.", ansi.yellow, ansi.bold));
+        console.log("The previously installed commit " + previousCommit.stdout.trim().slice(0, 12) + " is available as a fallback.");
+        fallbackAnswer = await fallbackRl.question("Restore and rebuild the previous version instead? (y/N): ");
+      } finally { fallbackRl.close(); }
+      if (!["y", "yes"].includes(fallbackAnswer.trim().toLowerCase())) {
+        throw new Error("Latest version failed to build and fallback was declined. No older version was installed. Review the build error before retrying.");
+      }
+      console.log("\nRestoring the previously installed GULZ source...");
+      const restored = spawnSync("git", ["reset", "--hard", previousCommit.stdout.trim()], {
+        cwd: installDirectory, stdio: "inherit", env: updateEnv,
+      });
+      if (restored.error) throw restored.error;
+      if (restored.status !== 0) throw new Error("Could not restore the previous GULZ source commit. Stop here and inspect the checkout before retrying.");
+      console.log("\nRebuilding the previous version...");
+      const fallbackBuild = spawnSync(npm, ["run", "install:cli"], {
+        cwd: installDirectory, stdio: "inherit", shell: process.platform === "win32", env: updateEnv,
+      });
+      if (fallbackBuild.error) throw fallbackBuild.error;
+      if (fallbackBuild.status !== 0) {
+        throw new Error("Both the latest version and the previous version failed to build. The source checkout has been restored to the previous commit; inspect the second build error before retrying.");
+      }
+      installedFallback = true;
+      warning("The latest version was not installed. GULZ has been restored to the previously installed version.");
+    } else {
+      success("GULZ source updated and rebuilt.");
+    }
 
     const setupRl = createInterface({ input: stdin, output: stdout });
     let changeProvider = "";
@@ -811,7 +846,7 @@ async function updateInstallation(): Promise<void> {
         warning("No provider changes were made. Your existing settings were preserved.");
       }
     }
-    console.log("\nGULZ update completed. Close this session and run gulz again to use the updated CLI.");
+    console.log(installedFallback\n      ? "\nGULZ fallback completed. You are using the previous version. Try updating again after the latest release is fixed."\n      : "\nGULZ update completed. Close this session and run gulz again to use the updated CLI.");
   });
 }
 
