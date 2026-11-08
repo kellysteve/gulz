@@ -9,6 +9,7 @@ import {
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+type AiUsage = { used: number; limit: number; remaining: number; resetsAt?: string };
 type Place = {
   id: string; place_name: string; platform: string; architecture: string;
   gulz_version: string; active_provider: string | null; active_model: string | null;
@@ -31,6 +32,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
+  const [usage, setUsage] = useState<AiUsage | null>(null);
   const [pairingCode, setPairingCode] = useState("");
   const [dashboardError, setDashboardError] = useState("");
   const [loadingPlaces, setLoadingPlaces] = useState(false);
@@ -52,6 +54,18 @@ function App() {
       })
       .catch((error: unknown) => { if (!cancelled) setDashboardError(error instanceof Error ? error.message : "Could not load Places."); })
       .finally(() => { if (!cancelled) setLoadingPlaces(false); });
+    return () => { cancelled = true; };
+  }, [session]);
+  useEffect(() => {
+    if (!session) { setUsage(null); return; }
+    let cancelled = false;
+    void fetch("/api/ai/usage", { headers: { Authorization: "Bearer " + session.access_token } })
+      .then(async (response) => {
+        const payload = await response.json() as AiUsage & { error?: string };
+        if (!response.ok) throw new Error(payload.error || "Could not load AI usage.");
+        if (!cancelled) setUsage(payload);
+      })
+      .catch(() => { if (!cancelled) setUsage(null); });
     return () => { cancelled = true; };
   }, [session]);
   const signInWithGithub = async () => {
@@ -107,6 +121,7 @@ function App() {
             </section>
           ) : (
             <>
+              {usage && <section className="usage-card"><div><b>GULZ AI daily allowance</b><small>Resets daily · usage shared across your account Places</small></div><strong>{usage.remaining} <span>of {usage.limit} requests left</span></strong><div className="usage-track"><i style={{ width: ((usage.used / Math.max(1, usage.limit)) * 100) + "%" }}/></div></section>}
               <section className="account-strip"><div><b>{session.user.user_metadata?.user_name || session.user.user_metadata?.preferred_username || session.user.email || "GitHub account"}</b><small>Signed in with GitHub via Supabase Auth</small></div><span>Account connected</span></section>
               <section className="places-toolbar"><div><h2>Connected installations</h2><p>Each Place is one GULZ installation on a device or server.</p></div><button className="button button-primary" onClick={() => void createPairingCode()}>Connect a Place</button></section>
               {pairingCode && <section className="pairing-panel"><div><b>Enter this code in your GULZ installer or terminal</b><p>It expires in 10 minutes and can only be used once.</p></div><strong>{pairingCode}</strong><button onClick={() => void navigator.clipboard.writeText(pairingCode)}>Copy code</button></section>}
