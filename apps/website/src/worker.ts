@@ -116,6 +116,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
         ...(typeof body.version === "string" ? { gulz_version: body.version.slice(0, 40) } : {}),
         ...(typeof body.provider === "string" ? { active_provider: body.provider.slice(0, 80) } : {}),
         ...(typeof body.model === "string" ? { active_model: body.model.slice(0, 120) } : {}),
+        ...(typeof body.providerStatus === "string" && ["configured", "connected", "error", "unknown"].includes(body.providerStatus) ? { provider_status: body.providerStatus } : {}),
       }),
     });
     if (!updated.ok) return json({ error: "Could not update Place status." }, 502);
