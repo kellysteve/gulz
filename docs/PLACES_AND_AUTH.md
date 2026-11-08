@@ -39,6 +39,7 @@ Example secret setup from the repository root:
 npx wrangler secret put SUPABASE_URL --config apps/website/wrangler.toml
 npx wrangler secret put SUPABASE_ANON_KEY --config apps/website/wrangler.toml
 npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config apps/website/wrangler.toml
+npx wrangler secret put GULZ_AI_API_KEY --config apps/website/wrangler.toml
 ```
 
 The GitHub OAuth client secret belongs in Supabase Auth provider configuration, not in the browser or public repository. The hosted model key belongs only in the Cloudflare Worker secret `GULZ_AI_API_KEY`.
