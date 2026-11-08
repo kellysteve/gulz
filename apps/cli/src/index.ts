@@ -1167,8 +1167,11 @@ async function chatSession(): Promise<void> {
   ];
   const rl = createInterface({ input: stdin, output: stdout });
   try {
-    title("GULZ AI");
-    console.log("Chat naturally. GULZ can work in this workspace and on your " + remoteEnvironments.length + " connected VPS environment(s). Changes and commands require approval. Type /clear to erase history or /exit to leave.");
+    title("GULZ AI  ·  WORKSPACE ASSISTANT");
+    console.log(paint("Your terminal, projects and connected VPSs—one conversation.", ansi.dim));
+    console.log(paint("Local workspace: ", ansi.dim) + paint(process.cwd(), ansi.cyan));
+    console.log(paint("Connected VPSs: ", ansi.dim) + paint(String(remoteEnvironments.length), ansi.cyan));
+    console.log(paint("Ask naturally. Use /clear to erase history or /exit to leave.", ansi.dim));
     const messages = await readConversation();
     if (messages.length) {
       for (const message of messages.filter((item) => item.role !== "tool" && !(item.role === "assistant" && item.toolCalls?.length)).slice(-12)) {
@@ -1179,7 +1182,7 @@ async function chatSession(): Promise<void> {
       }
     }
     while (true) {
-      const input = (await rl.question("\n" + paint("You › ", ansi.green, ansi.bold))).trim();
+      const input = (await rl.question("\n" + paint("YOU  ", ansi.green, ansi.bold) + paint("› ", ansi.green))).trim();
       if (!input) continue;
       if (input.toLowerCase() === "/exit" || input.toLowerCase() === "/quit") break;
       if (input.toLowerCase() === "/clear") {
@@ -1207,34 +1210,40 @@ async function chatSession(): Promise<void> {
           messages: messages.slice(-30),
           tools: agentTools,
           approve: async (request) => {
-            title("GULZ ACTION REQUEST");
-            console.log(request.description);
-            console.log("Tool: " + request.toolName);
-            if (typeof request.arguments.command === "string") console.log("$ " + request.arguments.command + " " + (Array.isArray(request.arguments.args) ? request.arguments.args.join(" ") : ""));
-            console.log("Details: " + JSON.stringify(request.arguments, null, 2));
-            if (request.risk === "high") warning("HIGH-IMPACT ACTION: this may change system services, permissions, users or network security. Review every argument carefully.");
-            else warning("This action can change files or run a program on the selected device/server.");
-            warning("Tool results and command output may be sent to your configured AI provider. Do not approve commands that expose passwords, API keys or private data.");
-            const answer = await rl.question("Allow GULZ to continue? (y/N): ");
+              title("REVIEW THIS ACTION");
+            console.log(paint(request.description, ansi.bold, ansi.white));
+            label("Action", request.toolName);
+            if (typeof request.arguments.command === "string") {
+              console.log(paint("  $ ", ansi.cyan, ansi.bold) + paint(request.arguments.command + " " + (Array.isArray(request.arguments.args) ? request.arguments.args.join(" ") : ""), ansi.yellow));
+            }
+            console.log(paint("Arguments", ansi.dim));
+            console.log(paint(JSON.stringify(request.arguments, null, 2), ansi.dim));
+            if (request.risk === "high") warning("HIGH IMPACT · may change services, permissions, users or network security. Review every detail.");
+            else warning("This can change files or run a program on the selected device or VPS.");
+            muted("Tool output may be shared with your configured AI provider. Never approve commands that expose secrets.");
+            const answer = await rl.question(paint("Approve this action? ", ansi.bold, ansi.yellow) + paint("(y/N): ", ansi.dim));
             return ["y", "yes"].includes(answer.trim().toLowerCase());
           },
           onToolResult: async (toolName, toolResult) => {
             const output = isRecord(toolResult) && isRecord(toolResult.output) ? toolResult.output : {};
             const ok = isRecord(toolResult) && toolResult.ok === true && output.processSucceeded !== false && output.verified !== false;
             await recordAudit("agent.tool", { toolName, outcome: ok ? "succeeded" : "not_completed" });
+            if (ok) success("Completed · " + toolName.replace(/_/g, " "));
+            else warning("Needs attention · " + toolName.replace(/_/g, " "));
           },
         });
         const answer = result.reply || "The requested tool operations finished, but the AI did not provide a final explanation.";
         messages.splice(0, messages.length, ...result.messages);
         await saveConversation(messages);
-        console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold));
+        console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + paint("  ·  RESPONSE", ansi.dim));
         renderAssistantMessage(answer);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const failureReply = "I couldn't finish that request: " + message;
         messages.push({ role: "assistant", content: failureReply });
         await saveConversation(messages);
-        warning(failureReply);
+        title("REQUEST NEEDS ATTENTION");
+        failure(failureReply);
       } finally {
         process.off("SIGINT", cancelTurn);
         process.off("SIGTERM", cancelTurn);
