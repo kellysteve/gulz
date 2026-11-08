@@ -52,7 +52,8 @@ The GitHub OAuth client secret belongs in Supabase Auth provider configuration, 
 - `POST /api/places/heartbeat` — requires a Place token; updates last-seen and non-secret provider/model metadata.
 - `POST /api/places/revoke` — requires a Supabase access token; revokes one Place owned by that user.
 - `POST /api/ai/v1/chat/completions` — OpenAI-compatible hosted GULZ AI proxy. Guest requests are limited by hashed Cloudflare client IP; paired Places are metered against their account.
-- `GET /api/ai/v1/models` — returns the hosted GULZ AI model alias for compatible model discovery.\n- `GET /api/ai/usage` — returns daily usage for a signed-in account, paired Place or guest client IP.
+- `GET /api/ai/v1/models` — returns the hosted GULZ AI model alias for compatible model discovery.
+- `GET /api/ai/usage` — returns daily usage for a signed-in account, paired Place or guest client IP.
 
 All account and Place API responses are marked `Cache-Control: no-store`. Pairing codes and device tokens are hashed before storage. The Worker must be deployed only with the service-role secret configured. The AI upstream key must also be set as a Worker secret before the hosted model proxy accepts requests.
 
