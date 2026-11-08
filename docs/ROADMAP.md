@@ -64,12 +64,12 @@ GULZ is a provider-independent, project-first AI coding agent with a conversatio
 - [x] Add CLI account connect/status/disconnect commands and optional installer pairing prompt.
 - [ ] Apply the Places migration and configure Supabase Auth/GitHub and Cloudflare Worker secrets.
 - [ ] Run end-to-end website login, pairing, heartbeat, revocation and account-isolation tests.
-- [ ] Add a background heartbeat or reliable foreground heartbeat on all CLI activity.
+- [x] Add a lightweight foreground heartbeat while the interactive chat remains open.\n- [ ] Add heartbeat reporting for every CLI command and test reconnection after device sleep/network changes.
 
 ## GitHub workflow
 
 - [ ] Make the installed CLI recognize the current project directory and Git remote automatically.
-- [ ] Add optional GitHub sign-in during first-run setup for hosted GULZ AI account access; use a browser/device flow and store only revocable, scoped credentials.
+- [x] Use website GitHub sign-in plus one-time pairing codes for optional account-linked terminal Places; do not ask users to enter a password in the terminal.
 - [ ] Keep GitHub AI-service sign-in separate from repository authorization. Do not request repository access just to identify a GULZ AI account.
 - [ ] Integrate GitHub CLI (`gh`) when available for authenticated pushes, issues and pull requests; provide clear setup guidance when it is missing.
 - [ ] Support local Git branch, diff, commit and pull-request workflows with explicit review and approval.
