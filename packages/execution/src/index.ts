@@ -532,7 +532,7 @@ export async function executeApprovedCommand(
     effectiveArgs = args.slice(targetIndex + 1);
   }
   if (interpreterExecutables.has(effectiveCommand) && effectiveArgs.some((arg) => inlineCodeFlags.has(arg.toLowerCase()))) {
-    throw new ExecutionError("Inline interpreter code is not supported. Use a project file or a dedicated GULZ tool instead.");
+    throw new ExecutionError("Inline shell or interpreter code is not supported. Use a project file or a dedicated GULZ tool instead.");
   }
   const recursiveFlag = effectiveArgs.some((arg) => arg === "--recursive" || (arg.startsWith("-") && arg.includes("r")));
   const forceFlag = effectiveArgs.some((arg) => arg === "--force" || (arg.startsWith("-") && arg.includes("f")));
