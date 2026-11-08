@@ -4,6 +4,11 @@ interface Env {
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
+  GULZ_AI_API_KEY?: string;
+  GULZ_AI_BASE_URL?: string;
+  GULZ_AI_MODEL?: string;
+  GULZ_AI_ACCOUNT_DAILY_LIMIT?: string;
+  GULZ_AI_GUEST_DAILY_LIMIT?: string;
 }
 
 const INSTALLER_URL = "https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh";
@@ -53,9 +58,101 @@ async function rest(env: Env, path: string, init: RequestInit = {}): Promise<Res
     headers: { ...supabaseHeaders(env), ...(init.headers ?? {}) },
   });
 }
+
+function dailyLimit(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 10000 ? parsed : fallback;
+}
+async function aiUsageIdentity(request: Request, env: Env): Promise<{ hash: string; limit: number }> {
+  const token = bearer(request);
+  if (token) {
+    const tokenHash = await digest(token);
+    const found = await rest(env, "gulz_places?select=user_id&device_token_hash=eq." + tokenHash + "&revoked_at=is.null&limit=1");
+    if (found.ok) {
+      const rows = await found.json() as Array<{ user_id: string }>;
+      if (rows[0]?.user_id) return {
+        hash: await digest(env.SUPABASE_SERVICE_ROLE_KEY + ":user:" + rows[0].user_id),
+        limit: dailyLimit(env.GULZ_AI_ACCOUNT_DAILY_LIMIT, 20),
+      };
+    }
+  }
+  const address = request.headers.get("CF-Connecting-IP") || "unknown-client";
+  return {
+    hash: await digest(env.SUPABASE_SERVICE_ROLE_KEY + ":guest:" + address),
+    limit: dailyLimit(env.GULZ_AI_GUEST_DAILY_LIMIT, 5),
+  };
+}
+async function aiProxy(request: Request, env: Env): Promise<Response> {
+  if (!configured(env)) return json({ error: "GULZ AI account and quota services are not configured." }, 503);
+  if (!env.GULZ_AI_API_KEY) return json({ error: "The hosted GULZ AI service is not configured yet." }, 503);
+  if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
+  const declaredLength = Number(request.headers.get("Content-Length") || 0);
+  if (declaredLength > 256_000) return json({ error: "Request body exceeds the 256 KB limit." }, 413);
+  let body: Record<string, unknown>;
+  try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "Invalid JSON body." }, 400); }
+  if (!Array.isArray(body.messages) || body.messages.length < 1 || body.messages.length > 40) return json({ error: "Provide between 1 and 40 conversation messages." }, 400);
+  const messageBytes = JSON.stringify(body.messages).length;
+  if (messageBytes > 180_000) return json({ error: "Conversation content exceeds the 180 KB limit." }, 413);
+  if (body.tools !== undefined && (!Array.isArray(body.tools) || body.tools.length > 40)) return json({ error: "The agent tool catalogue is invalid." }, 400);
+  const identity = await aiUsageIdentity(request, env);
+  const quota = await rest(env, "rpc/gulz_consume_ai_request", {
+    method: "POST",
+    body: JSON.stringify({ p_identity_hash: identity.hash, p_daily_limit: identity.limit }),
+  });
+  if (!quota.ok) return json({ error: "GULZ AI could not check your daily usage allowance." }, 502);
+  const allowance = await quota.json() as { allowed?: boolean; used?: number; limit?: number; remaining?: number };
+  if (!allowance.allowed) return json({
+    error: "Your daily GULZ AI allowance has been used. You can connect your own AI provider with /provider.",
+    usage: allowance,
+  }, 429);
+  const upstreamUrl = env.GULZ_AI_BASE_URL || "https://openrouter.ai/api/v1/chat/completions";
+  let parsed: URL;
+  try { parsed = new URL(upstreamUrl); } catch { return json({ error: "The hosted AI endpoint is invalid." }, 500); }
+  if (parsed.protocol !== "https:") return json({ error: "The hosted AI endpoint must use HTTPS." }, 500);
+  try {
+    const upstream = await fetch(parsed, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + env.GULZ_AI_API_KEY,
+        "Content-Type": "application/json",
+        Accept: body.stream === true ? "text/event-stream, application/json" : "application/json",
+        "HTTP-Referer": "https://gulz.gaxity.com.ng",
+        "X-Title": "GULZ",
+      },
+      body: JSON.stringify({ ...body, model: env.GULZ_AI_MODEL || "openai/gpt-4o-mini" }),
+    });
+    if (!upstream.ok) return json({ error: "The hosted GULZ AI provider could not complete this request. Your request allowance was used; please try again later." }, upstream.status >= 500 ? 502 : upstream.status);
+    const headers = new Headers({
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "X-GULZ-Usage-Limit": String(allowance.limit ?? identity.limit),
+      "X-GULZ-Usage-Remaining": String(allowance.remaining ?? 0),
+    });
+    const contentType = upstream.headers.get("Content-Type") || "application/json";
+    headers.set("Content-Type", contentType);
+    if (contentType.includes("text/event-stream")) headers.set("X-Accel-Buffering", "no");
+    return new Response(upstream.body, { status: 200, headers });
+  } catch {
+    return json({ error: "The hosted GULZ AI provider is temporarily unavailable." }, 502);
+  }
+}
+
 async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
   if (!configured(env)) return json({ error: "GULZ account services are not configured yet. Set the Supabase Worker secrets and apply the Places migration." }, 503);
   if (request.method !== "POST" && request.method !== "GET" && request.method !== "DELETE") return json({ error: "Method not allowed." }, 405);
+  if (url.pathname === "/api/ai/usage") {
+    if (request.method !== "GET") return json({ error: "Method not allowed." }, 405);
+    const user = await requestUser(request, env);
+    if (!user) return json({ error: "Sign in to view account-based GULZ AI usage." }, 401);
+    const identityHash = await digest(env.SUPABASE_SERVICE_ROLE_KEY + ":user:" + user.id);
+    const date = new Date().toISOString().slice(0, 10);
+    const response = await rest(env, "gulz_ai_usage_daily?select=requests&identity_hash=eq." + identityHash + "&usage_date=eq." + date + "&limit=1");
+    if (!response.ok) return json({ error: "Could not load GULZ AI usage." }, 502);
+    const rows = await response.json() as Array<{ requests: number }>;
+    const limit = dailyLimit(env.GULZ_AI_ACCOUNT_DAILY_LIMIT, 20);
+    const used = rows[0]?.requests ?? 0;
+    return json({ used, limit, remaining: Math.max(0, limit - used), resetsAt: new Date(Date.now() + (24 * 60 * 60 * 1000)).toISOString().slice(0, 10) });
+  }
   if (url.pathname === "/api/places/pair/start") {
     if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
     const user = await requestUser(request, env);
@@ -154,6 +251,8 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
+    if (url.pathname === "/api/ai/v1/chat/completions") return aiProxy(request, env);
+    if (url.pathname === "/api/ai/usage") return handleApi(request, env, url);
     if (url.pathname.startsWith("/api/places/")) return handleApi(request, env, url);
     if (url.pathname === "/api/places") return handleApi(request, env, url);
 
