@@ -64,7 +64,8 @@ GULZ is a provider-independent, project-first AI coding agent with a conversatio
 - [x] Add CLI account connect/status/disconnect commands and optional installer pairing prompt.
 - [ ] Apply the Places migration and configure Supabase Auth/GitHub and Cloudflare Worker secrets.
 - [ ] Run end-to-end website login, pairing, heartbeat, revocation and account-isolation tests.
-- [x] Add a lightweight foreground heartbeat while the interactive chat remains open.\n- [ ] Add heartbeat reporting for every CLI command and test reconnection after device sleep/network changes.
+- [x] Add a lightweight foreground heartbeat while the interactive chat remains open.
+- [ ] Add heartbeat reporting for every CLI command and test reconnection after device sleep/network changes.
 
 ## GitHub workflow
 
