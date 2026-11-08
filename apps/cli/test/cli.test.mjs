@@ -502,3 +502,32 @@ test("doctor validates saved agent conversation transcripts without modifying in
     assert.equal(await readFile(join(home, "conversation.json"), "utf8"), invalid);
   });
 });
+
+
+test("lists an empty provider profile collection without requiring an interactive terminal", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "provider", "list");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /AI PROVIDERS/);
+    assert.match(result.stdout, /No saved providers yet/);
+  });
+});
+
+test("validates saved provider profile collections and refuses duplicate identifiers", async () => {
+  await withHome(async (home) => {
+    const profile = { id: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com", model: "deepseek-chat", apiKey: "test-secret" };
+    await writeFile(join(home, "provider-profiles.json"), JSON.stringify({ active: "deepseek", providers: [profile, profile] }));
+    const result = invoke(home, "provider", "list");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Duplicate provider profile IDs/);
+  });
+});
+
+test("reports an optional unpaired account without requiring network access", async () => {
+  await withHome(async (home) => {
+    const result = invoke(home, "account", "status");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /GULZ ACCOUNT/);
+    assert.match(result.stdout, /not connected to a GULZ account/);
+  });
+});
