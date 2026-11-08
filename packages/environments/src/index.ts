@@ -61,7 +61,7 @@ export async function detectEnvironment(options: EnvironmentDetectionOptions = {
     nodeVersion: options.nodeVersion ?? process.version,
     workingDirectory: options.workingDirectory ?? process.cwd(),
     isTermux: termux,
-    packageManagers: packageManagers.filter((name): name is string => name !== null),
-    developerTools: developerTools.filter((name): name is string => name !== null),
+    packageManagers: packageManagers.filter((name): name is Exclude<typeof name, null> => name !== null),
+    developerTools: developerTools.filter((name): name is Exclude<typeof name, null> => name !== null),
   };
 }
