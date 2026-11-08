@@ -132,9 +132,22 @@ async function main() {
   });
   if (latestBuild.error) throw latestBuild.error;
   if (latestBuild.status !== 0) {
-    const previousCommit = process.env.GULZ_PREVIOUS_COMMIT ?? "";
-    if (!/^[a-f0-9]{40,64}$/i.test(previousCommit) || !stdin.isTTY || !stdout.isTTY) {
-      throw new Error("The latest CLI build failed. No fallback commit was supplied or an interactive confirmation is unavailable.");
+    // git pull records the pre-update HEAD in ORIG_HEAD. This also covers older installed CLI binaries.
+    const recordedPrevious = spawnSync("git", ["rev-parse", "--verify", "ORIG_HEAD"], {
+      cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+    });
+    const previousCommit = process.env.GULZ_PREVIOUS_COMMIT ||
+      (recordedPrevious.status === 0 ? recordedPrevious.stdout.trim() : "");
+    const currentCommit = spawnSync("git", ["rev-parse", "HEAD"], {
+      cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+    });
+    const validPrevious = /^[a-f0-9]{40,64}$/i.test(previousCommit) &&
+      currentCommit.status === 0 && currentCommit.stdout.trim() !== previousCommit;
+    if (!validPrevious) {
+      throw new Error("The latest CLI build failed, and GULZ could not verify the previously installed commit. No automatic rollback was attempted.");
+    }
+    if (!stdin.isTTY || !stdout.isTTY) {
+      throw new Error("The latest CLI build failed. The previous version is available, but rollback needs an interactive terminal. Re-run the installer in Termux to choose whether to restore it.");
     }
     const rl = createInterface({ input: stdin, output: stdout });
     let answer = "";
