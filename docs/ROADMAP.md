@@ -69,7 +69,7 @@ GULZ is a provider-independent, project-first AI coding agent with a conversatio
 - [x] Add an OpenAI-compatible hosted AI proxy at `gulz.gaxity.com.ng/api/ai/v1/chat/completions` in the website Worker.\n- [x] Add a hosted model alias endpoint so `/provider models` can discover the GULZ AI model.
 - [x] Keep the upstream provider key in a Cloudflare Worker secret; no shared key is embedded in the CLI.
 - [x] Add account-based daily request quotas shared across a user's Places and a separate guest IP allowance.
-- [x] Add an account usage endpoint and show daily remaining requests in the website dashboard.
+- [x] Add account and guest usage lookup; show the account daily allowance in the website dashboard and the hosted allowance in CLI provider status.
 - [x] Use the per-Place credential for account metering when a Place is paired; allow guest use without GitHub sign-in.
 - [ ] Configure the upstream AI provider key and model in the deployed Worker.
 - [ ] Apply the AI usage migration and run load, quota-boundary, streaming and provider-failure tests.
