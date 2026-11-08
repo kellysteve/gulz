@@ -216,7 +216,7 @@ export async function generateChatReply(
       const url = new URL(endpoint.url);
       url.searchParams.set("q", system + "\n\nConversation:\n" + bounded.map((item) => item.role.toUpperCase() + ": " + item.content).join("\n"));
       url.searchParams.set("apikey", apiKey);
-      response = await fetch(url, { method: "GET", headers: { "Accept": onContentDelta ? "text/event-stream, application/json" : "application/json" }, signal: controller.signal });
+      response = await fetch(url, { method: "GET", headers: { "Accept": "application/json" }, signal: controller.signal });
     } else {
       response = await fetch(endpoint.url, {
         method: "POST",
