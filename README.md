@@ -1,8 +1,8 @@
 # GULZ
 
-**Tell it. Get it done.**
+**Goals. Executed.**
 
-GULZ is an open-source, provider-independent AI agent for helping people build, install, configure, host and manage technology through natural conversation.
+GULZ is an open-source, provider-independent AI coding agent for understanding projects, editing code, running tests and helping users build, configure, host and manage software through natural conversation.
 
 **A Gaxity product.**
 
@@ -16,13 +16,13 @@ A source-level SSH-paired remote agent is now implemented. Full VPS provisioning
 
 ## Install the GULZ CLI
 
-On Termux, Linux, macOS or a Linux VPS, install Node.js 20.19+ and run the interactive source installer:
+On Termux, Linux, macOS or a Linux VPS, install Node.js 20.19+ and run the interactive source installer. The first-party installer URL becomes available after the GULZ Cloudflare Worker is deployed and the custom domain is connected:
 
 ~~~sh
-curl -fsSL https://raw.githubusercontent.com/kellysteve/gulz/main/scripts/install.sh | bash
+curl -fsSL https://gulz.gaxity.com.ng/install | bash
 ~~~
 
-The installer offers built-in GULZ AI, your own OpenAI-compatible provider, or provider setup later. It installs the CLI workspaces and their build dependencies while skipping the website's Wrangler/Workerd dependency for Termux compatibility. Run it as your normal user, not with sudo. Windows users should follow [docs/INSTALLATION.md](docs/INSTALLATION.md). This is a source installation, not a signed binary release.
+The installer offers built-in GULZ AI, your own OpenAI-compatible provider, or provider setup later. It installs the CLI workspaces and their build dependencies while skipping the website's Wrangler/Workerd dependency for Termux compatibility. Run it as your normal user, not with sudo. Windows users should follow [docs/INSTALLATION.md](docs/INSTALLATION.md). The first-party route securely serves the installer script from the official repository. This is a source installation, not a signed binary release.
 
 ## Start chatting
 
@@ -53,7 +53,7 @@ gulz chat
 
 Omit the workspace argument to use the remote SSH user's starting directory. You can also use an SSH config alias instead of user@host. GULZ requires strict host-key verification, reuses your SSH config/agent and does not store private keys or passwords. The remote agent is invoked on demand for each tool call. The current remote tool set can inspect the selected workspace, read non-secret files, make approved changes and run approved programs. Full API/website hosting workflows and real-host integration tests are still in development. See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the complete procedure.
 
-## Product architecture
+## Coding-agent direction\n\nGULZ is being upgraded around a project-first coding-agent workflow inspired by the usability of modern terminal coding agents, while retaining local-first Termux and VPS execution. Local folders remain first-class; GitHub-connected repositories will be an optional cloud workspace, not a requirement to upload source code. GitHub OAuth, isolated cloud workspaces and pull-request automation are not yet implemented.\n\nThe optional GULZ AI service is planned at `ai.gaxity.com.ng`, separate from this public repository. Provider credentials must remain server-side; the public CLI must never contain a shared master key. Each client will use revocable, scoped credentials and quotas. Until the gateway is deployed, users should configure their own provider.\n\n## Product architecture
 
 - **AI Assistant:** natural conversation, context and final explanations.
 - **Agent Engine:** bounded model/tool loop, tool registry, cancellation and result handoff.
