@@ -490,7 +490,8 @@ export interface ApprovedCommandResult {
   processSucceeded: boolean;
 }
 const forbiddenExecutables = new Set(["sh", "bash", "dash", "zsh", "fish", "csh", "tcsh", "cmd", "cmd.exe", "powershell", "pwsh", "busybox", "ssh", "scp", "sftp", "env", "xargs", "su"]);
-const inlineCodeFlags = new Set(["-c", "-e", "-r", "--command", "-command", "-encodedcommand", "--eval", "-eval"]);
+const interpreterExecutables = new Set(["node", "nodejs", "deno", "bun", "python", "python2", "python3", "pypy", "pypy3", "ruby", "perl", "php", "lua"]);
+const inlineCodeFlags = new Set(["-c", "-e", "-r", "-p", "--command", "-command", "-encodedcommand", "--eval", "-eval"]);
 
 /**
  * Executes one explicitly approved program without a shell. This is the
