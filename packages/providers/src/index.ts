@@ -320,7 +320,10 @@ async function readAgentStream(response: Response, onContentDelta?: (delta: stri
     try { payload = JSON.parse(raw); } catch { throw new ProviderError("AI provider returned invalid agent response JSON."); }
     if (onContentDelta && isRecord(payload) && Array.isArray(payload.choices)) {
       const choice = payload.choices[0];
-      if (isRecord(choice) && isRecord(choice.message) && typeof choice.message.content === "string") onContentDelta(choice.message.content);
+      if (isRecord(choice) && isRecord(choice.message) && typeof choice.message.content === "string") {
+        if (choice.message.content.length > 32000) throw new ProviderError("AI response exceeded the 32,000-character limit.");
+        onContentDelta(choice.message.content);
+      }
     }
     return payload;
   }
@@ -337,6 +340,7 @@ async function readAgentStream(response: Response, onContentDelta?: (delta: stri
     if (!data || data === "[DONE]") return;
     let payload: unknown;
     try { payload = JSON.parse(data); } catch { throw new ProviderError("AI provider sent an invalid streaming event."); }
+    if (isRecord(payload) && typeof payload.error === "string") throw new ProviderError("AI provider streaming error: " + payload.error.slice(0, 500));
     if (!isRecord(payload) || !Array.isArray(payload.choices)) return;
     const choice = payload.choices[0];
     if (!isRecord(choice)) return;
@@ -344,6 +348,7 @@ async function readAgentStream(response: Response, onContentDelta?: (delta: stri
     const delta = isRecord(choice.delta) ? choice.delta : {};
     if (typeof delta.content === "string" && delta.content) {
       content += delta.content;
+      if (content.length > 32000) throw new ProviderError("AI response exceeded the 32,000-character limit.");
       onContentDelta?.(delta.content);
     }
     if (Array.isArray(delta.tool_calls)) {
@@ -455,7 +460,6 @@ export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, 
     }
     if (!isRecord(rawMessage)) throw new ProviderError("AI provider returned an invalid assistant turn.");
     const content = typeof rawMessage.content === "string" ? rawMessage.content.trim() : "";
-    if (endpoint.builtin && content) onContentDelta?.(content);
     const rawCalls = Array.isArray(rawMessage.tool_calls) ? rawMessage.tool_calls : [];
     if (rawCalls.length > 8) throw new ProviderError("The AI requested more than 8 tools in one turn.");
     const allowedNames = new Set(tools.map((tool) => tool.name));
@@ -471,6 +475,7 @@ export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, 
     });
     if (!content && toolCalls.length === 0) throw new ProviderError("AI provider returned an empty agent response.");
     if (content.length > 32000) throw new ProviderError("AI response exceeded the 32,000-character limit.");
+    if (endpoint.builtin && content) onContentDelta?.(content);
     return { content, toolCalls };
   } catch (error) {
     if (error instanceof ProviderError) throw error;
