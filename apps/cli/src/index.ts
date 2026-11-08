@@ -22,6 +22,7 @@ const goalsLockFile = join(dataHome, "goals.lock");
 const auditFile = join(dataHome, "audit.jsonl");
 const providerFile = join(dataHome, "provider.json");
 const providerProfilesFile = join(dataHome, "provider-profiles.json");
+const placeFile = join(dataHome, "place.json");
 const conversationFile = join(dataHome, "conversation.json");
 const remoteEnvironmentsFile = join(dataHome, "remote-environments.json");
 const executionLockFile = join(dataHome, "execution.lock");
@@ -219,6 +220,9 @@ function help(): void {
     "  provider models       Browse or change models",
     "  provider test         Test the active provider",
     "  provider remove [id] Remove a saved provider",
+    "  account connect <code> Pair this installation with your GULZ account",
+    "  account status       Show this Place connection",
+    "  account disconnect  Remove this installation's Place credential",
     "  provider builtin      Use the legacy built-in provider",
     "  provider configure    Configure a custom compatible API",
     "  chat                  Open a continuous AI conversation with GULZ",
@@ -527,6 +531,101 @@ async function runProviderConnectionTest():Promise<void>{
  title("AI CONNECTION CHECK");
  const turn=await generateAgentTurn({...config,toolChoice:"required"},[{role:"user",content:"Call the gulz_connection_check tool exactly once with an empty object. Do not execute any real-world action."}],[{name:"gulz_connection_check",description:"Harmless tool-calling capability check. Never execute it.",parameters:{type:"object",properties:{},additionalProperties:false}}]);
  success("Provider responded.");label("Tool calling",turn.toolCalls.some(c=>c.name==="gulz_connection_check"&&Object.keys(c.arguments).length===0)?"Supported":"Not confirmed");
+}
+
+
+interface PlaceCredentials { placeId: string; deviceToken: string; controlUrl: string; pairedAt: string; }
+async function readPlaceCredentials(): Promise<PlaceCredentials | null> {
+  await ensureDataHome();
+  try {
+    const info = await lstat(placeFile);
+    if (!info.isFile() || info.isSymbolicLink()) throw new Error("Place credentials must be a regular file.");
+    await chmod(placeFile, 0o600);
+    const parsed: unknown = JSON.parse(await readFile(placeFile, "utf8"));
+    if (!isRecord(parsed) || !isNonEmptyString(parsed.placeId) || !isNonEmptyString(parsed.deviceToken) ||
+        !isNonEmptyString(parsed.controlUrl) || !isTimestamp(parsed.pairedAt)) throw new Error("Saved Place credentials are invalid.");
+    return parsed as unknown as PlaceCredentials;
+  } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return null; throw error; }
+}
+async function savePlaceCredentials(value: PlaceCredentials): Promise<void> {
+  await ensureDataHome();
+  const temporary = join(dataHome, "place." + randomUUID() + ".tmp");
+  try {
+    await writeFile(temporary, JSON.stringify(value, null, 2) + "\n", { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await rename(temporary, placeFile);
+    await chmod(placeFile, 0o600);
+  } finally { await rm(temporary, { force: true }).catch(() => undefined); }
+}
+async function connectPlace(code: string): Promise<void> {
+  const normalized = code.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!/^[A-HJ-NP-Z2-9]{8}$/.test(normalized)) throw new Error("Enter the eight-character pairing code from your GULZ dashboard.");
+  const controlUrl = (process.env.GULZ_CONTROL_URL || "https://gulz.gaxity.com.ng").replace(/\/$/, "");
+  const response = await fetch(controlUrl + "/api/places/pair/complete", {
+    method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      code: normalized,
+      name: (process.env.PREFIX?.includes("com.termux") ? "Android Termux" : platform()) + " · " + arch(),
+      platform: process.env.PREFIX?.includes("com.termux") ? "termux" : platform(),
+      architecture: arch(), version: VERSION,
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  const payload = await response.json() as { placeId?: string; deviceToken?: string; message?: string; error?: string };
+  if (!response.ok || !payload.placeId || !payload.deviceToken) throw new Error(payload.error || "Place pairing failed. Generate a fresh code on the website and try again.");
+  await savePlaceCredentials({ placeId: payload.placeId, deviceToken: payload.deviceToken, controlUrl, pairedAt: new Date().toISOString() });
+  success("This installation is now connected as a GULZ Place.");
+  console.log("Manage it at " + controlUrl + "/dashboard");
+}
+async function heartbeatPlace(): Promise<void> {
+  const place = await readPlaceCredentials();
+  if (!place) return;
+  try {
+    const config = await readProviderConfig();
+    await fetch(place.controlUrl + "/api/places/heartbeat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + place.deviceToken },
+      body: JSON.stringify({
+        version: VERSION,
+        platform: process.env.PREFIX?.includes("com.termux") ? "termux" : platform(),
+        architecture: arch(),
+        ...(config ? { provider: new URL(config.baseUrl).host, model: config.model } : {}),
+      }),
+      signal: AbortSignal.timeout(4000),
+    });
+  } catch { /* Place heartbeat is best-effort; local CLI work must remain available offline. */ }
+}
+async function accountCommand(args: string[]): Promise<void> {
+  const action = args[0] || "status";
+  if (action === "connect") {
+    if (args.length !== 2) throw new Error("Usage: gulz account connect <8-character-code>");
+    await connectPlace(args[1]!);
+    await heartbeatPlace();
+    return;
+  }
+  if (action === "status") {
+    const place = await readPlaceCredentials();
+    title("GULZ ACCOUNT");
+    if (!place) { warning("This installation is not connected to a GULZ account. Local coding and BYOK providers still work."); console.log("Sign in at " + (process.env.GULZ_CONTROL_URL || "https://gulz.gaxity.com.ng") + "/dashboard and run gulz account connect <code>."); return; }
+    success("This installation is paired as a Place.");
+    label("Place ID", place.placeId);
+    label("Dashboard", place.controlUrl + "/dashboard");
+    label("Paired", new Date(place.pairedAt).toLocaleString());
+    return;
+  }
+  if (action === "disconnect") {
+    if (args.length !== 1) throw new Error("Usage: gulz account disconnect");
+    const place = await readPlaceCredentials();
+    if (!place) { console.log("This installation is not connected."); return; }
+    if (!stdin.isTTY || !stdout.isTTY) throw new Error("Disconnecting a Place requires an interactive terminal.");
+    const rl = createInterface({ input: stdin, output: stdout });
+    let answer = "";
+    try { answer = await rl.question("Remove this Place credential from this installation? (y/N): "); } finally { rl.close(); }
+    if (!["y", "yes"].includes(answer.trim().toLowerCase())) { console.log("Nothing changed."); return; }
+    await rm(placeFile, { force: true });
+    success("Local Place credential removed. You can also revoke the Place from your website dashboard.");
+    return;
+  }
+  throw new Error("Usage: gulz account <connect <code>|status|disconnect>");
 }
 
 async function askSecret(prompt: string): Promise<string> {
@@ -1296,6 +1395,7 @@ async function chatSession(): Promise<void> {
     Object.fromEntries(remoteEnvironments.map((item): [string, string] => [item.name, item.destination])),
     Object.fromEntries(remoteEnvironments.map((item): [string, string] => [item.name, item.workspace])),
   );
+  await heartbeatPlace();
   const agentTools = [
     ...createLocalAgentTools(process.cwd()),
     ...remoteEnvironments.flatMap((item) => createRemoteAgentTools(remoteTransport, item.name)),
@@ -1719,6 +1819,10 @@ async function main(): Promise<void> {
     }
     console.error("Usage: gulz provider [builtin|configure|status|remove]");
     process.exitCode = 2;
+    return;
+  }
+  if (command === "account") {
+    await accountCommand(args);
     return;
   }
   if (command === "remote") {
