@@ -437,7 +437,7 @@ export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, 
       response = await fetch(url, { method: "GET", headers: { "Accept": "application/json" }, signal: controller.signal });
     } else {
       response = await fetch(endpoint.url, {
-        method: "POST", headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json", "Accept": "application/json" },
+        method: "POST", headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json", "Accept": onContentDelta ? "text/event-stream, application/json" : "application/json" },
         body: JSON.stringify({ model, temperature: 0.2, stream: Boolean(onContentDelta), tools: safeTools, tool_choice: config.toolChoice ?? "auto", messages: [{ role: "system", content: system }, ...safeMessages] }),
         signal: controller.signal,
       });
