@@ -1246,12 +1246,12 @@ async function chatSession(): Promise<void> {
           onContentDelta: (delta) => {
             if (!delta) return;
             if (!streamAnchor) {
-              console.log("\\n" + paint("GULZ", ansi.cyan, ansi.bold) + paint("  ·  RESPONSE", ansi.dim));
-              stdout.write("\\u001b[s");
+              console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + paint("  ·  RESPONSE", ansi.dim));
+              stdout.write("\u001b[s");
               streamAnchor = true;
             }
             streamedText += delta;
-            stdout.write("\\u001b[u\\u001b[J" + renderMarkdown(streamedText));
+            stdout.write("\u001b[u\u001b[J" + renderMarkdown(streamedText));
           },
           approve: async (request) => {
             title("REVIEW THIS ACTION");
@@ -1280,7 +1280,7 @@ async function chatSession(): Promise<void> {
         messages.splice(0, messages.length, ...result.messages);
         await saveConversation(messages);
         if (streamAnchor) {
-          stdout.write("\\u001b[u\\u001b[J" + renderMarkdown(answer) + "\\n");
+          stdout.write("\u001b[u\u001b[J" + renderMarkdown(answer) + "\\n");
         } else {
           console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + paint("  ·  RESPONSE", ansi.dim));
           renderAssistantMessage(answer);
