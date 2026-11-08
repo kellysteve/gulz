@@ -56,7 +56,26 @@ GULZ is a provider-independent, project-first AI coding agent with a conversatio
 - [ ] Add safe configuration editing, backup and rollback for service setup.
 - [ ] Add cancellation and resumable execution for long-running jobs.
 
-## GitHub and cloud workspaces\n\n- [ ] Register and configure the GULZ GitHub OAuth App with minimum required permissions.\n- [ ] Implement OAuth device/browser authorization with state validation, PKCE where supported, revocation and secure token storage.\n- [ ] Add repository picker with explicit repository grants; never request broad account access by default.\n- [ ] Create isolated, short-lived cloud workspaces for GitHub repositories, with resource limits and per-job cleanup.\n- [ ] Add branch creation, diff review, commits and pull-request creation with user confirmation.\n- [ ] Keep local folders and SSH-paired VPSs first-class; GitHub connection must remain optional.\n\n## Hosted GULZ AI gateway\n\n- [ ] Build a separate Cloudflare Worker service at `ai.gaxity.com.ng`; do not bundle its secrets or server code into the public CLI.\n- [ ] Add account/device authentication, short-lived access tokens, refresh/revocation and per-installation identity.\n- [ ] Store provider credentials only as server-side secrets or encrypted records with managed key rotation.\n- [ ] Add model routing, provider health/fallbacks, request limits, usage quotas, abuse controls and spend limits.\n- [ ] Never treat a public URL, client ID or obfuscated string as a secret; never ship a shared gateway master key in GULZ.\n- [ ] Provide a BYOK route so users can keep using their own provider keys without the hosted gateway.\n- [ ] Add privacy policy, data retention controls, abuse reporting and operational monitoring before public access.\n\n## Tools and integrations
+## GitHub and cloud workspaces
+
+- [ ] Register and configure the GULZ GitHub OAuth App with minimum required permissions.
+- [ ] Implement OAuth device/browser authorization with state validation, PKCE where supported, revocation and secure token storage.
+- [ ] Add repository picker with explicit repository grants; never request broad account access by default.
+- [ ] Create isolated, short-lived cloud workspaces for GitHub repositories, with resource limits and per-job cleanup.
+- [ ] Add branch creation, diff review, commits and pull-request creation with user confirmation.
+- [ ] Keep local folders and SSH-paired VPSs first-class; GitHub connection must remain optional.
+
+## Hosted GULZ AI gateway
+
+- [ ] Build a separate Cloudflare Worker service at `ai.gaxity.com.ng`; do not bundle its secrets or server code into the public CLI.
+- [ ] Add account/device authentication, short-lived access tokens, refresh/revocation and per-installation identity.
+- [ ] Store provider credentials only as server-side secrets or encrypted records with managed key rotation.
+- [ ] Add model routing, provider health/fallbacks, request limits, usage quotas, abuse controls and spend limits.
+- [ ] Never treat a public URL, client ID or obfuscated string as a secret; never ship a shared gateway master key in GULZ.
+- [ ] Provide a BYOK route so users can keep using their own provider keys without the hosted gateway.
+- [ ] Add privacy policy, data retention controls, abuse reporting and operational monitoring before public access.
+
+## Tools and integrations
 
 - [ ] Add GitHub repository/issue/PR workflows with scoped OAuth permissions.
 - [ ] Add database and cloud-provider integrations with least-privilege credentials.
