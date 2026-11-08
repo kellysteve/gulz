@@ -476,7 +476,7 @@ async function saveProviderProfiles(value:StoredProviderProfiles):Promise<void>{
 }
 async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<void>{
  let saved=await readProviderProfiles();
- const list=()=>{title("AI PROVIDERS"); if(!saved.providers.length) warning("No saved providers yet."); for(const p of saved.providers) console.log((p.id===saved.active?paint("● ",ansi.green,ansi.bold):"  ")+p.name+(p.id===saved.active?paint("  ACTIVE",ansi.green):"")+" · "+p.id+" · "+p.model); muted("API keys remain local and are never displayed.");};
+ const list=()=>{title("AI PROVIDERS"); if(!saved.providers.length && !existsSync(providerFile)) warning("No saved providers yet."); for(const p of saved.providers) console.log((p.id===saved.active?paint("● ",ansi.green,ansi.bold):"  ")+p.name+(p.id===saved.active?paint("  ACTIVE",ansi.green):"")+" · "+p.id+" · "+p.model); if(!saved.providers.length && existsSync(providerFile)) console.log(paint("● Legacy provider configuration",ansi.green)+" · use `provider configure` to replace it"); muted("API keys remain local and are never displayed.");};
  if(action==="menu"){
   if(!stdin.isTTY||!stdout.isTTY) throw new Error("The provider centre requires an interactive terminal.");
   list(); console.log("\n  1) Add provider\n  2) Switch provider\n  3) Browse/change models\n  4) Test active provider\n  5) Remove provider\n  0) Back");
@@ -518,7 +518,7 @@ async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<
   if(model!==p.model){saved.providers=saved.providers.map(x=>x.id===p.id?{...x,model}:x);await saveProviderProfiles(saved);success("Model changed to "+model);}return;
  }
  if(action==="remove"){
-  const id=values[0]||saved.active;const p=saved.providers.find(x=>x.id===id);if(!p){console.log("No matching saved provider.");return;}
+  const id=values[0]||saved.active;const p=saved.providers.find(x=>x.id===id);if(!p){if(!saved.providers.length && existsSync(providerFile)){if(!stdin.isTTY||!stdout.isTTY)throw new Error("Removing a provider requires an interactive terminal.");const legacyRl=createInterface({input:stdin,output:stdout});let legacyAnswer="";try{legacyAnswer=await legacyRl.question("Remove the legacy saved provider configuration? (y/N): ");}finally{legacyRl.close();}if(["y","yes"].includes(legacyAnswer.trim().toLowerCase())){await rm(providerFile,{force:true});success("Legacy provider configuration removed.");}return;}console.log("No matching saved provider.");return;}
   if(!stdin.isTTY||!stdout.isTTY)throw new Error("Removing a provider requires an interactive terminal.");
   const rl=createInterface({input:stdin,output:stdout});let answer="";try{answer=await rl.question("Remove "+p.name+" from this Place? (y/N): ");}finally{rl.close();}
   if(!["y","yes"].includes(answer.trim().toLowerCase())){console.log("Nothing changed.");return;}
