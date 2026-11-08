@@ -1122,12 +1122,12 @@ async function updateInstallation(): Promise<void> {
       const choiceRl = createInterface({ input: stdin, output: stdout });
       let choice = "";
       try {
-        console.log("\n  1) Built-in GULZ AI");
-        console.log("  2) Use my own AI provider / choose a model");
+        console.log("\n  1) Add or switch AI provider");
+        console.log("  2) Test current provider");
         console.log("  3) Keep my current settings");
         choice = await choiceRl.question("Choose 1, 2 or 3: ");
       } finally { choiceRl.close(); }
-      const action = choice.trim() === "1" ? "builtin" : choice.trim() === "2" ? "configure" : "";
+      const action = choice.trim() === "1" ? "add" : choice.trim() === "2" ? "test" : "";
       if (action) {
         const cliEntry = join(installDirectory, "apps", "cli", "dist", "index.js");
         const configured = spawnSync(process.execPath, [cliEntry, "provider", action], { stdio: "inherit", env: updateEnv });
@@ -1135,7 +1135,7 @@ async function updateInstallation(): Promise<void> {
         if (configured.status !== 0) throw new Error("The GULZ installation succeeded, but AI provider setup did not finish.");
         const tested = spawnSync(process.execPath, [cliEntry, "provider", "test"], { stdio: "inherit", env: updateEnv });
         if (tested.error) throw tested.error;
-        if (tested.status !== 0) warning("The GULZ installation succeeded, but the AI connection test did not pass. You can retry with gulz provider test.");
+        if (tested.status !== 0) warning("The GULZ installation succeeded, but the AI connection test did not pass. You can retry with /provider test inside chat.");
       } else if (choice.trim() !== "3") {
         warning("No provider changes were made. Your existing settings were preserved.");
       }
@@ -1194,18 +1194,19 @@ async function interactiveSession(): Promise<void> {
         continue;
       }
       if (choice === "3" || choice.toLowerCase() === "provider" || choice.toLowerCase() === "settings") {
-        console.log("\n  1) Built-in GULZ AI");
-        console.log("  2) Connect my own AI provider / model");
-        console.log("  3) Test current AI connection");
-        console.log("  4) View provider status");
-        console.log("  5) Remove provider settings");
+        console.log("\n  1) Add provider");
+        console.log("  2) Switch active provider");
+        console.log("  3) Browse / change models");
+        console.log("  4) Test active provider");
+        console.log("  5) List saved providers");
+        console.log("  6) Remove provider");
         console.log("  0) Back");
         const setupChoice = await ask("Choose an option: ");
         if (setupChoice === "0" || !setupChoice) continue;
-        const action = setupChoice === "1" ? "builtin" : setupChoice === "2" ? "configure" : setupChoice === "3" ? "test" : setupChoice === "4" ? "status" : setupChoice === "5" ? "remove" : "";
-        if (!action) { warning("Choose 1, 2, 3, 4, 5 or 0."); continue; }
+        const action = setupChoice === "1" ? "add" : setupChoice === "2" ? "use" : setupChoice === "3" ? "models" : setupChoice === "4" ? "test" : setupChoice === "5" ? "list" : setupChoice === "6" ? "remove" : "";
+        if (!action) { warning("Choose 1, 2, 3, 4, 5, 6 or 0."); continue; }
         const result = await runCli(["provider", action]);
-        if (result === 0 && (action === "builtin" || action === "configure")) await runCli(["provider", "test"]);
+        if (result === 0 && ["add", "use", "models"].includes(action)) await runCli(["provider", "test"]);
         return await interactiveSession();
       }
       if (choice === "4" || ["remote", "vps", "servers"].includes(choice.toLowerCase())) {
