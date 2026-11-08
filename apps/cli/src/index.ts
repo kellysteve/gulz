@@ -43,6 +43,95 @@ function label(name: string, value: string): void { console.log(paint(name.padEn
 function info(value: string): void { console.log(paint("› ", ansi.magenta, ansi.bold) + paint(value, ansi.blue)); }
 function muted(value: string): void { console.log(paint(value, ansi.dim)); }
 
+function terminalWidth(): number { return Math.max(48, Math.min(120, (stdout.columns || 80) - 4)); }
+
+/** Turn common AI Markdown into readable terminal output instead of showing raw syntax. */
+function renderMarkdown(input: string): string {
+  const lines = input.replace(/\r\n?/g, "\n").split("\n");
+  const output: string[] = [];
+  let code = false;
+  let language = "";
+  let codeLines: string[] = [];
+  const inline = (value: string): string => {
+    const saved: string[] = [];
+    let text = value.replace(/\x60([^\x60]+)\x60/g, (_m, body: string) => {
+      const key = String.fromCharCode(1) + saved.length + String.fromCharCode(2);
+      saved.push(paint(body, ansi.yellow));
+      return key;
+    });
+    text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label: string, url: string) => paint(label, ansi.cyan) + paint(" (" + url + ")", ansi.dim));
+    text = text.replace(/\*\*(.+?)\*\*/g, (_m, body: string) => paint(body, ansi.bold, ansi.white));
+    text = text.replace(/__(.+?)__/g, (_m, body: string) => paint(body, ansi.bold, ansi.white));
+    text = text.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, (_m, body: string) => paint(body, ansi.magenta));
+    text = text.replace(/~~(.+?)~~/g, (_m, body: string) => paint(body, ansi.dim));
+    text = text.replace(/<((?:https?:\/\/)[^>]+)>/g, (_m, url: string) => paint(url, ansi.cyan, ansi.bold));
+    return text.replace(/\u0001(\d+)\u0002/g, (_m, index: string) => saved[Number(index)] ?? "");
+  };
+  const wrap = (value: string): string => {
+    const width = terminalWidth();
+    if (value.replace(/\u001b\[[0-9;]*m/g, "").length <= width) return value;
+    const indent = value.match(/^\s*/)?.[0] ?? "";
+    const words = value.trim().split(/\s+/);
+    const result: string[] = [];
+    let line = indent;
+    for (const word of words) {
+      if (line.trim() && (line + " " + word).replace(/\u001b\[[0-9;]*m/g, "").length > width) {
+        result.push(line); line = indent + word;
+      } else line += (line.trim() ? " " : "") + word;
+    }
+    if (line.trim()) result.push(line);
+    return result.join("\n");
+  };
+  const flushCode = () => {
+    output.push(paint("  ┌─ " + (language || "CODE"), ansi.cyan, ansi.dim));
+    for (const line of codeLines) {
+      const width = terminalWidth() - 4;
+      if (!line) output.push("  " + paint("│", ansi.cyan, ansi.dim));
+      else for (let i = 0; i < line.length; i += width) output.push("  " + paint("│ ", ansi.cyan, ansi.dim) + paint(line.slice(i, i + width), ansi.green));
+    }
+    output.push(paint("  └" + "─".repeat(18), ansi.cyan, ansi.dim));
+    codeLines = []; language = "";
+  };
+  for (const line of lines) {
+    const fence = line.match(/^\s*\x60{3}([^\s\x60]*)\s*$/);
+    if (fence) {
+      if (code) { flushCode(); code = false; }
+      else { code = true; language = fence[1] || "CODE"; }
+      continue;
+    }
+    if (code) { codeLines.push(line); continue; }
+    const heading = line.match(/^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/);
+    if (heading) {
+      output.push(paint(inline(heading[1]!), ansi.bold, ansi.cyan));
+      output.push(paint("  " + "─".repeat(Math.min(terminalWidth() - 2, 28)), ansi.dim));
+      continue;
+    }
+    if (/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line)) continue;
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      const cells = line.split("|").slice(1, -1).map((cell) => inline(cell.trim()));
+      output.push("  " + cells.join(paint("  │  ", ansi.dim)));
+      continue;
+    }
+    if (/^\s*(---+|___+|\*\*\*+)\s*$/.test(line)) {
+      output.push(paint("  " + "─".repeat(28), ansi.dim)); continue;
+    }
+    const bullet = line.match(/^(\s*)[-+*]\s+(.+)$/);
+    const numbered = line.match(/^(\s*)(\d+)[.)]\s+(.+)$/);
+    const quote = line.match(/^\s*>\s?(.*)$/);
+    if (bullet) output.push(wrap(bullet[1] + paint("• ", ansi.magenta, ansi.bold) + inline(bullet[2]!)));
+    else if (numbered) output.push(wrap(numbered[1] + paint(numbered[2] + ". ", ansi.magenta, ansi.bold) + inline(numbered[3]!)));
+    else if (quote) output.push("  " + paint("│ ", ansi.cyan) + paint(inline(quote[1]!), ansi.dim));
+    else output.push(wrap(inline(line)));
+  }
+  if (code) flushCode();
+  return output.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function renderAssistantMessage(value: string): void {
+  const rendered = renderMarkdown(value);
+  if (rendered) console.log(rendered);
+}
+
 const goalStatuses = new Set<GoalStatus>(["draft", "planned", "awaiting_approval", "running", "paused", "completed", "failed", "cancelled"]);
 const taskStatuses = new Set<TaskStatus>(["pending", "awaiting_approval", "running", "paused", "completed", "failed", "skipped", "cancelled"]);
 const risks = new Set<RiskLevel>(["low", "moderate", "high", "critical"]);
@@ -1085,7 +1174,8 @@ async function chatSession(): Promise<void> {
       for (const message of messages.filter((item) => item.role !== "tool" && !(item.role === "assistant" && item.toolCalls?.length)).slice(-12)) {
         const speaker = message.role === "user" ? "You" : "GULZ";
         const color = message.role === "user" ? ansi.green : ansi.cyan;
-        console.log("\n" + paint(speaker, color, ansi.bold) + "\n" + message.content);
+        console.log("\n" + paint(speaker, color, ansi.bold));
+        renderAssistantMessage(message.content);
       }
     }
     while (true) {
@@ -1137,7 +1227,8 @@ async function chatSession(): Promise<void> {
         const answer = result.reply || "The requested tool operations finished, but the AI did not provide a final explanation.";
         messages.splice(0, messages.length, ...result.messages);
         await saveConversation(messages);
-        console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold) + "\n" + answer);
+        console.log("\n" + paint("GULZ", ansi.cyan, ansi.bold));
+        renderAssistantMessage(answer);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const failureReply = "I couldn't finish that request: " + message;
