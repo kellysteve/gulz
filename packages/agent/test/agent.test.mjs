@@ -173,3 +173,69 @@ test("does not ask again for the same operation after the user declines it", asy
     assert.equal(result.stoppedForApproval, true);
   } finally { globalThis.fetch = originalFetch; }
 });
+
+
+test("returns a reusable, redacted tool transcript for the next chat turn", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  let secondTurnMessages = [];
+  globalThis.fetch = async (_url, options) => {
+    calls += 1;
+    const body = JSON.parse(String(options?.body));
+    if (calls === 1) return new Response(JSON.stringify({ choices: [{ message: {
+      content: "",
+      tool_calls: [{ id: "call_history", type: "function", function: { name: "history_probe", arguments: "{}" } }],
+    } }] }), { status: 200 });
+    if (calls === 2) return new Response(JSON.stringify({ choices: [{ message: { content: "The inspection is complete." } }] }), { status: 200 });
+    secondTurnMessages = body.messages;
+    return new Response(JSON.stringify({ choices: [{ message: { content: "I remember the earlier inspection." } }] }), { status: 200 });
+  };
+  try {
+    const tools = [{
+      definition: { name: "history_probe", description: "Test-only tool", parameters: { type: "object", properties: {}, additionalProperties: false } },
+      requiresApproval: () => false,
+      execute: async () => ({ output: { content: "workspace checked" } }),
+    }];
+    const first = await runAgent({
+      provider: { baseUrl: "https://provider.example/v1", apiKey: "test", model: "tool-model" },
+      messages: [{ role: "user", content: "Inspect the workspace." }],
+      tools,
+    });
+    assert.ok(first.messages.some((message) => message.role === "assistant" && message.toolCalls?.some((call) => call.id === "call_history")));
+    assert.ok(first.messages.some((message) => message.role === "tool" && message.toolCallId === "call_history"));
+    await runAgent({
+      provider: { baseUrl: "https://provider.example/v1", apiKey: "test", model: "tool-model" },
+      messages: [...first.messages, { role: "user", content: "What did you find?" }],
+      tools,
+    });
+    assert.ok(secondTurnMessages.some((message) => message.role === "assistant" && message.tool_calls?.some((call) => call.id === "call_history")));
+    assert.ok(secondTurnMessages.some((message) => message.role === "tool" && message.tool_call_id === "call_history"));
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("history trimming starts at a user message instead of an orphaned tool result", async () => {
+  const originalFetch = globalThis.fetch;
+  let sentMessages = [];
+  globalThis.fetch = async (_url, options) => {
+    sentMessages = JSON.parse(String(options?.body)).messages;
+    return new Response(JSON.stringify({ choices: [{ message: { content: "Ready." } }] }), { status: 200 });
+  };
+  try {
+    const history = [
+      { role: "user", content: "Old request." },
+      { role: "assistant", content: "", toolCalls: [{ id: "old_call", name: "inspect_environment", arguments: {} }] },
+      { role: "tool", toolCallId: "old_call", content: "{}" },
+      { role: "assistant", content: "Old result." },
+      { role: "user", content: "Recent request." },
+      ...Array.from({ length: 8 }, (_, index) => ({ role: "assistant", content: "Context " + index })),
+    ];
+    await runAgent({
+      provider: { baseUrl: "https://provider.example/v1", apiKey: "test", model: "tool-model" },
+      messages: history,
+      tools: createLocalAgentTools(process.cwd()),
+    });
+    const conversationMessages = sentMessages.filter((message) => message.role !== "system");
+    assert.equal(conversationMessages[0]?.role, "user");
+    assert.equal(conversationMessages[0]?.content, "Recent request.");
+  } finally { globalThis.fetch = originalFetch; }
+});
