@@ -143,15 +143,17 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   if (url.pathname === "/api/ai/usage") {
     if (request.method !== "GET") return json({ error: "Method not allowed." }, 405);
     const user = await requestUser(request, env);
-    if (!user) return json({ error: "Sign in to view account-based GULZ AI usage." }, 401);
-    const identityHash = await digest(env.SUPABASE_SERVICE_ROLE_KEY + ":user:" + user.id);
+    const identity = user
+      ? { hash: await digest(env.SUPABASE_SERVICE_ROLE_KEY + ":user:" + user.id), limit: dailyLimit(env.GULZ_AI_ACCOUNT_DAILY_LIMIT, 20), tier: "account" }
+      : { ...await aiUsageIdentity(request, env), tier: bearer(request) ? "place-or-guest" : "guest" };
     const date = new Date().toISOString().slice(0, 10);
-    const response = await rest(env, "gulz_ai_usage_daily?select=requests&identity_hash=eq." + identityHash + "&usage_date=eq." + date + "&limit=1");
+    const response = await rest(env, "gulz_ai_usage_daily?select=requests&identity_hash=eq." + identity.hash + "&usage_date=eq." + date + "&limit=1");
     if (!response.ok) return json({ error: "Could not load GULZ AI usage." }, 502);
     const rows = await response.json() as Array<{ requests: number }>;
-    const limit = dailyLimit(env.GULZ_AI_ACCOUNT_DAILY_LIMIT, 20);
     const used = rows[0]?.requests ?? 0;
-    return json({ used, limit, remaining: Math.max(0, limit - used), resetsAt: new Date(Date.now() + (24 * 60 * 60 * 1000)).toISOString().slice(0, 10) });
+    const nextReset = new Date();
+    nextReset.setUTCHours(24, 0, 0, 0);
+    return json({ used, limit: identity.limit, remaining: Math.max(0, identity.limit - used), tier: identity.tier, resetsAt: nextReset.toISOString() });
   }
   if (url.pathname === "/api/places/pair/start") {
     if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
