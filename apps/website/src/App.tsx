@@ -137,7 +137,7 @@ function App() {
           <a href="#providers" onClick={() => setMenuOpen(false)}>Models</a>
           <a href="#install" onClick={() => setMenuOpen(false)}>Install</a>
         </nav>
-        {session ? <a className="github-link" href="/dashboard"><Github size={16}/> Dashboard <ArrowUpRight size={14}/></a> : <button className="github-link" onClick={() => void signInWithGithub()}><Github size={16}/> Sign in <ArrowUpRight size={14}/></button>}
+        {session ? <a className="github-link" href="/dashboard"><Github size={16}/> Dashboard <ArrowUpRight size={14}/></a> : <a className="github-link" href="/dashboard"><Github size={16}/> Sign in <ArrowUpRight size={14}/></a>}
       </header>
 
       <main>
