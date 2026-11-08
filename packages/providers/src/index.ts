@@ -537,7 +537,6 @@ export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, 
     });
     if (!content && toolCalls.length === 0) throw new ProviderError("AI provider returned an empty agent response.");
     if (content.length > 32000) throw new ProviderError("AI response exceeded the 32,000-character limit.");
-    if (endpoint.builtin && content) onContentDelta?.(content);
     return { content, toolCalls };
   } catch (error) {
     if (error instanceof ProviderError) throw error;
