@@ -518,12 +518,12 @@ async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<
   const apiKey=key||(chosenPreset?.id==="gulz-ai"?"guest":chosenPreset && ["ollama","lmstudio"].includes(chosenPreset.id)?"local":""); if(!apiKey)throw new Error("An API key is required.");
   const idBase=(providerCatalog[Number(selected)-1]?.id??name.toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-|-$/g,"")).slice(0,40)||"custom";
   const id=saved.providers.some(p=>p.id===idBase)?idBase+"-"+randomUUID().slice(0,6):idBase;
-  saved.providers.push({id,name,baseUrl,model,apiKey});saved.active=id;await saveProviderProfiles(saved);success(name+" added and selected.");return;
+  saved.providers.push({id,name,baseUrl,model,apiKey});saved.active=id;await saveProviderProfiles(saved);await heartbeatPlace("configured");success(name+" added and selected.");return;
  }
  if(action==="use"){
   let id=values[0];if(!id&&stdin.isTTY&&stdout.isTTY){list();const rl=createInterface({input:stdin,output:stdout});try{id=(await rl.question("Provider ID to activate: ")).trim();}finally{rl.close();}}
   const p=saved.providers.find(x=>x.id===id);if(!p)throw new Error("Provider not found. Run /provider to see saved providers.");
-  saved.active=p.id;await saveProviderProfiles(saved);success("Active provider: "+p.name+" · "+p.model);return;
+  saved.active=p.id;await saveProviderProfiles(saved);await heartbeatPlace("configured");success("Active provider: "+p.name+" · "+p.model);return;
  }
  if(action==="models"){
   const p=saved.providers.find(x=>x.id===(values[0]||saved.active));if(!p)throw new Error("Add a provider first.");
@@ -531,14 +531,14 @@ async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<
   if(!stdin.isTTY||!stdout.isTTY)return;
   const rl=createInterface({input:stdin,output:stdout});let c="",custom="";try{c=(await rl.question("Choose a model (blank keeps current): ")).trim();if(c===String(options.length+1))custom=(await rl.question("Model name: ")).trim();}finally{rl.close();}
   const model=custom||(Number(c)>0&&Number(c)<=options.length?options[Number(c)-1]:p.model);
-  if(model!==p.model){saved.providers=saved.providers.map(x=>x.id===p.id?{...x,model}:x);await saveProviderProfiles(saved);success("Model changed to "+model);}return;
+  if(model!==p.model){saved.providers=saved.providers.map(x=>x.id===p.id?{...x,model}:x);await saveProviderProfiles(saved);await heartbeatPlace("configured");success("Model changed to "+model);}return;
  }
  if(action==="remove"){
   const id=values[0]||saved.active;const p=saved.providers.find(x=>x.id===id);if(!p){if(!saved.providers.length && existsSync(providerFile)){if(!stdin.isTTY||!stdout.isTTY)throw new Error("Removing a provider requires an interactive terminal.");const legacyRl=createInterface({input:stdin,output:stdout});let legacyAnswer="";try{legacyAnswer=await legacyRl.question("Remove the legacy saved provider configuration? (y/N): ");}finally{legacyRl.close();}if(["y","yes"].includes(legacyAnswer.trim().toLowerCase())){await rm(providerFile,{force:true});success("Legacy provider configuration removed.");}return;}console.log("No matching saved provider.");return;}
   if(!stdin.isTTY||!stdout.isTTY)throw new Error("Removing a provider requires an interactive terminal.");
   const rl=createInterface({input:stdin,output:stdout});let answer="";try{answer=await rl.question("Remove "+p.name+" from this Place? (y/N): ");}finally{rl.close();}
   if(!["y","yes"].includes(answer.trim().toLowerCase())){console.log("Nothing changed.");return;}
-  saved.providers=saved.providers.filter(x=>x.id!==p.id);saved.active=saved.providers[0]?.id??"";await saveProviderProfiles(saved);success(p.name+" removed.");return;
+  saved.providers=saved.providers.filter(x=>x.id!==p.id);saved.active=saved.providers[0]?.id??"";await saveProviderProfiles(saved);await heartbeatPlace(saved.active?"configured":"unknown");success(p.name+" removed.");return;
  }
  throw new Error("Use /provider, list, add, use, models, test or remove.");
 }
@@ -591,7 +591,7 @@ async function connectPlace(code: string): Promise<void> {
   success("This installation is now connected as a GULZ Place.");
   console.log("Manage it at " + controlUrl + "/dashboard");
 }
-async function heartbeatPlace(providerStatus: "configured" | "connected" | "error" | "unknown" = "configured"): Promise<void> {
+async function heartbeatPlace(providerStatus?: "configured" | "connected" | "error" | "unknown"): Promise<void> {
   const place = await readPlaceCredentials();
   if (!place) return;
   try {
@@ -603,7 +603,7 @@ async function heartbeatPlace(providerStatus: "configured" | "connected" | "erro
         version: VERSION,
         platform: process.env.PREFIX?.includes("com.termux") ? "termux" : platform(),
         architecture: arch(),
-        ...(config ? { provider: new URL(config.baseUrl).host, model: config.model, providerStatus } : { providerStatus: "unknown" }),
+        ...(config ? { provider: new URL(config.baseUrl).host, model: config.model, ...(providerStatus ? { providerStatus } : {}) } : (providerStatus ? { providerStatus } : {})),
       }),
       signal: AbortSignal.timeout(4000),
     });
@@ -614,7 +614,7 @@ async function accountCommand(args: string[]): Promise<void> {
   if (action === "connect") {
     if (args.length !== 2) throw new Error("Usage: gulz account connect <8-character-code>");
     await connectPlace(args[1]!);
-    await heartbeatPlace();
+    await heartbeatPlace("configured");
     return;
   }
   if (action === "status") {
