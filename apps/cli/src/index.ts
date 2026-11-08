@@ -1704,6 +1704,7 @@ async function main(): Promise<void> {
         success("AI provider connection responded");
         label("Connection", "Connected");
         const supported = turn.toolCalls.some((call) => call.name === "gulz_connection_check" && isRecord(call.arguments) && Object.keys(call.arguments).length === 0);
+        await heartbeatPlace(supported ? "connected" : "error");
         if (supported) {
           success("This model returned the required structured tool call.");
           label("Tool calling", "Supported");
@@ -1722,6 +1723,7 @@ async function main(): Promise<void> {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (/HTTP 400|supports tool calling|invalid agent response/i.test(message)) {
+          await heartbeatPlace("error");
           warning("The provider rejected the tool-calling test request.");
           label("Tool calling", "Unsupported or unavailable");
           info("This does not by itself prove that ordinary chat is unavailable.");
