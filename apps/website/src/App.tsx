@@ -12,7 +12,7 @@ const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supa
 type Place = {
   id: string; place_name: string; platform: string; architecture: string;
   gulz_version: string; active_provider: string | null; active_model: string | null;
-  status: string; last_seen_at: string;
+  provider_status: string; status: string; last_seen_at: string;
 };
 
 type Platform = "termux" | "linux" | "macos" | "windows" | "vps";
