@@ -1199,6 +1199,7 @@ async function chatSession(): Promise<void> {
         continue;
       }
       messages.push({ role: "user", content: input });
+      info("Thinking...");
       const turnController = new AbortController();
       const cancelTurn = () => turnController.abort();
       process.once("SIGINT", cancelTurn);
@@ -1210,14 +1211,14 @@ async function chatSession(): Promise<void> {
           messages: messages.slice(-30),
           tools: agentTools,
           approve: async (request) => {
-              title("REVIEW THIS ACTION");
+            title("REVIEW THIS ACTION");
             console.log(paint(request.description, ansi.bold, ansi.white));
             label("Action", request.toolName);
             if (typeof request.arguments.command === "string") {
               console.log(paint("  $ ", ansi.cyan, ansi.bold) + paint(request.arguments.command + " " + (Array.isArray(request.arguments.args) ? request.arguments.args.join(" ") : ""), ansi.yellow));
             }
             console.log(paint("Arguments", ansi.dim));
-            console.log(paint(JSON.stringify(request.arguments, null, 2), ansi.dim));
+            renderAssistantMessage("\x60\x60\x60json\\n" + JSON.stringify(request.arguments, null, 2) + "\\n\x60\x60\x60");
             if (request.risk === "high") warning("HIGH IMPACT · may change services, permissions, users or network security. Review every detail.");
             else warning("This can change files or run a program on the selected device or VPS.");
             muted("Tool output may be shared with your configured AI provider. Never approve commands that expose secrets.");
