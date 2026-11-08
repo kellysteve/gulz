@@ -76,3 +76,9 @@ Provider keys are used only by the provider adapter. SSH credentials and future 
 ## Security limitations
 
 The current file execution layer applies path containment, symlink checks, bounded UTF-8 I/O, backups for replacements/deletes, command allowlists and output/time limits. It is not a hardened sandbox against a hostile process racing filesystem changes. Do not run GULZ with elevated privileges or point it at directories containing data the user has not authorized.
+
+## Accounts and Places
+
+The optional website account uses Supabase Auth with GitHub as the identity provider. Account sign-in is not repository authorization. A user creates a short-lived one-time pairing code on the website; a CLI installation exchanges it for a unique per-Place credential. The Worker stores only a hash of that credential and uses it to accept heartbeats and update non-secret metadata. Users can revoke a Place from the dashboard. Provider API keys and project files remain local to each Place.
+
+The website/Worker implementation requires the Places SQL migration, Supabase GitHub provider configuration, public website Supabase URL/anon build variables, and server-only Worker secrets. Until these are configured and end-to-end tested, the dashboard must not be described as live production functionality. Place heartbeat is currently foreground-only rather than a background service.
