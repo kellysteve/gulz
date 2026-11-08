@@ -207,7 +207,7 @@ function App() {
         <section className="section provider-section" id="providers">
           <div className="section-heading"><div className="eyebrow">MODEL FREEDOM</div><h2>Bring the model you trust.</h2><p>GULZ stays provider-independent. The agent tools and approval system belong to GULZ, not to one model vendor.</p></div>
           <div className="provider-grid">
-            <article><span className="provider-symbol">G</span><h3>GULZ AI</h3><p>Optional hosted model access through Gaxity's private AI gateway. Gateway availability and account access will be announced separately.</p><span className="provider-state">PLANNED SERVICE</span></article>
+            <article><span className="provider-symbol">G</span><h3>GULZ AI</h3><p>Hosted GULZ AI through a request-limited Worker proxy. It becomes available when the upstream model and Supabase Worker secrets are configured.</p><span className="provider-state">DEPLOYMENT SETUP REQUIRED</span></article>
             <article><span className="provider-symbol"><Command/></span><h3>Your API key</h3><p>Configure a supported provider or OpenAI-compatible endpoint using your own credentials.</p><span className="provider-state ready">CLI CONFIGURATION AVAILABLE</span></article>
             <article><span className="provider-symbol"><Laptop/></span><h3>Local models</h3><p>Use local model servers such as Ollama or other compatible endpoints when configured.</p><span className="provider-state">COMPATIBILITY DEPENDS ON PROVIDER</span></article>
           </div>
