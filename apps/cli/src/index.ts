@@ -28,6 +28,13 @@ const executionLockFile = join(dataHome, "execution.lock");
 const isInteractive = Boolean(stdout.isTTY && process.env.NO_COLOR === undefined && process.env.TERM !== "dumb");
 const ansi = { reset: "\u001b[0m", bold: "\u001b[1m", dim: "\u001b[2m", cyan: "\u001b[36m", blue: "\u001b[34m", green: "\u001b[32m", yellow: "\u001b[33m", red: "\u001b[31m", magenta: "\u001b[35m" };
 function paint(value: string, ...styles: string[]): string { return isInteractive ? styles.join("") + value + ansi.reset : value; }
+// Give plain terminal output a readable default color while preserving explicitly styled text.
+const plainLog = console.log.bind(console);
+const plainError = console.error.bind(console);
+console.log = (...values: unknown[]) => plainLog(...values.map((value) =>
+  typeof value === "string" && !value.includes("\u001b[") ? paint(value, ansi.white) : value));
+console.error = (...values: unknown[]) => plainError(...values.map((value) =>
+  typeof value === "string" && !value.includes("\u001b[") ? paint(value, ansi.red) : value));
 function title(value: string): void { console.log("\n" + paint(value, ansi.bold, ansi.cyan)); }
 function success(value: string): void { console.log(paint("✓ " + value, ansi.green, ansi.bold)); }
 function warning(value: string): void { console.log(paint("! " + value, ansi.yellow)); }
