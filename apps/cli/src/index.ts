@@ -32,7 +32,9 @@ function title(value: string): void { console.log("\n" + paint(value, ansi.bold,
 function success(value: string): void { console.log(paint("✓ " + value, ansi.green, ansi.bold)); }
 function warning(value: string): void { console.log(paint("! " + value, ansi.yellow)); }
 function failure(value: string): void { console.error(paint("✗ " + value, ansi.red, ansi.bold)); }
-function label(name: string, value: string): void { console.log(paint(name.padEnd(14), ansi.dim) + value); }
+function label(name: string, value: string): void { console.log(paint(name.padEnd(14), ansi.dim) + paint(value, ansi.cyan)); }
+function info(value: string): void { console.log(paint("› ", ansi.magenta, ansi.bold) + paint(value, ansi.blue)); }
+function muted(value: string): void { console.log(paint(value, ansi.dim)); }
 
 const goalStatuses = new Set<GoalStatus>(["draft", "planned", "awaiting_approval", "running", "paused", "completed", "failed", "cancelled"]);
 const taskStatuses = new Set<TaskStatus>(["pending", "awaiting_approval", "running", "paused", "completed", "failed", "skipped", "cancelled"]);
@@ -1290,9 +1292,10 @@ async function main(): Promise<void> {
       const config = await readProviderConfig();
       if (!config) throw new Error("No AI provider is configured. Choose the built-in GULZ AI with 'gulz provider builtin' or configure your own with 'gulz provider configure'.");
       title("TEST AI CONNECTION");
-      console.log("Sending a small tool-calling test only. No workspace files, saved conversations or machine operations are included.");
+      info("Checking whether this exact model can perform structured GULZ tool calls.");
+      muted("Safe test only · no workspace files, saved conversations or machine operations are included.");
       try {
-        const turn = await generateAgentTurn(config, [
+        const turn = await generateAgentTurn({ ...config, toolChoice: "required" }, [
           { role: "user", content: "Call the gulz_connection_check tool exactly once with an empty object. Do not execute any real-world action." },
         ], [{
           name: "gulz_connection_check",
@@ -1304,16 +1307,21 @@ async function main(): Promise<void> {
           success("AI provider supports GULZ agent tool calling.");
           label("Tool calling", "Available");
         } else {
-          warning("The AI provider responded, but did not return the required tool call.");
-          label("Tool calling", "Not confirmed for this model");
-          console.log("Conversation may still work, but real device and VPS operations require a model that supports tool calling.");
+          warning("The provider replied, but the required structured tool call was missing.");
+          label("Tool calling", "Not verified");
+          info("What this means");
+          console.log(paint("Chat may still work, but GULZ cannot safely operate your device or VPS with this model yet.", ansi.yellow));
+          info("What to try");
+          console.log(paint("Choose a model that supports OpenAI-compatible function/tool calling, then run ", ansi.white) + paint("gulz provider test", ansi.cyan, ansi.bold) + paint(" again.", ansi.white));
         }
-        console.log("The test tool was never executed. No files or machine settings were changed.");
+        muted("Safety: the test tool was never executed. No files or machine settings were changed.");
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (/HTTP 400|supports tool calling|invalid agent response/i.test(message)) {
-          warning("The provider responded, but agent tool calling is not supported or not configured for this model.");
-          console.log("Try a model/provider with OpenAI-compatible function calling. No workspace files or machine operations were included in this test.");
+          warning("The provider rejected the required tool-calling request.");
+          label("Tool calling", "Not available or unsupported");
+          info("Next step");
+          console.log(paint("Try a model/provider with OpenAI-compatible function calling. This test made no changes.", ansi.yellow));
           return;
         }
         throw error;
