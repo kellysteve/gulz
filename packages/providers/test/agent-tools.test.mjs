@@ -40,3 +40,32 @@ test("rejects tool calls that are not in the registered catalogue", async () => 
     );
   } finally { globalThis.fetch = originalFetch; }
 });
+
+
+test("streams assistant text deltas from an OpenAI-compatible SSE response", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestBody;
+  globalThis.fetch = async (_url, options) => {
+    requestBody = JSON.parse(String(options?.body));
+    const events = [
+      { choices: [{ delta: { content: "Hello" } }] },
+      { choices: [{ delta: { content: " there." } }] },
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+    ];
+    const body = events.map((event) => "data: " + JSON.stringify(event)).join("\\n") + "\\ndata: [DONE]\\n";
+    return new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+  };
+  const chunks = [];
+  try {
+    const turn = await generateAgentTurn(
+      { baseUrl: "https://provider.example/v1", apiKey: "test", model: "tool-model" },
+      [{ role: "user", content: "Say hello." }],
+      [{ name: "inspect_path", description: "Inspect a path", parameters: { type: "object", properties: { path: { type: "string" } } } }],
+      (delta) => chunks.push(delta),
+    );
+    assert.equal(requestBody.stream, true);
+    assert.deepEqual(chunks, ["Hello", " there."]);
+    assert.equal(turn.content, "Hello there.");
+    assert.equal(turn.toolCalls.length, 0);
+  } finally { globalThis.fetch = originalFetch; }
+});
