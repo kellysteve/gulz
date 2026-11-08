@@ -30,7 +30,6 @@ export default {
         const upstream = await fetch(INSTALLER_URL, {
           method: request.method,
           headers: { Accept: "text/plain" },
-          cf: { cacheTtl: 300, cacheEverything: true },
         });
         if (!upstream.ok) {
           return new Response("GULZ installer is temporarily unavailable. Try again later.", {
