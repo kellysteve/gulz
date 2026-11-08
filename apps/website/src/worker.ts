@@ -251,6 +251,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
+    if (url.pathname === "/api/ai/v1/models" && request.method === "GET") return json({ object: "list", data: [{ id: "gulz-default", object: "model", owned_by: "gulz" }] });
     if (url.pathname === "/api/ai/v1/chat/completions") return aiProxy(request, env);
     if (url.pathname === "/api/ai/usage") return handleApi(request, env, url);
     if (url.pathname.startsWith("/api/places/")) return handleApi(request, env, url);
