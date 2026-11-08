@@ -52,9 +52,9 @@ The GitHub OAuth client secret belongs in Supabase Auth provider configuration, 
 - `POST /api/places/heartbeat` — requires a Place token; updates last-seen and non-secret provider/model metadata.
 - `POST /api/places/revoke` — requires a Supabase access token; revokes one Place owned by that user.
 - `POST /api/ai/v1/chat/completions` — OpenAI-compatible hosted GULZ AI proxy. Guest requests are limited by hashed Cloudflare client IP; paired Places are metered against their account.
-- `GET /api/ai/usage` — requires a Supabase access token; returns the signed-in account daily request allowance.
+- `GET /api/ai/v1/models` — returns the hosted GULZ AI model alias for compatible model discovery.\n- `GET /api/ai/usage` — returns daily usage for a signed-in account, paired Place or guest client IP.
 
-All account and Place API responses are marked `Cache-Control: no-store`. Pairing codes and device tokens are hashed before storage. The Worker must be deployed only with the service-role secret configured.
+All account and Place API responses are marked `Cache-Control: no-store`. Pairing codes and device tokens are hashed before storage. The Worker must be deployed only with the service-role secret configured. The AI upstream key must also be set as a Worker secret before the hosted model proxy accepts requests.
 
 ## Hosted GULZ AI quotas
 
@@ -69,7 +69,7 @@ Provider API keys are not sent to the Places API. They remain on the machine tha
 ## Current implementation boundaries
 
 - The website uses Supabase Auth's GitHub provider; the GitHub OAuth provider must be enabled in the Supabase dashboard.
-- The pairing API requires the migration and all three Worker secrets above. Without them it returns a clear 503 rather than pretending to connect.
-- Place heartbeat currently occurs when the CLI starts a chat session; it is not a persistent background daemon.
+- The pairing API requires the Places migration and the three Supabase Worker secrets. The hosted AI proxy additionally requires the AI usage migration and `GULZ_AI_API_KEY`. Without the required setup, endpoints return a clear 503 rather than pretending to connect.
+- Place heartbeat runs when the CLI connects/tests a provider and every two minutes while an interactive chat remains open; there is no background daemon, so a Place may show offline when GULZ is not running.
 - The dashboard displays connection metadata only. It does not expose provider API keys, browse local files, or remotely control a Place.
-- The GULZ-hosted AI gateway, usage metering, account quotas and hosted provider credentials are separate future service work. GitHub sign-in does not imply those services are already live.
+- The hosted GULZ AI proxy and request-count quotas are implemented in source. They remain unavailable until the AI usage migration and upstream model secret are configured, then live-tested. The current quotas count requests rather than tokens or spend.
