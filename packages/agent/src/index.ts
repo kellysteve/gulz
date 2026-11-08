@@ -20,6 +20,7 @@ export interface AgentRunOptions {
   maxRounds?: number;
   maxToolCalls?: number;
   onToolResult?: (toolName: string, result: unknown) => void | Promise<void>;
+  onContentDelta?: (delta: string) => void;
 }
 export interface AgentRunResult { messages: ProviderAgentMessage[]; reply: string; toolCallsExecuted: number; stoppedForApproval: boolean; }
 export class AgentError extends Error { constructor(message: string) { super(message); this.name = "AgentError"; } }
@@ -145,7 +146,7 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
   const deniedOperations = new Set<string>();
   for (let round = 0; round < maxRounds; round += 1) {
     if (options.signal?.aborted) throw new AgentError("Agent run cancelled.");
-    const turn = await generateAgentTurn({ ...options.provider, ...(options.signal ? { signal: options.signal } : {}) }, messages, options.tools.map((tool) => tool.definition));
+    const turn = await generateAgentTurn({ ...options.provider, ...(options.signal ? { signal: options.signal } : {}) }, messages, options.tools.map((tool) => tool.definition), options.onContentDelta);
     if (turn.toolCalls.length === 0) {
       messages.push({ role: "assistant", content: turn.content });
       return { messages, reply: turn.content, toolCallsExecuted: executed, stoppedForApproval: anyDenied };
