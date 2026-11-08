@@ -1180,7 +1180,7 @@ async function interactiveSession(): Promise<void> {
     console.log("Your conversations and local settings are saved on this device in " + paint(dataHome, ansi.cyan));
     const configuredProvider = await readProviderConfig().catch(() => null);
     if (configuredProvider) warning("AI is ready. Chat naturally; GULZ can use the tools available in your environment.");
-    else warning("AI is not set up yet. Choose option 3 to connect built-in GULZ AI or your own provider.");
+    else warning("AI is not set up yet. Open option 3 or type /provider in chat to connect a provider.");
     while (true) {
       showMenu();
       const choice = await ask("\nChoose an option: ");
@@ -1755,7 +1755,7 @@ async function main(): Promise<void> {
     if (action === "status") {
       const config = await readProviderConfig();
       title("AI PROVIDER");
-      if (!config) { warning("No provider configured. Run gulz provider builtin for the recommended setup, or gulz provider configure to use your own."); return; }
+      if (!config) { warning("No provider configured. Run gulz provider add or open /provider in chat."); return; }
       const isBuiltin = config.model === "gpt5-luna" && new URL(config.baseUrl).pathname.replace(/\/$/, "").endsWith("/gpt5-luna");
       success("Provider settings are available");
       label("Provider", isBuiltin ? "Built-in GULZ AI" : new URL(config.baseUrl).host);
