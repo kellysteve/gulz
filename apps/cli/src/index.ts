@@ -512,8 +512,10 @@ async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<
    else throw new Error("Choose one of the listed providers.");
   }finally{rl.close();}
   const url=new URL(baseUrl); if(url.username||url.password||url.search||url.hash||(url.protocol!=="https:"&&!(url.protocol==="http:"&&["localhost","127.0.0.1","[::1]"].includes(url.hostname))))throw new Error("Provider URL must use HTTPS; HTTP is allowed only for localhost.");
-  const key=await askSecret("API key (hidden; local Ollama/LM Studio may use a placeholder): ");
-  const chosenPreset=providerCatalog[Number(selected)-1]; const apiKey=key||(chosenPreset?.id==="gulz-ai"?"guest":chosenPreset && ["ollama","lmstudio"].includes(chosenPreset.id)?"local":""); if(!apiKey)throw new Error("An API key is required.");
+  const chosenPreset=providerCatalog[Number(selected)-1];
+  const needsKey=!chosenPreset || !["gulz-ai","ollama","lmstudio"].includes(chosenPreset.id);
+  const key=needsKey?await askSecret("API key (input hidden): "):"";
+  const apiKey=key||(chosenPreset?.id==="gulz-ai"?"guest":chosenPreset && ["ollama","lmstudio"].includes(chosenPreset.id)?"local":""); if(!apiKey)throw new Error("An API key is required.");
   const idBase=(providerCatalog[Number(selected)-1]?.id??name.toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-|-$/g,"")).slice(0,40)||"custom";
   const id=saved.providers.some(p=>p.id===idBase)?idBase+"-"+randomUUID().slice(0,6):idBase;
   saved.providers.push({id,name,baseUrl,model,apiKey});saved.active=id;await saveProviderProfiles(saved);success(name+" added and selected.");return;
