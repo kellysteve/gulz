@@ -1139,12 +1139,12 @@ async function updateInstallation(): Promise<void> {
       const choiceRl = createInterface({ input: stdin, output: stdout });
       let choice = "";
       try {
-        console.log("\n  1) Add or switch AI provider");
+        console.log("\n  1) Open provider manager");
         console.log("  2) Test current provider");
         console.log("  3) Keep my current settings");
         choice = await choiceRl.question("Choose 1, 2 or 3: ");
       } finally { choiceRl.close(); }
-      const action = choice.trim() === "1" ? "add" : choice.trim() === "2" ? "test" : "";
+      const action = choice.trim() === "1" ? "menu" : choice.trim() === "2" ? "test" : "";
       if (action) {
         const cliEntry = join(installDirectory, "apps", "cli", "dist", "index.js");
         const configured = spawnSync(process.execPath, [cliEntry, "provider", action], { stdio: "inherit", env: updateEnv });
