@@ -387,7 +387,7 @@ async function readAgentStream(response: Response, onContentDelta?: (delta: stri
 }
 
 function isBuiltinToolCallText(value: string): boolean {
-  const normalized = value.trim().replace(/^\`\`\`(?:json)?\\s*/i, "").replace(/\\s*\`\`\`$/, "");
+  const normalized = value.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   try {
     const parsed: unknown = JSON.parse(normalized);
     return isRecord(parsed) && Array.isArray(parsed.tool_calls);
