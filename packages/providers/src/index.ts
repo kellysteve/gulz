@@ -386,6 +386,14 @@ async function readAgentStream(response: Response, onContentDelta?: (delta: stri
   return { choices: [{ message: { content, tool_calls: [...calls.entries()].sort((a, b) => a[0] - b[0]).map(([, call]) => call) }, finish_reason: finishReason }] };
 }
 
+function isBuiltinToolCallText(value: string): boolean {
+  const normalized = value.trim().replace(/^\`\`\`(?:json)?\\s*/i, "").replace(/\\s*\`\`\`$/, "");
+  try {
+    const parsed: unknown = JSON.parse(normalized);
+    return isRecord(parsed) && Array.isArray(parsed.tool_calls);
+  } catch { return false; }
+}
+
 async function readBuiltinAgentResponse(response: Response, onContentDelta?: (delta: string) => void): Promise<unknown> {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("text/event-stream") || !response.body) {
@@ -395,7 +403,7 @@ async function readBuiltinAgentResponse(response: Response, onContentDelta?: (de
     try { payload = JSON.parse(raw); } catch { throw new ProviderError("Built-in GULZ AI returned invalid response JSON."); }
     if (onContentDelta && isRecord(payload) && typeof payload.response === "string") {
       if (payload.response.length > 32000) throw new ProviderError("AI response exceeded the 32,000-character limit.");
-      onContentDelta(payload.response);
+      if (!isBuiltinToolCallText(payload.response)) onContentDelta(payload.response);
     }
     return payload;
   }
@@ -404,6 +412,7 @@ async function readBuiltinAgentResponse(response: Response, onContentDelta?: (de
   let buffer = "";
   let content = "";
   let total = 0;
+  let streamText = true;
   const consume = (line: string) => {
     if (!line.startsWith("data:")) return;
     const data = line.slice(5).trim();
@@ -425,7 +434,9 @@ async function readBuiltinAgentResponse(response: Response, onContentDelta?: (de
     if (typeof payload.response === "string" && payload.response.startsWith(content)) chunk = payload.response.slice(content.length);
     content += chunk;
     if (content.length > 32000) throw new ProviderError("AI response exceeded the 32,000-character limit.");
-    if (chunk) onContentDelta?.(chunk);
+    const prefix = content.trimStart();
+    if (prefix.startsWith("{") || /^\`\`\`json/i.test(prefix)) streamText = false;
+    if (streamText && chunk) onContentDelta?.(chunk);
   };
   try {
     while (true) {
