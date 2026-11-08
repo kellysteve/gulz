@@ -125,7 +125,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   if (url.pathname === "/api/places") {
     const user = await requestUser(request, env);
     if (!user) return json({ error: "Sign in with GitHub to view your Places." }, 401);
-    const response = await rest(env, "gulz_places?select=id,place_name,platform,architecture,gulz_version,active_provider,active_model,status,created_at,last_seen_at&user_id=eq." + encodeURIComponent(user.id) + "&revoked_at=is.null&order=last_seen_at.desc");
+    const response = await rest(env, "gulz_places?select=id,place_name,platform,architecture,gulz_version,active_provider,active_model,provider_status,status,created_at,last_seen_at&user_id=eq." + encodeURIComponent(user.id) + "&revoked_at=is.null&order=last_seen_at.desc");
     if (!response.ok) return json({ error: "Could not load your Places." }, 502);
     const rows = await response.json() as Array<Record<string, unknown>>;
     const places = rows.map((place) => ({
