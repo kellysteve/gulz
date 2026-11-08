@@ -476,6 +476,7 @@ async function saveProviderProfiles(value:StoredProviderProfiles):Promise<void>{
  finally { await rm(temp,{force:true}).catch(()=>undefined); }
 }
 async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<void>{
+ if(process.env.GULZ_AI_BASE_URL||process.env.GULZ_AI_MODEL||process.env.GULZ_AI_API_KEY) throw new Error("GULZ_AI_* environment variables override saved profiles. Update or remove those variables before switching providers.");
  let saved=await readProviderProfiles();
  const list=()=>{title("AI PROVIDERS"); if(!saved.providers.length && !existsSync(providerFile)) warning("No saved providers yet."); for(const p of saved.providers) console.log((p.id===saved.active?paint("● ",ansi.green,ansi.bold):"  ")+p.name+(p.id===saved.active?paint("  ACTIVE",ansi.green):"")+" · "+p.id+" · "+p.model); if(!saved.providers.length && existsSync(providerFile)) console.log(paint("● Legacy provider configuration",ansi.green)+" · use `provider configure` to replace it"); muted("API keys remain local and are never displayed.");};
  if(action==="menu"){
@@ -500,7 +501,7 @@ async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<
   }finally{rl.close();}
   const url=new URL(baseUrl); if(url.username||url.password||url.search||url.hash||(url.protocol!=="https:"&&!(url.protocol==="http:"&&["localhost","127.0.0.1","[::1]"].includes(url.hostname))))throw new Error("Provider URL must use HTTPS; HTTP is allowed only for localhost.");
   const key=await askSecret("API key (hidden; local Ollama/LM Studio may use a placeholder): ");
-  const apiKey=key||(["ollama","lmstudio"].includes(selected)?"local":""); if(!apiKey)throw new Error("An API key is required.");
+  const chosenPreset=providerCatalog[Number(selected)-1]; const apiKey=key||(chosenPreset && ["ollama","lmstudio"].includes(chosenPreset.id)?"local":""); if(!apiKey)throw new Error("An API key is required.");
   const idBase=(providerCatalog[Number(selected)-1]?.id??name.toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-|-$/g,"")).slice(0,40)||"custom";
   const id=saved.providers.some(p=>p.id===idBase)?idBase+"-"+randomUUID().slice(0,6):idBase;
   saved.providers.push({id,name,baseUrl,model,apiKey});saved.active=id;await saveProviderProfiles(saved);success(name+" added and selected.");return;
@@ -530,8 +531,7 @@ async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<
 async function runProviderConnectionTest():Promise<void>{
  const config=await readProviderConfig();if(!config){warning("No active provider. Add one with /provider.");return;}
  title("AI CONNECTION CHECK");
- const turn=await generateAgentTurn({...config,toolChoice:"required"},[{role:"user",content:"Call the gulz_connection_check tool exactly once with an empty object. Do not execute any real-world action."}],[{name:"gulz_connection_check",description:"Harmless tool-calling capability check. Never execute it.",parameters:{type:"object",properties:{},additionalProperties:false}}]);
- success("Provider responded.");label("Tool calling",turn.toolCalls.some(c=>c.name==="gulz_connection_check"&&Object.keys(c.arguments).length===0)?"Supported":"Not confirmed");
+ try { const turn=await generateAgentTurn({...config,toolChoice:"required"},[{role:"user",content:"Call the gulz_connection_check tool exactly once with an empty object. Do not execute any real-world action."}],[{name:"gulz_connection_check",description:"Harmless tool-calling capability check. Never execute it.",parameters:{type:"object",properties:{},additionalProperties:false}}]); success("Provider responded.");label("Tool calling",turn.toolCalls.some(c=>c.name==="gulz_connection_check"&&Object.keys(c.arguments).length===0)?"Supported":"Not confirmed"); } catch(error) { failure(error instanceof Error?error.message:"Provider test failed."); }
 }
 
 
