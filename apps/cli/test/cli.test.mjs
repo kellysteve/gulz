@@ -296,8 +296,9 @@ test("configures the built-in AI without asking the user for API details", async
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /Built-in GULZ AI is ready/);
     const config = JSON.parse(await readFile(join(home, "provider.json"), "utf8"));
-    assert.equal(new URL(config.baseUrl).pathname, "/api/v1/ai/gpt5-luna");
-    assert.equal(config.model, "gpt5-luna");
+    assert.equal(new URL(config.baseUrl).pathname, "/api/ai/v1");
+    assert.equal(config.model, "gulz-default");
+    assert.equal(config.apiKey, "guest");
     if (process.platform !== "win32") {
       assert.equal((await stat(join(home, "provider.json"))).mode & 0o777, 0o600);
     }
