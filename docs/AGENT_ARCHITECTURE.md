@@ -13,6 +13,8 @@ The user experience is conversation-first. Internal plans, operation records and
 4. **Environment Manager** — local device workspaces and separately authorized remote environments.
 5. **Provider System** — user-selected model endpoint and credentials; supports OpenAI-compatible chat-completions and the built-in GULZ AI adapter.
 
+The CLI persists bounded assistant tool-call and sanitized tool-result messages alongside ordinary conversation turns. History trimming starts at a user-message boundary so providers are not sent orphaned tool results. Saved tool transcripts are context only; they never grant permission to repeat an operation.
+
 ## Request lifecycle
 
 1. The user sends a message to the configured provider with bounded conversation context and available tool schemas.
