@@ -1777,11 +1777,19 @@ async function main(): Promise<void> {
       if (process.env.GULZ_AI_BASE_URL || process.env.GULZ_AI_MODEL || process.env.GULZ_AI_API_KEY) {
         throw new Error("AI provider settings are controlled by GULZ_AI_* environment variables. Remove them before selecting the built-in provider.");
       }
-      await saveProviderConfig({
-        baseUrl: "https://gulz.gaxity.com.ng/api/ai/v1",
-        model: "gulz-default",
-        apiKey: "guest",
-      });
+      const gulzConfig = { baseUrl: "https://gulz.gaxity.com.ng/api/ai/v1", model: "gulz-default", apiKey: "guest" };
+      const profiles = await readProviderProfiles();
+      if (profiles.providers.length) {
+        const existingProfile = profiles.providers.find((profile) => profile.id === "gulz-ai");
+        if (existingProfile) Object.assign(existingProfile, { name: "GULZ AI (hosted)", ...gulzConfig });
+        else {
+          if (profiles.providers.length >= 50) throw new Error("This Place already has 50 saved providers.");
+          profiles.providers.push({ id: "gulz-ai", name: "GULZ AI (hosted)", ...gulzConfig });
+        }
+        profiles.active = "gulz-ai";
+        await saveProviderProfiles(profiles);
+      } else await saveProviderConfig(gulzConfig);
+      await heartbeatPlace("configured");
       success("GULZ AI selected. Guests use the public daily allowance; paired Places use the account allowance.");
       return;
     }
@@ -1832,9 +1840,23 @@ async function main(): Promise<void> {
         throw new Error("Provider URL must use HTTPS. HTTP is allowed only for localhost.");
       }
       if (!model.trim()) throw new Error("A model name is required.");
-      await saveProviderConfig(validated);
-      success("Provider settings saved");
-      console.log("API key stored in " + providerFile + " with owner-only permissions where supported.");
+      const profiles = await readProviderProfiles();
+      if (profiles.providers.length) {
+        if (profiles.providers.length >= 50) throw new Error("This Place already has 50 saved providers. Remove one before adding another.");
+        const idBase = "custom-" + parsed.hostname.toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 28);
+        const id = profiles.providers.some((profile) => profile.id === idBase) ? idBase + "-" + randomUUID().slice(0, 6) : idBase;
+        profiles.providers.push({ id, name: parsed.hostname, ...validated });
+        profiles.active = id;
+        await saveProviderProfiles(profiles);
+        await heartbeatPlace("configured");
+        success("Provider profile saved and selected · " + id);
+        console.log("API key stored in " + providerProfilesFile + " with owner-only permissions.");
+      } else {
+        await saveProviderConfig(validated);
+        await heartbeatPlace("configured");
+        success("Provider settings saved");
+        console.log("API key stored in " + providerFile + " with owner-only permissions where supported.");
+      }
       return;
     }
     if (action === "remove") {
