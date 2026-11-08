@@ -68,7 +68,7 @@ test("supports cancellation", async () => withRoot(async (root) => {
 
 test("rejects directories as file contents", async () => withRoot(async (root) => {
   await mkdir(join(root, "folder"));
-  await assert.rejects(executeLocalOperation(operation("read_file", "folder"), { rootDirectory: root }), /regular files/);
+  await assert.rejects(executeLocalOperation(operation("read_file", "folder"), { rootDirectory: root }), /regular file/);
 }));
 
 
