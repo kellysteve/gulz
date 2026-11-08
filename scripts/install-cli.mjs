@@ -5,6 +5,8 @@ import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { createInterface } from "node:readline/promises";
+import { stdin, stdout } from "node:process";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workspaces = [
@@ -124,7 +126,45 @@ async function main() {
     }) + "\n", { mode: 0o600 });
   }
 
-  run(npm, ["run", "build:cli"]);
+  console.log("\\n$ " + npm + " run build:cli");
+  const latestBuild = spawnSync(npm, ["run", "build:cli"], {
+    cwd: root, stdio: "inherit", shell: process.platform === "win32", env: process.env,
+  });
+  if (latestBuild.error) throw latestBuild.error;
+  if (latestBuild.status !== 0) {
+    const previousCommit = process.env.GULZ_PREVIOUS_COMMIT ?? "";
+    if (!/^[a-f0-9]{40,64}$/i.test(previousCommit) || !stdin.isTTY || !stdout.isTTY) {
+      throw new Error("The latest CLI build failed. No fallback commit was supplied or an interactive confirmation is unavailable.");
+    }
+    const rl = createInterface({ input: stdin, output: stdout });
+    let answer = "";
+    try {
+      console.log("\\nThe latest GULZ version failed to build.");
+      console.log("The previously installed commit " + previousCommit.slice(0, 12) + " is available.");
+      answer = await rl.question("Restore and install the previous version instead? (y/N): ");
+    } finally { rl.close(); }
+    if (!["y", "yes"].includes(answer.trim().toLowerCase())) {
+      throw new Error("Fallback declined. The failed update was not replaced with an older version.");
+    }
+    const restored = spawnSync("git", ["reset", "--hard", previousCommit], {
+      cwd: root, stdio: "inherit", env: process.env,
+    });
+    if (restored.error) throw restored.error;
+    if (restored.status !== 0) throw new Error("Could not restore the previous GULZ source commit.");
+    const fallbackEnv = { ...process.env };
+    delete fallbackEnv.GULZ_PREVIOUS_COMMIT;
+    fallbackEnv.GULZ_FALLBACK_ATTEMPT = "1";
+    console.log("\\nReinstalling dependencies and rebuilding the previous version...");
+    const fallback = spawnSync(npm, ["run", "install:cli"], {
+      cwd: root, stdio: "inherit", shell: process.platform === "win32", env: fallbackEnv,
+    });
+    if (fallback.error) throw fallback.error;
+    if (fallback.status !== 0) {
+      throw new Error("The previous version also failed to install. The source checkout has been restored to its previous commit; inspect the second build error.");
+    }
+    console.log("GULZ restored and installed using the previous version.");
+    return;
+  }
   run(npm, ["link", "--workspace", "@gulz/cli"]);
   console.log("GULZ CLI is built and linked.");
 }
