@@ -26,7 +26,7 @@ The installer offers built-in GULZ AI, your own OpenAI-compatible provider, or p
 
 ## Start chatting
 
-Run `gulz chat`. Send natural-language requests without restarting the session. Recent conversation history is saved privately under `~/.gulz/conversation.json` (or `GULZ_HOME`). Use `/clear` to clear it and `/exit` to leave. Once configured, messages are sent directly to the selected provider without repeated consent prompts.
+Run `gulz chat`. Send natural-language requests without restarting the session. Recent conversation history, including sanitized agent tool-call/result context needed for follow-up requests, is saved privately under `~/.gulz/conversation.json` (or `GULZ_HOME`). Tool transcripts are size-bounded and validated when loaded. Use `/clear` to clear history and `/exit` to leave. Once configured, messages are sent directly to the selected provider without repeated consent prompts.
 
 When the selected model supports tool calling, GULZ can use its registered local tools. Read-only workspace inspection can proceed automatically. File changes, directory creation and program execution require explicit approval. Approved programs are launched directly with `shell: false`; shell interpreters and inline interpreter code are blocked. Package managers such as Termux pkg or Linux apt can be invoked as approved programs. Privileged commands must use non-interactive sudo; GULZ never collects administrator passwords.
 
