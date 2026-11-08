@@ -11,6 +11,7 @@ GULZ is a provider-independent AI agent with a conversation-first experience. Us
 - [x] Add OpenAI-compatible model tool/function calling and structured JSON tool-call fallback for the built-in provider.
 - [x] Add a shared bounded agent loop with a registered tool catalogue, cancellation support, context limits and tool-result handoff.
 - [x] Connect continuous CLI chat to the local agent engine.
+- [x] Persist bounded assistant tool-call and sanitized tool-result transcripts for follow-up turns, with validated storage and safe history-window boundaries.
 - [x] Add read-only local environment detection for Termux, Linux, macOS, Windows, package managers and developer tools.
 - [x] Add local workspace inspection, directory listing and bounded UTF-8 file reading.
 - [x] Add approved directory creation and file writes with backup behavior.
