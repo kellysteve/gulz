@@ -385,19 +385,30 @@ interface StoredProviderConfig {
   apiKey: string;
 }
 
+async function applyPlaceCredential(config: StoredProviderConfig): Promise<StoredProviderConfig> {
+  try {
+    const endpoint = new URL(config.baseUrl);
+    if (endpoint.hostname === "gulz.gaxity.com.ng" && endpoint.pathname.replace(/\/$/, "") === "/api/ai/v1") {
+      const place = await readPlaceCredentials();
+      if (place) return { ...config, apiKey: place.deviceToken };
+    }
+  } catch { /* invalid endpoints are reported by the provider request path */ }
+  return config;
+}
+
 async function readProviderConfig(): Promise<StoredProviderConfig | null> {
   const envBase = process.env.GULZ_AI_BASE_URL;
   const envModel = process.env.GULZ_AI_MODEL;
   const envKey = process.env.GULZ_AI_API_KEY;
   if (envBase || envModel || envKey) {
     if (!envBase || !envModel || !envKey) throw new Error("Set all three variables: GULZ_AI_BASE_URL, GULZ_AI_MODEL and GULZ_AI_API_KEY.");
-    return { baseUrl: envBase, model: envModel, apiKey: envKey };
+    return await applyPlaceCredential({ baseUrl: envBase, model: envModel, apiKey: envKey });
   }
   const profiles = await readProviderProfiles();
   if (profiles.active) {
     const active = profiles.providers.find((item) => item.id === profiles.active);
     if (!active) throw new Error("The active provider profile is missing.");
-    return { baseUrl: active.baseUrl, model: active.model, apiKey: active.apiKey };
+    return await applyPlaceCredential({ baseUrl: active.baseUrl, model: active.model, apiKey: active.apiKey });
   }
   try {
     const info = await lstat(providerFile);
@@ -407,7 +418,7 @@ async function readProviderConfig(): Promise<StoredProviderConfig | null> {
     if (!isRecord(parsed) || !isNonEmptyString(parsed.baseUrl) || !isNonEmptyString(parsed.model) || !isNonEmptyString(parsed.apiKey)) {
       throw new Error("Saved provider settings are invalid. Run gulz provider configure to replace them.");
     }
-    return { baseUrl: parsed.baseUrl, model: parsed.model, apiKey: parsed.apiKey };
+    return await applyPlaceCredential({ baseUrl: parsed.baseUrl, model: parsed.model, apiKey: parsed.apiKey });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
@@ -436,6 +447,7 @@ async function saveProviderConfig(config: StoredProviderConfig): Promise<void> {
 interface StoredProviderProfile extends StoredProviderConfig { id: string; name: string; }
 interface StoredProviderProfiles { active: string; providers: StoredProviderProfile[]; }
 const providerCatalog = [
+ {id:"gulz-ai",name:"GULZ AI (hosted)",baseUrl:"https://gulz.gaxity.com.ng/api/ai/v1",model:"gulz-default",models:["gulz-default"]},
  {id:"openrouter",name:"OpenRouter",baseUrl:"https://openrouter.ai/api/v1",model:"openai/gpt-4o-mini",models:["openai/gpt-4o-mini","deepseek/deepseek-chat","google/gemini-2.5-flash"]},
  {id:"deepseek",name:"DeepSeek",baseUrl:"https://api.deepseek.com",model:"deepseek-chat",models:["deepseek-chat","deepseek-reasoner"]},
  {id:"openai",name:"OpenAI",baseUrl:"https://api.openai.com/v1",model:"gpt-4o-mini",models:["gpt-4o-mini","gpt-4.1-mini","gpt-4.1"]},
@@ -501,7 +513,7 @@ async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<
   }finally{rl.close();}
   const url=new URL(baseUrl); if(url.username||url.password||url.search||url.hash||(url.protocol!=="https:"&&!(url.protocol==="http:"&&["localhost","127.0.0.1","[::1]"].includes(url.hostname))))throw new Error("Provider URL must use HTTPS; HTTP is allowed only for localhost.");
   const key=await askSecret("API key (hidden; local Ollama/LM Studio may use a placeholder): ");
-  const chosenPreset=providerCatalog[Number(selected)-1]; const apiKey=key||(chosenPreset && ["ollama","lmstudio"].includes(chosenPreset.id)?"local":""); if(!apiKey)throw new Error("An API key is required.");
+  const chosenPreset=providerCatalog[Number(selected)-1]; const apiKey=key||(chosenPreset?.id==="gulz-ai"?"guest":chosenPreset && ["ollama","lmstudio"].includes(chosenPreset.id)?"local":""); if(!apiKey)throw new Error("An API key is required.");
   const idBase=(providerCatalog[Number(selected)-1]?.id??name.toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-|-$/g,"")).slice(0,40)||"custom";
   const id=saved.providers.some(p=>p.id===idBase)?idBase+"-"+randomUUID().slice(0,6):idBase;
   saved.providers.push({id,name,baseUrl,model,apiKey});saved.active=id;await saveProviderProfiles(saved);success(name+" added and selected.");return;
@@ -1745,18 +1757,18 @@ async function main(): Promise<void> {
         throw new Error("AI provider settings are controlled by GULZ_AI_* environment variables. Remove them before selecting the built-in provider.");
       }
       await saveProviderConfig({
-        baseUrl: "https://apis.nabeestech.com/api/v1/ai/gpt5-luna",
-        model: "gpt5-luna",
-        apiKey: "nabeestech",
+        baseUrl: "https://gulz.gaxity.com.ng/api/ai/v1",
+        model: "gulz-default",
+        apiKey: "guest",
       });
-      success("Built-in GULZ AI is ready");
+      success("GULZ AI selected. Guests use the public daily allowance; paired Places use the account allowance.");
       return;
     }
     if (action === "status") {
       const config = await readProviderConfig();
       title("AI PROVIDER");
       if (!config) { warning("No provider configured. Run gulz provider add or open /provider in chat."); return; }
-      const isBuiltin = config.model === "gpt5-luna" && new URL(config.baseUrl).pathname.replace(/\/$/, "").endsWith("/gpt5-luna");
+      const isBuiltin = new URL(config.baseUrl).hostname === "gulz.gaxity.com.ng" && new URL(config.baseUrl).pathname.replace(/\/$/, "") === "/api/ai/v1";
       success("Provider settings are available");
       label("Provider", isBuiltin ? "Built-in GULZ AI" : new URL(config.baseUrl).host);
       label("Model", config.model);
@@ -1922,7 +1934,7 @@ async function main(): Promise<void> {
     const goal = (await readGoals()).find((item) => item.id === id);
     if (!goal) throw new Error("Goal not found.");
     if (goal.status !== "draft" || goal.tasks.length > 0) throw new Error("Only an untouched draft goal can be planned. Create a new goal if you need a fresh plan.");
-    const isBuiltin = config.model === "gpt5-luna" && new URL(config.baseUrl).pathname.replace(/\/$/, "").endsWith("/gpt5-luna");
+    const isBuiltin = new URL(config.baseUrl).hostname === "gulz.gaxity.com.ng" && new URL(config.baseUrl).pathname.replace(/\/$/, "") === "/api/ai/v1";
     const providerName = isBuiltin ? "Built-in GULZ AI" : new URL(config.baseUrl).host;
     const rl = createInterface({ input: stdin, output: stdout });
     try {
