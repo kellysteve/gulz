@@ -149,7 +149,8 @@ export async function listProviderModels(config: OpenAICompatibleProviderConfig)
   if (endpoint.builtin) throw new ProviderError("The legacy built-in endpoint does not expose a model catalogue.");
   const apiKey = requiredString(config.apiKey, "API key", 4096);
   const base = new URL(config.baseUrl);
-  const basePath = base.pathname.replace(/\\/$/, "").replace(/\\/chat\\/completions$/, "");
+  const suffix = "/chat/completions";
+  const basePath = base.pathname.endsWith(suffix) ? base.pathname.slice(0, -suffix.length) : (base.pathname.endsWith("/") ? base.pathname.slice(0, -1) : base.pathname);
   const url = new URL((basePath || "") + "/models", base.origin);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
