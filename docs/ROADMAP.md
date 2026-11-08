@@ -56,7 +56,18 @@ GULZ is a provider-independent, project-first AI coding agent with a conversatio
 - [ ] Add safe configuration editing, backup and rollback for service setup.
 - [ ] Add cancellation and resumable execution for long-running jobs.
 
-## GitHub workflow and Places\n\n- [x] Add a Supabase Auth GitHub sign-in entry point to the website dashboard (requires provider configuration in Supabase).\n- [x] Add one-time eight-character Place pairing codes with ten-minute expiry and per-user creation rate limit.\n- [x] Add server-side pairing completion, hashed per-Place credentials, heartbeat metadata and owner-scoped Place listing/revocation API.\n- [x] Add CLI account connect/status/disconnect commands and optional installer pairing prompt.\n- [ ] Apply the Places migration and configure Supabase Auth/GitHub and Cloudflare Worker secrets.\n- [ ] Run end-to-end website login, pairing, heartbeat, revocation and account-isolation tests.\n- [ ] Add a background heartbeat or reliable foreground heartbeat on all CLI activity.\n\n## GitHub workflow\n
+## GitHub workflow and Places
+
+- [x] Add a Supabase Auth GitHub sign-in entry point to the website dashboard (requires provider configuration in Supabase).
+- [x] Add one-time eight-character Place pairing codes with ten-minute expiry and per-user creation rate limit.
+- [x] Add server-side pairing completion, hashed per-Place credentials, heartbeat metadata and owner-scoped Place listing/revocation API.
+- [x] Add CLI account connect/status/disconnect commands and optional installer pairing prompt.
+- [ ] Apply the Places migration and configure Supabase Auth/GitHub and Cloudflare Worker secrets.
+- [ ] Run end-to-end website login, pairing, heartbeat, revocation and account-isolation tests.
+- [ ] Add a background heartbeat or reliable foreground heartbeat on all CLI activity.
+
+## GitHub workflow
+
 - [ ] Make the installed CLI recognize the current project directory and Git remote automatically.
 - [ ] Add optional GitHub sign-in during first-run setup for hosted GULZ AI account access; use a browser/device flow and store only revocable, scoped credentials.
 - [ ] Keep GitHub AI-service sign-in separate from repository authorization. Do not request repository access just to identify a GULZ AI account.
@@ -66,7 +77,8 @@ GULZ is a provider-independent, project-first AI coding agent with a conversatio
 
 ## Hosted GULZ AI gateway
 
-- [x] Add an OpenAI-compatible hosted AI proxy at `gulz.gaxity.com.ng/api/ai/v1/chat/completions` in the website Worker.\n- [x] Add a hosted model alias endpoint so `/provider models` can discover the GULZ AI model.
+- [x] Add an OpenAI-compatible hosted AI proxy at `gulz.gaxity.com.ng/api/ai/v1/chat/completions` in the website Worker.
+- [x] Add a hosted model alias endpoint so `/provider models` can discover the GULZ AI model.
 - [x] Keep the upstream provider key in a Cloudflare Worker secret; no shared key is embedded in the CLI.
 - [x] Add account-based daily request quotas shared across a user's Places and a separate guest IP allowance.
 - [x] Add account and guest usage lookup; show the account daily allowance in the website dashboard and the hosted allowance in CLI provider status.
@@ -85,13 +97,21 @@ GULZ is a provider-independent, project-first AI coding agent with a conversatio
 - [ ] Add file transfer and deployment adapters with checksums and rollback.
 - [ ] Add a plugin/capability manifest so new tools can be installed and reviewed safely.
 
-## Provider system\n\n- [x] Add a local multi-provider profile store supporting up to 50 saved configurations per Place.\n- [x] Add interactive `/provider` management and add/list/use/models/test/remove actions.\n- [x] Add live `/models` discovery for OpenAI-compatible providers with a manual/suggested-model fallback.\n- [x] Add provider presets for OpenRouter, DeepSeek, OpenAI, Gemini, Groq, Mistral, Together AI, Fireworks, Cerebras, DeepInfra, Perplexity, xAI, NVIDIA NIM, Ollama and LM Studio, plus custom OpenAI-compatible endpoints.\n- [ ] Verify each preset against current provider documentation and live endpoints; model availability and tool-calling support vary.\n
+## Provider system
+
+- [x] Add a local multi-provider profile store supporting up to 50 saved configurations per Place.
+- [x] Add interactive `/provider` management and add/list/use/models/test/remove actions.
+- [x] Add live `/models` discovery for OpenAI-compatible providers with a manual/suggested-model fallback.
+- [x] Add provider presets for OpenRouter, DeepSeek, OpenAI, Gemini, Groq, Mistral, Together AI, Fireworks, Cerebras, DeepInfra, Perplexity, xAI, NVIDIA NIM, Ollama and LM Studio, plus custom OpenAI-compatible endpoints.
+- [ ] Verify each preset against current provider documentation and live endpoints; model availability and tool-calling support vary.
+
 - [ ] Add model capability discovery and clear tool-calling compatibility checks.
 - [ ] Add streaming responses and tool progress events.
 - [ ] Add provider switching without losing conversation history.
 - [ ] Add safe fallback when a model lacks function calling.
 - [ ] Move API keys to encrypted or OS-backed secret storage.
-- [ ] Add user-controlled memory with inspect, edit and delete controls.\n- [ ] Add OS-backed credential storage and migration from the current owner-only provider profile file.
+- [ ] Add user-controlled memory with inspect, edit and delete controls.
+- [ ] Add OS-backed credential storage and migration from the current owner-only provider profile file.
 
 ## Workspace and interface
 
