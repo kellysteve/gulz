@@ -487,3 +487,18 @@ test("lists saved remote environments without requiring an SSH connection", asyn
     assert.match(result.stdout, /gulz remote add/);
   });
 });
+
+
+test("doctor validates saved agent conversation transcripts without modifying invalid data", async () => {
+  await withHome(async (home) => {
+    const invalid = JSON.stringify([
+      { role: "tool", content: "orphaned result" },
+    ]);
+    await writeFile(join(home, "conversation.json"), invalid);
+    const result = invoke(home, "doctor");
+    assert.equal(result.status, 1);
+    assert.match(result.stdout + result.stderr, /Saved conversation could not be loaded/);
+    assert.match(result.stderr, /Saved conversation is invalid/);
+    assert.equal(await readFile(join(home, "conversation.json"), "utf8"), invalid);
+  });
+});
