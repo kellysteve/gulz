@@ -798,7 +798,7 @@ async function updateInstallation(): Promise<void> {
     }
     const installedCommit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: installDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
     if (installedCommit.error) throw installedCommit.error;
-    const installedFallback = installedCommit.status === 0 && installedCommit.stdout.trim() === previousCommit.stdout.trim();
+    const installedFallback = installedCommit.status === 0 && latestCommit.status === 0 && installedCommit.stdout.trim() === previousCommit.stdout.trim() && latestCommit.stdout.trim() !== previousCommit.stdout.trim();
     if (installedFallback) warning("The latest version failed its build. The installer restored and rebuilt your previous version instead.");
     else success("GULZ source updated and rebuilt.");
 
