@@ -153,7 +153,7 @@ gulz account status
 gulz chat
 ~~~
 
-Run `gulz` with no arguments to open the interactive assistant. Connect the built-in provider or your own compatible provider once, then chat naturally. Recent conversation history is saved privately in `~/.gulz/conversation.json` (or your configured `GULZ_HOME`). Use `/clear` to clear it or `/exit` to leave.
+Run `gulz` with no arguments to open the interactive assistant. Add a provider with `/provider` and manage multiple saved profiles from its interactive provider centre. GitHub sign-in is optional: sign in at `https://gulz.gaxity.com.ng/dashboard`, create a Place pairing code, and enter it during installation or run `gulz account connect <code>` later. Then chat naturally. Recent conversation history is saved privately in `~/.gulz/conversation.json` (or your configured `GULZ_HOME`). Use `/clear` to clear it or `/exit` to leave.
 
 When the selected model supports tool calling, GULZ can inspect the current workspace, list directories, read non-secret text files, create directories, write files with backups and run explicitly approved programs. Program execution uses no shell; shell interpreters and inline code are blocked. Package-manager commands can be proposed by the AI and run only after you approve the exact command. Command output may be sent to your configured provider, so do not approve commands that print credentials or private data. The current tool set is a foundation, not yet the complete VPS hosting workflow.
 
@@ -226,4 +226,4 @@ Inside GULZ chat, type `/provider` to open the provider centre. You can also use
 /provider remove
 ~~~
 
-The CLI currently includes presets for several popular OpenAI-compatible providers and local model servers, plus a custom endpoint option. Up to 50 provider profiles can be saved per Place. A preset is a connection template, not a guarantee that every model supports tool calling. Run the provider test before asking GULZ to execute project operations. See [docs/PLACES_AND_AUTH.md](PLACES_AND_AUTH.md) for optional GitHub sign-in and Places pairing setup.
+The CLI currently includes presets for several popular OpenAI-compatible providers and local model servers, plus a custom endpoint option. Up to 50 provider profiles can be saved per Place. A preset is a connection template, not a guarantee that every model supports tool calling. Run the provider test before asking GULZ to execute project operations. See [PLACES_AND_AUTH.md](PLACES_AND_AUTH.md) for optional GitHub sign-in and Places pairing setup.
