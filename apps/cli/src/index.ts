@@ -21,6 +21,7 @@ const goalsFile = join(dataHome, "goals.json");
 const goalsLockFile = join(dataHome, "goals.lock");
 const auditFile = join(dataHome, "audit.jsonl");
 const providerFile = join(dataHome, "provider.json");
+const providerProfilesFile = join(dataHome, "provider-profiles.json");
 const conversationFile = join(dataHome, "conversation.json");
 const remoteEnvironmentsFile = join(dataHome, "remote-environments.json");
 const executionLockFile = join(dataHome, "execution.lock");
@@ -211,11 +212,15 @@ function help(): void {
     "  init                  Create the local GULZ data directory",
     "  doctor                Check the local runtime and data directory",
     "  audit [--limit N]     View recent local action history",
-    "  provider builtin      Use the built-in GULZ AI",
-    "  provider configure    Set your own OpenAI-compatible AI provider",
-    "  provider status       Show provider connection settings",
-    "  provider test         Test the configured AI connection with a sample request",
-    "  provider remove       Remove saved provider credentials",
+    "  provider              Open the interactive provider centre",
+    "  provider list         List saved providers on this Place",
+    "  provider add          Add another provider (up to 50)",
+    "  provider use <id>     Switch the active provider",
+    "  provider models       Browse or change models",
+    "  provider test         Test the active provider",
+    "  provider remove [id] Remove a saved provider",
+    "  provider builtin      Use the legacy built-in provider",
+    "  provider configure    Configure a custom compatible API",
     "  chat                  Open a continuous AI conversation with GULZ",
     "  remote list           List saved VPS connections",
     "  remote add <name> <user@host> [workspace]  Pair a VPS over SSH",
@@ -383,6 +388,12 @@ async function readProviderConfig(): Promise<StoredProviderConfig | null> {
     if (!envBase || !envModel || !envKey) throw new Error("Set all three variables: GULZ_AI_BASE_URL, GULZ_AI_MODEL and GULZ_AI_API_KEY.");
     return { baseUrl: envBase, model: envModel, apiKey: envKey };
   }
+  const profiles = await readProviderProfiles();
+  if (profiles.active) {
+    const active = profiles.providers.find((item) => item.id === profiles.active);
+    if (!active) throw new Error("The active provider profile is missing.");
+    return { baseUrl: active.baseUrl, model: active.model, apiKey: active.apiKey };
+  }
   try {
     const info = await lstat(providerFile);
     if (!info.isFile() || info.isSymbolicLink()) throw new Error("Provider settings must be a regular file, not a symbolic link.");
@@ -414,6 +425,108 @@ async function saveProviderConfig(config: StoredProviderConfig): Promise<void> {
   } finally {
     await rm(temporary, { force: true }).catch(() => undefined);
   }
+}
+
+
+interface StoredProviderProfile extends StoredProviderConfig { id: string; name: string; }
+interface StoredProviderProfiles { active: string; providers: StoredProviderProfile[]; }
+const providerCatalog = [
+ {id:"openrouter",name:"OpenRouter",baseUrl:"https://openrouter.ai/api/v1",model:"openai/gpt-4o-mini",models:["openai/gpt-4o-mini","deepseek/deepseek-chat","google/gemini-2.5-flash"]},
+ {id:"deepseek",name:"DeepSeek",baseUrl:"https://api.deepseek.com",model:"deepseek-chat",models:["deepseek-chat","deepseek-reasoner"]},
+ {id:"openai",name:"OpenAI",baseUrl:"https://api.openai.com/v1",model:"gpt-4o-mini",models:["gpt-4o-mini","gpt-4.1-mini","gpt-4.1"]},
+ {id:"gemini",name:"Google Gemini",baseUrl:"https://generativelanguage.googleapis.com/v1beta/openai",model:"gemini-2.5-flash",models:["gemini-2.5-flash","gemini-2.5-pro"]},
+ {id:"groq",name:"Groq",baseUrl:"https://api.groq.com/openai/v1",model:"llama-3.3-70b-versatile",models:["llama-3.3-70b-versatile","qwen-qwq-32b"]},
+ {id:"mistral",name:"Mistral",baseUrl:"https://api.mistral.ai/v1",model:"mistral-small-latest",models:["mistral-small-latest","mistral-large-latest"]},
+ {id:"together",name:"Together AI",baseUrl:"https://api.together.xyz/v1",model:"meta-llama/Llama-3.3-70B-Instruct-Turbo",models:["meta-llama/Llama-3.3-70B-Instruct-Turbo"]},
+ {id:"fireworks",name:"Fireworks AI",baseUrl:"https://api.fireworks.ai/inference/v1",model:"accounts/fireworks/models/llama-v3p3-70b-instruct",models:["accounts/fireworks/models/llama-v3p3-70b-instruct"]},
+ {id:"cerebras",name:"Cerebras",baseUrl:"https://api.cerebras.ai/v1",model:"llama-3.3-70b",models:["llama-3.3-70b"]},
+ {id:"deepinfra",name:"DeepInfra",baseUrl:"https://api.deepinfra.com/v1/openai",model:"meta-llama/Meta-Llama-3.3-70B-Instruct",models:["meta-llama/Meta-Llama-3.3-70B-Instruct"]},
+ {id:"perplexity",name:"Perplexity",baseUrl:"https://api.perplexity.ai",model:"sonar",models:["sonar","sonar-pro"]},
+ {id:"xai",name:"xAI",baseUrl:"https://api.x.ai/v1",model:"grok-3-mini",models:["grok-3-mini","grok-3"]},
+ {id:"nvidia",name:"NVIDIA NIM",baseUrl:"https://integrate.api.nvidia.com/v1",model:"meta/llama-3.3-70b-instruct",models:["meta/llama-3.3-70b-instruct"]},
+ {id:"ollama",name:"Ollama (local)",baseUrl:"http://127.0.0.1:11434/v1",model:"qwen2.5-coder:7b",models:["qwen2.5-coder:7b","llama3.2"]},
+ {id:"lmstudio",name:"LM Studio (local)",baseUrl:"http://127.0.0.1:1234/v1",model:"local-model",models:["local-model"]},
+] as const;
+async function readProviderProfiles(): Promise<StoredProviderProfiles> {
+ await ensureDataHome();
+ try {
+  const info=await lstat(providerProfilesFile);
+  if(!info.isFile()||info.isSymbolicLink()) throw new Error("Provider profiles must be a regular file.");
+  await chmod(providerProfilesFile,0o600);
+  const raw:unknown=JSON.parse(await readFile(providerProfilesFile,"utf8"));
+  if(!isRecord(raw)||typeof raw.active!=="string"||!Array.isArray(raw.providers)||raw.providers.length>50) throw new Error("Saved provider profiles are invalid.");
+  const providers=raw.providers.map((p):StoredProviderProfile=>{
+   if(!isRecord(p)||!isNonEmptyString(p.id)||!isNonEmptyString(p.name)||!isNonEmptyString(p.baseUrl)||!isNonEmptyString(p.model)||!isNonEmptyString(p.apiKey)) throw new Error("A saved provider profile is invalid.");
+   return {id:p.id,name:p.name,baseUrl:p.baseUrl,model:p.model,apiKey:p.apiKey};
+  });
+  if(new Set(providers.map(p=>p.id)).size!==providers.length) throw new Error("Duplicate provider profile IDs were found.");
+  if(providers.length&&!providers.some(p=>p.id===raw.active)) throw new Error("The active provider profile is missing.");
+  return {active:raw.active,providers};
+ } catch(e) { if((e as NodeJS.ErrnoException).code==="ENOENT") return {active:"",providers:[]}; throw e; }
+}
+async function saveProviderProfiles(value:StoredProviderProfiles):Promise<void>{
+ if(value.providers.length>50) throw new Error("You can save up to 50 providers on this Place.");
+ await ensureDataHome(); const temp=join(dataHome,"provider-profiles."+randomUUID()+".tmp");
+ try { await writeFile(temp,JSON.stringify(value,null,2)+"\n",{encoding:"utf8",mode:0o600,flag:"wx"}); await rename(temp,providerProfilesFile); await chmod(providerProfilesFile,0o600); }
+ finally { await rm(temp,{force:true}).catch(()=>undefined); }
+}
+async function manageProviderProfiles(action="menu",values:string[]=[]):Promise<void>{
+ let saved=await readProviderProfiles();
+ const list=()=>{title("AI PROVIDERS"); if(!saved.providers.length) warning("No saved providers yet."); for(const p of saved.providers) console.log((p.id===saved.active?paint("● ",ansi.green,ansi.bold):"  ")+p.name+(p.id===saved.active?paint("  ACTIVE",ansi.green):"")+" · "+p.id+" · "+p.model); muted("API keys remain local and are never displayed.");};
+ if(action==="menu"){
+  if(!stdin.isTTY||!stdout.isTTY) throw new Error("The provider centre requires an interactive terminal.");
+  list(); console.log("\n  1) Add provider\n  2) Switch provider\n  3) Browse/change models\n  4) Test active provider\n  5) Remove provider\n  0) Back");
+  const rl=createInterface({input:stdin,output:stdout}); let c=""; try{c=(await rl.question("Choose an option: ")).trim();}finally{rl.close();}
+  const next:Record<string,string>={"1":"add","2":"use","3":"models","4":"test","5":"remove"}; if(!next[c])return;
+  if(c==="4"){await runProviderConnectionTest();return;} await manageProviderProfiles(next[c]!,[]); return;
+ }
+ if(action==="list"){list();return;}
+ if(action==="add"){
+  if(!stdin.isTTY||!stdout.isTTY)throw new Error("Adding a provider requires an interactive terminal.");
+  if(saved.providers.length>=50)throw new Error("This Place already has 50 saved providers.");
+  const rl=createInterface({input:stdin,output:stdout}); let selected="",name="",baseUrl="",model="";
+  try{
+   title("ADD AI PROVIDER"); providerCatalog.forEach((p,i)=>console.log("  "+(i+1)+") "+p.name+" ("+p.id+")"));
+   console.log("  "+(providerCatalog.length+1)+") Custom OpenAI-compatible API");
+   selected=(await rl.question("Choose a provider: ")).trim(); const preset=providerCatalog[Number(selected)-1];
+   if(preset){name=preset.name;baseUrl=preset.baseUrl;model=preset.model;}
+   else if(selected===String(providerCatalog.length+1)){name=(await rl.question("Provider name: ")).trim();baseUrl=(await rl.question("API base URL: ")).trim();model=(await rl.question("Model name: ")).trim();}
+   else throw new Error("Choose one of the listed providers.");
+  }finally{rl.close();}
+  const url=new URL(baseUrl); if(url.username||url.password||url.search||url.hash||(url.protocol!=="https:"&&!(url.protocol==="http:"&&["localhost","127.0.0.1","[::1]"].includes(url.hostname))))throw new Error("Provider URL must use HTTPS; HTTP is allowed only for localhost.");
+  const key=await askSecret("API key (hidden; local Ollama/LM Studio may use a placeholder): ");
+  const apiKey=key||(["ollama","lmstudio"].includes(selected)?"local":""); if(!apiKey)throw new Error("An API key is required.");
+  const idBase=(providerCatalog[Number(selected)-1]?.id??name.toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-|-$/g,"")).slice(0,40)||"custom";
+  const id=saved.providers.some(p=>p.id===idBase)?idBase+"-"+randomUUID().slice(0,6):idBase;
+  saved.providers.push({id,name,baseUrl,model,apiKey});saved.active=id;await saveProviderProfiles(saved);success(name+" added and selected.");return;
+ }
+ if(action==="use"){
+  let id=values[0];if(!id&&stdin.isTTY&&stdout.isTTY){list();const rl=createInterface({input:stdin,output:stdout});try{id=(await rl.question("Provider ID to activate: ")).trim();}finally{rl.close();}}
+  const p=saved.providers.find(x=>x.id===id);if(!p)throw new Error("Provider not found. Run /provider to see saved providers.");
+  saved.active=p.id;await saveProviderProfiles(saved);success("Active provider: "+p.name+" · "+p.model);return;
+ }
+ if(action==="models"){
+  const p=saved.providers.find(x=>x.id===(values[0]||saved.active));if(!p)throw new Error("Add a provider first.");
+  const preset=providerCatalog.find(x=>x.id===p.id);const options=preset?.models??[p.model];title("MODELS · "+p.name);console.log("Current: "+p.model);options.forEach((m,i)=>console.log("  "+(i+1)+") "+m));console.log("  "+(options.length+1)+") Enter model name");
+  if(!stdin.isTTY||!stdout.isTTY)return;
+  const rl=createInterface({input:stdin,output:stdout});let c="",custom="";try{c=(await rl.question("Choose a model (blank keeps current): ")).trim();if(c===String(options.length+1))custom=(await rl.question("Model name: ")).trim();}finally{rl.close();}
+  const model=custom||(Number(c)>0&&Number(c)<=options.length?options[Number(c)-1]:p.model);
+  if(model!==p.model){saved.providers=saved.providers.map(x=>x.id===p.id?{...x,model}:x);await saveProviderProfiles(saved);success("Model changed to "+model);}return;
+ }
+ if(action==="remove"){
+  const id=values[0]||saved.active;const p=saved.providers.find(x=>x.id===id);if(!p){console.log("No matching saved provider.");return;}
+  if(!stdin.isTTY||!stdout.isTTY)throw new Error("Removing a provider requires an interactive terminal.");
+  const rl=createInterface({input:stdin,output:stdout});let answer="";try{answer=await rl.question("Remove "+p.name+" from this Place? (y/N): ");}finally{rl.close();}
+  if(!["y","yes"].includes(answer.trim().toLowerCase())){console.log("Nothing changed.");return;}
+  saved.providers=saved.providers.filter(x=>x.id!==p.id);saved.active=saved.providers[0]?.id??"";await saveProviderProfiles(saved);success(p.name+" removed.");return;
+ }
+ throw new Error("Use /provider, list, add, use, models, test or remove.");
+}
+async function runProviderConnectionTest():Promise<void>{
+ const config=await readProviderConfig();if(!config){warning("No active provider. Add one with /provider.");return;}
+ title("AI CONNECTION CHECK");
+ const turn=await generateAgentTurn({...config,toolChoice:"required"},[{role:"user",content:"Call the gulz_connection_check tool exactly once with an empty object. Do not execute any real-world action."}],[{name:"gulz_connection_check",description:"Harmless tool-calling capability check. Never execute it.",parameters:{type:"object",properties:{},additionalProperties:false}}]);
+ success("Provider responded.");label("Tool calling",turn.toolCalls.some(c=>c.name==="gulz_connection_check"&&Object.keys(c.arguments).length===0)?"Supported":"Not confirmed");
 }
 
 async function askSecret(prompt: string): Promise<string> {
@@ -1176,8 +1289,8 @@ function quickChatHelpReply(input: string): string | null {
 
 async function chatSession(): Promise<void> {
   if (!stdin.isTTY || !stdout.isTTY) throw new Error("GULZ chat requires an interactive terminal.");
-  const config = await readProviderConfig();
-  if (!config) throw new Error("AI is not configured. Run gulz provider builtin or choose AI setup from the GULZ menu.");
+  let config = await readProviderConfig();
+  if (!config) throw new Error("AI is not configured. Run /provider to add an AI provider.");
   const remoteEnvironments = await readRemoteEnvironments();
   const remoteTransport = new OpenSshRemoteTransport(
     Object.fromEntries(remoteEnvironments.map((item): [string, string] => [item.name, item.destination])),
@@ -1209,6 +1322,22 @@ async function chatSession(): Promise<void> {
       if (input.toLowerCase() === "/exit" || input.toLowerCase() === "/quit") break;
       if (input.toLowerCase() === "/help" || input.toLowerCase() === "/commands") {
         renderAssistantMessage(quickChatHelpReply("/help")!);
+        continue;
+      }
+      if (input.toLowerCase() === "/provider") {
+        await manageProviderProfiles("menu");
+        config = await readProviderConfig();
+        if (config) success("Active model: " + config.model);
+        else warning("No active provider is configured.");
+        continue;
+      }
+      if (input.toLowerCase().startsWith("/provider ")) {
+        const parts = input.slice(10).trim().split(/\\s+/);
+        const action = parts.shift() || "menu";
+        if (action === "test") await runProviderConnectionTest();
+        else await manageProviderProfiles(action, parts);
+        config = await readProviderConfig();
+        if (config) success("Active model: " + config.model);
         continue;
       }
       if (input.toLowerCase() === "/clear") {
@@ -1450,7 +1579,11 @@ async function main(): Promise<void> {
     return;
   }
   if (command === "provider") {
-    const action = args[0] ?? "status";
+    const action = args[0] ?? "menu";
+    if (["menu", "add", "list", "use", "models", "remove"].includes(action)) {
+      await manageProviderProfiles(action, args.slice(1));
+      return;
+    }
     if (action === "test") {
       if (args.length > 1) { failure("Usage: gulz provider test"); process.exitCode = 2; return; }
       const config = await readProviderConfig();
