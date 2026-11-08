@@ -129,7 +129,16 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
   const historyBudget = Math.max(1, 30 - (maxToolCalls * 2 + 2));
   const registry = new Map<string, AgentTool>(options.tools.map((tool): [string, AgentTool] => [tool.definition.name, tool]));
   if (registry.size !== options.tools.length) throw new AgentError("Agent tool names must be unique.");
-  const messages = options.messages.slice(-historyBudget);
+  if (!options.messages.some((message) => message.role === "user")) throw new AgentError("An agent conversation must include a user message.");
+  // Keep complete conversational turns. Slicing a tool transcript at an arbitrary
+  // message boundary can leave orphaned tool results that providers reject.
+  const minimumStart = Math.max(0, options.messages.length - historyBudget);
+  let historyStart = minimumStart;
+  while (historyStart < options.messages.length && options.messages[historyStart]?.role !== "user") historyStart += 1;
+  if (historyStart >= options.messages.length) {
+    historyStart = options.messages.map((message) => message.role).lastIndexOf("user");
+  }
+  const messages = options.messages.slice(Math.max(0, historyStart), Math.max(0, historyStart) + 30);
   let executed = 0;
   let handled = 0;
   let anyDenied = false;
