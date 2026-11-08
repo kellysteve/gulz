@@ -28,14 +28,14 @@ begin
     raise exception 'INVALID_DAILY_LIMIT';
   end if;
 
-  insert into public.gulz_ai_usage_daily (identity_hash, usage_date, requests)
+  insert into public.gulz_ai_usage_daily as usage (identity_hash, usage_date, requests)
   values (p_identity_hash, current_date, 1)
   on conflict (identity_hash, usage_date)
   do update set
     requests = case
-      when public.gulz_ai_usage_daily.requests < p_daily_limit
-      then public.gulz_ai_usage_daily.requests + 1
-      else public.gulz_ai_usage_daily.requests
+      when usage.requests < p_daily_limit
+      then usage.requests + 1
+      else usage.requests
     end,
     updated_at = now()
   returning requests into used;
