@@ -26,6 +26,7 @@ export interface OpenAICompatibleProviderConfig {
   model: string;
   timeoutMs?: number;
   signal?: AbortSignal;
+  toolChoice?: "auto" | "required";
 }
 
 export class ProviderError extends Error {
@@ -362,7 +363,7 @@ export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, 
     } else {
       response = await fetch(endpoint.url, {
         method: "POST", headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ model, temperature: 0.2, tools: safeTools, tool_choice: "auto", messages: [{ role: "system", content: system }, ...safeMessages] }),
+        body: JSON.stringify({ model, temperature: 0.2, tools: safeTools, tool_choice: config.toolChoice ?? "auto", messages: [{ role: "system", content: system }, ...safeMessages] }),
         signal: controller.signal,
       });
     }
