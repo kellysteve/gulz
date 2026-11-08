@@ -294,7 +294,7 @@ test("configures the built-in AI without asking the user for API details", async
   await withHome(async (home) => {
     const result = invoke(home, "provider", "builtin");
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /Built-in GULZ AI is ready/);
+    assert.match(result.stdout, /GULZ AI selected/);
     const config = JSON.parse(await readFile(join(home, "provider.json"), "utf8"));
     assert.equal(new URL(config.baseUrl).pathname, "/api/ai/v1");
     assert.equal(config.model, "gulz-default");
