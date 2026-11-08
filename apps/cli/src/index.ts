@@ -1295,12 +1295,12 @@ async function main(): Promise<void> {
   if (command === "provider") {
     const action = args[0] ?? "status";
     if (action === "test") {
-      if (args.length > 1) { console.error("Usage: gulz provider test"); process.exitCode = 2; return; }
+      if (args.length > 1) { failure("Usage: gulz provider test"); process.exitCode = 2; return; }
       const config = await readProviderConfig();
       if (!config) throw new Error("No AI provider is configured. Choose the built-in GULZ AI with 'gulz provider builtin' or configure your own with 'gulz provider configure'.");
-      title("TEST AI CONNECTION");
-      info("Checking whether this exact model can perform structured GULZ tool calls.");
-      muted("Safe test only · no workspace files, saved conversations or machine operations are included.");
+      title("AI CONNECTION CHECK");
+      info("Testing the selected provider and this exact model's ability to return GULZ tool calls.");
+      muted("A harmless capability check only · no workspace files, saved conversations or machine operations are included.");
       try {
         const turn = await generateAgentTurn({ ...config, toolChoice: "required" }, [
           { role: "user", content: "Call the gulz_connection_check tool exactly once with an empty object. Do not execute any real-world action." },
@@ -1309,26 +1309,33 @@ async function main(): Promise<void> {
           description: "A harmless test tool used only to verify that this model can return a structured tool call. It must never be executed.",
           parameters: { type: "object", properties: {}, additionalProperties: false },
         }]);
+        // A returned assistant turn confirms the provider answered the request.
+        success("AI provider connection responded");
+        label("Connection", "Connected");
         const supported = turn.toolCalls.some((call) => call.name === "gulz_connection_check" && isRecord(call.arguments) && Object.keys(call.arguments).length === 0);
         if (supported) {
-          success("AI provider supports GULZ agent tool calling.");
-          label("Tool calling", "Available");
+          success("This model returned the required structured tool call.");
+          label("Tool calling", "Supported");
+          info("GULZ agent tools can be used with this model, subject to GULZ approval and safety checks.");
         } else {
-          warning("The provider replied, but the required structured tool call was missing.");
-          label("Tool calling", "Not verified");
+          warning("The provider answered, but this model did not return the required structured tool call.");
+          label("Tool calling", "Not confirmed");
           info("What this means");
-          console.log(paint("Chat may still work, but GULZ cannot safely operate your device or VPS with this model yet.", ansi.yellow));
-          info("What to try");
-          console.log(paint("Choose a model that supports OpenAI-compatible function/tool calling, then run ", ansi.white) + paint("gulz provider test", ansi.cyan, ansi.bold) + paint(" again.", ansi.white));
+          info("Ordinary AI chat can still work. Device and VPS actions stay unavailable until a model passes this tool-calling test.");
+          info("How to fix it");
+          info("Choose a model that explicitly supports tool calling / function calling for your provider's API, then run:");
+          console.log(paint("  gulz provider configure", ansi.cyan, ansi.bold));
+          console.log(paint("  gulz provider test", ansi.cyan, ansi.bold));
         }
         muted("Safety: the test tool was never executed. No files or machine settings were changed.");
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (/HTTP 400|supports tool calling|invalid agent response/i.test(message)) {
-          warning("The provider rejected the required tool-calling request.");
-          label("Tool calling", "Not available or unsupported");
-          info("Next step");
-          console.log(paint("Try a model/provider with OpenAI-compatible function calling. This test made no changes.", ansi.yellow));
+          warning("The provider rejected the tool-calling test request.");
+          label("Tool calling", "Unsupported or unavailable");
+          info("This does not by itself prove that ordinary chat is unavailable.");
+          info("Try a model/provider that documents OpenAI-compatible tool or function calling.");
+          muted("No test tool was executed and no files or machine settings were changed.");
           return;
         }
         throw error;
