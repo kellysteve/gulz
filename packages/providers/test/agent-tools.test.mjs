@@ -69,3 +69,31 @@ test("streams assistant text deltas from an OpenAI-compatible SSE response", asy
     assert.equal(turn.toolCalls.length, 0);
   } finally { globalThis.fetch = originalFetch; }
 });
+
+
+test("streams built-in GULZ AI text when its endpoint supports SSE", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    assert.equal(new URL(String(url)).pathname, "/api/v1/ai/gpt5-luna");
+    assert.match(options?.headers?.Accept ?? "", /text\/event-stream/);
+    const events = [
+      { delta: "Built-in " },
+      { delta: "streaming works." },
+    ];
+    return new Response(events.map((event) => "data: " + JSON.stringify(event)).join("\n") + "\ndata: [DONE]\n", {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream" },
+    });
+  };
+  const chunks = [];
+  try {
+    const turn = await generateAgentTurn(
+      { baseUrl: "https://apis.nabeestech.com/api/v1/ai/gpt5-luna", apiKey: "test", model: "gpt5-luna" },
+      [{ role: "user", content: "Say hello." }],
+      [{ name: "inspect_environment", description: "Inspect environment", parameters: { type: "object", properties: {}, additionalProperties: false } }],
+      (delta) => chunks.push(delta),
+    );
+    assert.deepEqual(chunks, ["Built-in ", "streaming works."]);
+    assert.equal(turn.content, "Built-in streaming works.");
+  } finally { globalThis.fetch = originalFetch; }
+});
