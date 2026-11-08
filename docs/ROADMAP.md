@@ -56,14 +56,14 @@ GULZ is a provider-independent, project-first AI coding agent with a conversatio
 - [ ] Add safe configuration editing, backup and rollback for service setup.
 - [ ] Add cancellation and resumable execution for long-running jobs.
 
-## GitHub and cloud workspaces
+## GitHub workflow
 
-- [ ] Register and configure the GULZ GitHub OAuth App with minimum required permissions.
-- [ ] Implement OAuth device/browser authorization with state validation, PKCE where supported, revocation and secure token storage.
-- [ ] Add repository picker with explicit repository grants; never request broad account access by default.
-- [ ] Create isolated, short-lived cloud workspaces for GitHub repositories, with resource limits and per-job cleanup.
-- [ ] Add branch creation, diff review, commits and pull-request creation with user confirmation.
-- [ ] Keep local folders and SSH-paired VPSs first-class; GitHub connection must remain optional.
+- [ ] Make the installed CLI recognize the current project directory and Git remote automatically.
+- [ ] Add optional GitHub sign-in during first-run setup for hosted GULZ AI account access; use a browser/device flow and store only revocable, scoped credentials.
+- [ ] Keep GitHub AI-service sign-in separate from repository authorization. Do not request repository access just to identify a GULZ AI account.
+- [ ] Integrate GitHub CLI (`gh`) when available for authenticated pushes, issues and pull requests; provide clear setup guidance when it is missing.
+- [ ] Support local Git branch, diff, commit and pull-request workflows with explicit review and approval.
+- [ ] Keep local folders and SSH-paired VPSs first-class; a cloud repository workspace is an optional future feature, not a requirement.
 
 ## Hosted GULZ AI gateway
 
