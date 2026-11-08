@@ -311,8 +311,78 @@ export interface ProviderAgentMessage { role: ProviderAgentRole; content: string
 export interface ProviderAgentToolDefinition { name: string; description: string; parameters: Record<string, unknown>; }
 export interface ProviderAgentTurn { content: string; toolCalls: ProviderAgentToolCall[]; }
 
+async function readAgentStream(response: Response, onContentDelta?: (delta: string) => void): Promise<unknown> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("text/event-stream") || !response.body) {
+    const raw = await response.text();
+    if (raw.length > 1_000_000) throw new ProviderError("AI provider response exceeded the 1 MB safety limit.");
+    let payload: unknown;
+    try { payload = JSON.parse(raw); } catch { throw new ProviderError("AI provider returned invalid agent response JSON."); }
+    if (onContentDelta && isRecord(payload) && Array.isArray(payload.choices)) {
+      const choice = payload.choices[0];
+      if (isRecord(choice) && isRecord(choice.message) && typeof choice.message.content === "string") onContentDelta(choice.message.content);
+    }
+    return payload;
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let total = 0;
+  let content = "";
+  let finishReason: unknown;
+  const calls = new Map<number, { id: string; type: string; function: { name: string; arguments: string } }>();
+  const consume = (line: string) => {
+    if (!line.startsWith("data:")) return;
+    const data = line.slice(5).trim();
+    if (!data || data === "[DONE]") return;
+    let payload: unknown;
+    try { payload = JSON.parse(data); } catch { throw new ProviderError("AI provider sent an invalid streaming event."); }
+    if (!isRecord(payload) || !Array.isArray(payload.choices)) return;
+    const choice = payload.choices[0];
+    if (!isRecord(choice)) return;
+    if (choice.finish_reason !== undefined && choice.finish_reason !== null) finishReason = choice.finish_reason;
+    const delta = isRecord(choice.delta) ? choice.delta : {};
+    if (typeof delta.content === "string" && delta.content) {
+      content += delta.content;
+      onContentDelta?.(delta.content);
+    }
+    if (Array.isArray(delta.tool_calls)) {
+      for (const raw of delta.tool_calls) {
+        if (!isRecord(raw) || typeof raw.index !== "number") continue;
+        const index = raw.index;
+        const current = calls.get(index) ?? { id: "", type: "function", function: { name: "", arguments: "" } };
+        if (typeof raw.id === "string") current.id += raw.id;
+        if (typeof raw.type === "string") current.type = raw.type;
+        if (isRecord(raw.function)) {
+          if (typeof raw.function.name === "string") current.function.name += raw.function.name;
+          if (typeof raw.function.arguments === "string") current.function.arguments += raw.function.arguments;
+        }
+        calls.set(index, current);
+      }
+    }
+  };
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > 1_000_000) throw new ProviderError("AI provider response exceeded the 1 MB safety limit.");
+      buffer += decoder.decode(value, { stream: true });
+      let newline = buffer.indexOf("\n");
+      while (newline >= 0) {
+        consume(buffer.slice(0, newline).replace(/\r$/, ""));
+        buffer = buffer.slice(newline + 1);
+        newline = buffer.indexOf("\n");
+      }
+    }
+    buffer += decoder.decode();
+    if (buffer.trim()) consume(buffer.replace(/\r$/, ""));
+  } finally { reader.releaseLock(); }
+  return { choices: [{ message: { content, tool_calls: [...calls.entries()].sort((a, b) => a[0] - b[0]).map(([, call]) => call) }, finish_reason: finishReason }] };
+}
+
 /** Requests one tool-capable turn. Model tool calls are untrusted proposals, never authorization. */
-export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, messages: ProviderAgentMessage[], tools: ProviderAgentToolDefinition[]): Promise<ProviderAgentTurn> {
+export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, messages: ProviderAgentMessage[], tools: ProviderAgentToolDefinition[], onContentDelta?: (delta: string) => void): Promise<ProviderAgentTurn> {
   if (!config || typeof config !== "object") throw new ProviderError("Provider configuration is required.");
   if (!Array.isArray(messages) || messages.length < 1 || messages.length > 30) throw new ProviderError("An agent turn requires between 1 and 30 messages.");
   if (!Array.isArray(tools) || tools.length > 40) throw new ProviderError("The agent tool catalogue is invalid.");
@@ -363,15 +433,12 @@ export async function generateAgentTurn(config: OpenAICompatibleProviderConfig, 
     } else {
       response = await fetch(endpoint.url, {
         method: "POST", headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ model, temperature: 0.2, tools: safeTools, tool_choice: config.toolChoice ?? "auto", messages: [{ role: "system", content: system }, ...safeMessages] }),
+        body: JSON.stringify({ model, temperature: 0.2, stream: Boolean(onContentDelta), tools: safeTools, tool_choice: config.toolChoice ?? "auto", messages: [{ role: "system", content: system }, ...safeMessages] }),
         signal: controller.signal,
       });
     }
     if (!response.ok) throw new ProviderError("AI agent request failed with HTTP " + response.status + ". Check whether this model supports tool calling.");
-    const responseText = await response.text();
-    if (responseText.length > 1_000_000) throw new ProviderError("AI provider response exceeded the 1 MB safety limit.");
-    let payload: unknown;
-    try { payload = JSON.parse(responseText); } catch { throw new ProviderError("AI provider returned invalid agent response JSON."); }
+    const payload = endpoint.builtin ? await response.json() as unknown : await readAgentStream(response, onContentDelta);
     let rawMessage: unknown;
     if (endpoint.builtin) {
       if (!isRecord(payload) || payload.success === false || typeof payload.response !== "string") throw new ProviderError("Built-in GULZ AI returned an invalid agent response.");
