@@ -52,7 +52,7 @@ test("streams assistant text deltas from an OpenAI-compatible SSE response", asy
       { choices: [{ delta: { content: " there." } }] },
       { choices: [{ delta: {}, finish_reason: "stop" }] },
     ];
-    const body = events.map((event) => "data: " + JSON.stringify(event)).join("\\n") + "\\ndata: [DONE]\\n";
+    const body = events.map((event) => "data: " + JSON.stringify(event)).join("\n") + "\ndata: [DONE]\n";
     return new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } });
   };
   const chunks = [];
