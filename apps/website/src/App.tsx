@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  ArrowDownRight, ArrowRight, ArrowUpRight, Check, ChevronDown, Code2,
+  ArrowRight, ArrowUpRight, Check, Code2,
   Command, Copy, Github, GitBranch, Laptop, LockKeyhole, Menu, Server,
   ShieldCheck, Smartphone, Terminal, X, Zap,
 } from "lucide-react";
